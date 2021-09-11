@@ -18,14 +18,14 @@ public interface ZugServ {
 	void broadcast(String type,String msg);
 	void tch(int ch, String type, String msg);
 	void startSrv();
+	void stopSrv();
+	boolean isRunning();
+	void setPause(boolean paused);
+	boolean isPaused();
 	ServType getType();
 	int getMaxConnections();
 	void setMaxConnections(int c);
 	int getMaxChannels();
 	void setMaxChannels(int c);
 	ConnListener getConnListener();
-	//void connect(Connection conn);
-	//void newMsg(Connection conn, int chan, String msg);
-	//void loggedIn(Connection conn);
-	//void disconnected(Connection conn);
 }

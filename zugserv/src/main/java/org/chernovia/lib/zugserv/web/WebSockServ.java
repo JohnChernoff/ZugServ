@@ -1,5 +1,6 @@
 package org.chernovia.lib.zugserv.web;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.util.ArrayList;
 import java.util.logging.Level;
@@ -13,11 +14,11 @@ public class WebSockServ extends WebSocketServer implements ZugServ {
 	public static final Logger logger = Logger.getLogger(WebSockServ.class.getName());
 	int port = 5555;
     public ArrayList<Connection> connections = new ArrayList<>();
-    WebSocketServer serverSocket; boolean running = false;
+    WebSocketServer serverSocket; boolean running = false; boolean paused = false;
     ConnListener connListener;
     
     public WebSockServ(int p, ConnListener l) {
-    	super(new InetSocketAddress(p));
+    	super(new InetSocketAddress(p)); //new InetSocketAddress("localhost",p));
     	port = p; connListener = l;
     }
     
@@ -69,14 +70,31 @@ public class WebSockServ extends WebSocketServer implements ZugServ {
 
 	@Override
 	public void onStart() {
-		logger.log(Level.INFO,"Starting server on port " + port);
+		logger.log(Level.INFO,"Starting zugserv: " + this.getAddress() + ":" + port );
 	}
 	
 	@Override
 	public void startSrv() {
-		this.start();
+		this.start(); running = true;
 	}
+	
+	@Override
+	public void stopSrv() {
+		try { this.stop(); } 
+		catch (IOException e) { e.printStackTrace(); } 
+		catch (InterruptedException e) { e.printStackTrace(); }
+		running = false;
+	}	
+	
+	@Override
+	public void setPause(boolean paused) { this.paused = paused; }
+	
+	@Override
+	public boolean isRunning() { return running; }
 
+	@Override
+	public boolean isPaused() { return paused; }	
+	
 	@Override
 	public ServType getType() { return ZugServ.ServType.TYPE_WEBSOCK; }
 

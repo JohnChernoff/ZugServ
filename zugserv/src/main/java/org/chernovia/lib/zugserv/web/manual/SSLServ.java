@@ -11,8 +11,6 @@ import java.util.ArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import org.chernovia.lib.zugserv.*;
-//import java.net.http.WebSocket;
-//import org.chernovia.lib.zugserv.web.ZugServ.ServType;
 
 public class SSLServ implements ZugServ, Runnable {
 	public static final Logger logger = Logger.getLogger(WebSockServ.class.getName());
@@ -117,5 +115,29 @@ public class SSLServ implements ZugServ, Runnable {
 	public void setMaxChannels(int c) {
 		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	public void stopSrv() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public boolean isRunning() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public void setPause(boolean paused) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public boolean isPaused() {
+		// TODO Auto-generated method stub
+		return false;
 	}
 }

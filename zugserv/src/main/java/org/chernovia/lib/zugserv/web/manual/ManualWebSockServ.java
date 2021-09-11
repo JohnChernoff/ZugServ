@@ -99,4 +99,28 @@ public class ManualWebSockServ implements ZugServ, Runnable {
 		
 	}
 
+	@Override
+	public void stopSrv() {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public boolean isRunning() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
+	@Override
+	public void setPause(boolean paused) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public boolean isPaused() {
+		// TODO Auto-generated method stub
+		return false;
+	}
+
 }

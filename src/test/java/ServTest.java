@@ -21,16 +21,6 @@ public class ServTest implements ConnListener {
     }
 
     @Override
-    public void loggedIn(Connection conn) {
-        log("Logged in: " + conn);
-    }
-
-    @Override
-    public void loggedOut(Connection conn) {
-        log("Logged out: " + conn);
-    }
-
-    @Override
     public void connected(Connection conn) {
         log("Connected: " + conn);
     }

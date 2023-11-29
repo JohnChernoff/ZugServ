@@ -14,7 +14,7 @@ public abstract class ConnAdapter implements Connection {
 	private long userID;
 	
 	public boolean isSameOrigin(Connection conn) {
-		return (conn.getID() == userID);
+		if (conn == null) return false; else return (conn.getID() == userID);
 	}
 	
 	public long getID() { return userID; }
@@ -23,12 +23,6 @@ public abstract class ConnAdapter implements Connection {
 	public void setStatus(Status s) { status = s; }
 	public Status getStatus() { return status; }
 	
-	@Override
-	public void setHandle(String h) { handle = h; }
-
-	@Override
-	public String getHandle() { return handle; }
-
 	@Override
 	public void setServ(ZugServ serv) { server = serv; }
 

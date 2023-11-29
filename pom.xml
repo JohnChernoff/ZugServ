@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>org.chernovia.lib.zugserv.web</groupId>
   <artifactId>zugserv</artifactId>
-  <version>0.1</version>
+  <version>0.85</version>
   <name>ZugServ</name>
   <description>Java WebServer Framework</description>
   
@@ -34,10 +34,14 @@
 	  	<version>1.5.1</version>
 	</dependency>
 
+	  <dependency>
+		  <groupId>io.github.tors42</groupId>
+		  <artifactId>chariot</artifactId>
+		  <version>0.0.76</version>
+	  </dependency>
+
   </dependencies>
-  
-  
-  
+
     <build>
     	<finalName>ZugServ</finalName>
     	<plugins>
@@ -49,7 +53,15 @@
           			<target>15</target>
         		</configuration>
       		</plugin>
-   		</plugins>
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-compiler-plugin</artifactId>
+				<configuration>
+					<source>16</source>
+					<target>16</target>
+				</configuration>
+			</plugin>
+		</plugins>
   	</build>
 	
 </project>

@@ -2,7 +2,6 @@ package org.chernovia.lib.zugserv.web;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
-import java.util.ArrayList;
 import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -39,7 +38,7 @@ public class WebSockServ extends WebSocketServer implements ZugServ {
 	@Override
 	public void onOpen(org.java_websocket.WebSocket socket, ClientHandshake handshake) {
 		if (getConn(socket) == null) {
-	        WebSockConn conn = new WebSockConn(socket,connListener);
+	        WebSockConn conn = new WebSockConn(socket);
 	        logger.log(Level.INFO,"Incoming Connection at address: " + conn.getAddress());
 	        connections.add(conn);
 			connListener.connected(conn);
@@ -54,6 +53,7 @@ public class WebSockServ extends WebSocketServer implements ZugServ {
 			logger.log(Level.INFO,"Closing Connection at address: " + conn.getAddress());
 			connections.remove(conn);
 			connListener.disconnected(conn);
+			conn.setStatus(Connection.Status.STATUS_DISCONNECTED);
 		}
 		else logger.log(Level.INFO,"Unknown disconnection at address: " + socket.getRemoteSocketAddress());
 	}

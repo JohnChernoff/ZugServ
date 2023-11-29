@@ -5,6 +5,8 @@ import java.util.Vector;
 public interface ZugServ {
 	enum ServType { TYPE_SOCK, TYPE_WEBSOCK, TYPE_IRC, TYPE_TWITCH, TYPE_DISCORD, TYPE_UNKNOWN }
 	int NO_CHAN = -1;
+	String UNKNOWN_STRING = "STRING_UNKNOWN"; //TODO: get rid of this in favor of either Optional or @Nullable
+	String TYPE = "type", DATA = "data", MSG = "msg", JSON = "json", TITLE = "title", SOURCE = "source";
 	String MSG_TXT = "txt",
 	MSG_LOGIN = "login",
 	MSG_PASS = "pwd",

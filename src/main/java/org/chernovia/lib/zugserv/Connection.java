@@ -9,12 +9,12 @@ public interface Connection {
 	enum Status {
 		STATUS_DISCONNECTED, STATUS_ERR, STATUS_OK, STATUS_LOGIN, STATUS_PASS, STATUS_CLOSING
 	}
+	String UNKNOWN_HANDLE = "?";
 	ZugServ getServ();
 	void setServ(ZugServ serv);
 	long getID();
 	void setID(long id);
-	String getHandle();
-	void setHandle(String h);
+	//String getHandle();	void setHandle(String h);
 	InetAddress getAddress();
 	boolean isSameOrigin(Connection conn);
 	boolean isAuto();

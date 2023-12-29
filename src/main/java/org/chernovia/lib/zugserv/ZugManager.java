@@ -66,11 +66,11 @@ abstract public class ZugManager extends Thread implements ConnListener {
 
     public List<ZugUser> getUsersByConn(Connection conn) {
         final List<ZugUser> userList = new Vector<>();
-        for (ZugUser user : users.values()) if (user.conn.isSameOrigin(conn)) userList.add(user); return userList;
+        for (ZugUser user : users.values()) if (user.conn.equals(conn)) userList.add(user); return userList;
     }
 
     public ZugUser getUserByConn(Connection conn) {
-        for (ZugUser user : users.values()) if (user.conn.isSameOrigin(conn)) return user;
+        for (ZugUser user : users.values()) if (user.conn.equals(conn)) return user;
         return null;
     }
 
@@ -86,7 +86,7 @@ abstract public class ZugManager extends Thread implements ConnListener {
     }
 
     public boolean handleLichessLogin(Connection conn, String token) {
-        if (token.equals(ZugServ.UNKNOWN_STRING)) {
+        if (token.equals(ZugFields.UNKNOWN_STRING)) {
             err(conn, "Bad name/token");
         } else { //log("Logging in with token: " + token.asText());
             ClientAuth client = Client.auth(token);
@@ -101,34 +101,34 @@ abstract public class ZugManager extends Thread implements ConnListener {
         return false;
     }
 
-    public void spam(Enum type,String msg) {
+    public void spam(Enum<?> type,String msg) {
         for (ZugUser user : users.values()) user.tell(type,msg);
     }
 
-    public void spam(Enum type,JsonNode msgNode) {
+    public void spam(Enum<?> type,JsonNode msgNode) {
         for (ZugUser user : users.values()) user.tell(type,msgNode);
     }
 
-    public void broadcast(Enum type,String msg) {
+    public void broadcast(Enum<?> type,String msg) {
         for (Connection conn : serv.getAllConnections(true)) {
             conn.tell(VERBOSE ? type.name() : String.valueOf(type.ordinal()),msg);
         }
     }
 
-    public void broadcast(Enum type,JsonNode msgNode) {
+    public void broadcast(Enum<?> type,JsonNode msgNode) {
         for (Connection conn : serv.getAllConnections(true)) {
             conn.tell(VERBOSE ? type.name() : String.valueOf(type.ordinal()),msgNode);
         }
     }
 
-    public void tell(Connection conn, Enum type) {
+    public void tell(Connection conn, Enum<?> type) {
         tell(conn,type,"");
     }
-    public void tell(Connection conn, Enum type, String msg) {
+    public void tell(Connection conn, Enum<?> type, String msg) {
         conn.tell(ZugManager.packType(type),msg);
     }
 
-    public void tell(Connection conn, Enum type, JsonNode msg) {
+    public void tell(Connection conn, Enum<?> type, JsonNode msg) {
         conn.tell(ZugManager.packType(type),msg);
     }
 
@@ -151,7 +151,7 @@ abstract public class ZugManager extends Thread implements ConnListener {
             JsonNode msgNode = JSON_MAPPER.readTree(msg);
             JsonNode typeNode = msgNode.get("type"), dataNode = msgNode.get("data");
             if (typeNode == null || dataNode == null) {
-                err(conn,"Error: Bad Data(null)"); return;
+                err(conn,"Error: Bad Data(null)"); //return;
             }
             else {
                 handleMsg(conn,typeNode.asText(),dataNode);
@@ -171,7 +171,7 @@ abstract public class ZugManager extends Thread implements ConnListener {
     }
 
     public String getTxtNode(JsonNode node, String field) {
-        return getOptionalTxtNode(node,field).orElse(ZugServ.UNKNOWN_STRING);
+        return getOptionalTxtNode(node,field).orElse(ZugFields.UNKNOWN_STRING);
     }
 
     /**
@@ -194,7 +194,7 @@ abstract public class ZugManager extends Thread implements ConnListener {
         if (n == null) return Optional.empty(); else return Optional.of(n.asInt());
     }
 
-    public boolean equalsType(String str,Enum field) {
+    public boolean equalsType(String str,Enum<?> field) {
         return (VERBOSE ? str.equalsIgnoreCase(field.name()) : str.equals(String.valueOf(field.ordinal())));
     }
 
@@ -202,42 +202,42 @@ abstract public class ZugManager extends Thread implements ConnListener {
      * @param field any Enumerated field
      * @return if VERBOSE, the field name, else the field ordinal value as a String
      */
-    static String packType(Enum field) {
+    static String packType(Enum<?> field) {
         return VERBOSE ? field.name() : String.valueOf((field.ordinal()));
     }
     static boolean isVerbose() { return VERBOSE; }
     static void setVerbose(boolean b) { VERBOSE = b; }
-
+    @SafeVarargs
     public static ObjectNode makeTxtNode(Map.Entry<String,String>... fields) {
         ObjectNode node = JSON_MAPPER.createObjectNode();
         for (Map.Entry<String, String> pair : fields) node.put(pair.getKey(),pair.getValue());
         return node;
     }
-
+    @SafeVarargs
     public static ObjectNode makeIntNode(Map.Entry<String,Integer>... fields) {
         ObjectNode node = JSON_MAPPER.createObjectNode();
         for (Map.Entry<String, Integer> pair : fields) node.put(pair.getKey(),pair.getValue());
         return node;
     }
-
+    @SafeVarargs
     public static ObjectNode makeFloatNode(Map.Entry<String,Float>... fields) {
         ObjectNode node = JSON_MAPPER.createObjectNode();
         for (Map.Entry<String, Float> pair : fields) node.put(pair.getKey(),pair.getValue());
         return node;
     }
-
+    @SafeVarargs
     public static ObjectNode makeDoubleNode(Map.Entry<String,Double>... fields) {
         ObjectNode node = JSON_MAPPER.createObjectNode();
         for (Map.Entry<String, Double> pair : fields) node.put(pair.getKey(),pair.getValue());
         return node;
     }
-
+    @SafeVarargs
     public static ObjectNode makeBooleanNode(Map.Entry<String,Boolean>... fields) {
         ObjectNode node = JSON_MAPPER.createObjectNode();
         for (Map.Entry<String, Boolean> pair : fields) node.put(pair.getKey(),pair.getValue());
         return node;
     }
-
+    @SafeVarargs
     public static ObjectNode makeJSONNode(Map.Entry<String,JsonNode>... fields) {
         ObjectNode node = JSON_MAPPER.createObjectNode();
         for (Map.Entry<String, JsonNode> pair : fields) node.set(pair.getKey(),pair.getValue());
@@ -246,7 +246,7 @@ abstract public class ZugManager extends Thread implements ConnListener {
 
     public static ObjectNode joinNodes(ObjectNode... nodes) {
         ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (ObjectNode n : nodes) node.setAll(n);
+        for (ObjectNode n : nodes) if (n != null) node.setAll(n);
         return node;
     }
 

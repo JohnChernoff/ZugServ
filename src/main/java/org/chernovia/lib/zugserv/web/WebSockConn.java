@@ -30,13 +30,13 @@ public class WebSockConn extends ConnAdapter {
 
 	@Override
 	public void tell(String type, String msg) {
-		ObjectNode node = mapper.createObjectNode(); node.put(ZugServ.MSG, msg); tell(type,node);
+		ObjectNode node = mapper.createObjectNode(); node.put(ZugFields.MSG, msg); tell(type,node);
 	}
 
 	@Override
 	public void tell(String type, JsonNode data) { //logger.log(Level.INFO,"Sending: " + data);
 		ObjectNode node = mapper.createObjectNode();
-		node.put(ZugServ.TYPE, type); node.set(ZugServ.DATA, data);
+		node.put(ZugFields.TYPE, type); node.set(ZugFields.DATA, data);
 		if (!socket.isClosed()) {
 			socket.send(node.toString());
 		}

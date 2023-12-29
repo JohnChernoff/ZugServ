@@ -10,13 +10,14 @@ import org.java_websocket.server.WebSocketServer;
 import org.chernovia.lib.zugserv.*;
 
 public class WebSockServ extends WebSocketServer implements ZugServ {
-	
-	public static final Logger logger = Logger.getLogger(WebSockServ.class.getName());
+
+	public static boolean STACK_TRACE = true;
+	private static final Logger logger = Logger.getLogger(WebSockServ.class.getName());
+	private ConnListener connListener;
+    private Vector<Connection> connections = new Vector<>();
 	int port;
-    public Vector<Connection> connections = new Vector<>();
     boolean running = false; boolean paused = false;
-    ConnListener connListener;
-    
+
     public WebSockServ(int p, ConnListener l) {
     	super(new InetSocketAddress(p));
     	port = p; connListener = l;
@@ -50,7 +51,7 @@ public class WebSockServ extends WebSocketServer implements ZugServ {
 	public void onClose(org.java_websocket.WebSocket socket, int code, String reason, boolean remote) {
 		Connection conn = getConn(socket);
 		if (conn != null) {
-			logger.log(Level.INFO,"Closing Connection at address: " + conn.getAddress());
+			logger.log(Level.INFO,"Closing Connection at address: " + conn.getAddress() + ", reason: " + reason);
 			connections.remove(conn);
 			connListener.disconnected(conn);
 			conn.setStatus(Connection.Status.STATUS_DISCONNECTED);
@@ -69,6 +70,7 @@ public class WebSockServ extends WebSocketServer implements ZugServ {
 	@Override
 	public void onError(org.java_websocket.WebSocket socket, Exception ex) {
 		logger.log(Level.INFO,"Error: '" + ex.getMessage() + "' at " + socket.getRemoteSocketAddress());
+		if (STACK_TRACE) ex.printStackTrace();
 	}
 
 	@Override

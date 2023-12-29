@@ -8,31 +8,49 @@ abstract public class Occupant {
     ZugUser user;
     public ZugUser getUser() { return user; }
     public void setUser(ZugUser user) { this.user = user; }
-
     ZugArea area;
+    ZugRoom room;
+    boolean isClone = false;
     public ZugArea getArea() { return area; }
-    public void setArea(ZugArea area) { this.area = area; }
+    public boolean setArea(ZugArea a) {
+        if (isClone || area == a) return false;
+        if (area != null) area.dropOccupant(this);
+        area = a; area.addOrGetOccupant(this);
+        return true;
+    }
+    public ZugRoom getRoom() { return room; }
+    public boolean setRoom(ZugRoom r) {
+        if (isClone || room == r) return false;
+        if (room != null) room.dropOccupant(this);
+        room = r; room.addOrGetOccupant(this);
+        return true;
+    }
 
     public Occupant(ZugUser u, ZugArea a) {
-        user = u; area = a;
+        this(u,a,null);
     }
 
-    public void tell(Enum e, String msg) {
-        ZugArea area = getArea();
-        if (area != null) {
-            getUser().tell(e,(ZugManager.makeTxtNode(
-                    Map.entry(ZugServ.MSG,msg),
-                    Map.entry(ZugServ.SOURCE,area.getTitle()))));
+    public Occupant(ZugUser u, ZugArea a, ZugRoom r) {
+        setUser(u);
+        if (a != null && a.getOccupant(u) != null) isClone = true;
+        else {
+            setArea(a); setRoom(r);
         }
     }
 
-    public void tell(Enum e, ObjectNode node) {
-        ZugArea area = getArea();
-        if (area != null) {
-            getUser().tell(e,(ZugManager.joinNodes(
-                    node,
-                    ZugManager.makeTxtNode(Map.entry(ZugServ.SOURCE,area.getTitle())))));
-        }
+    public void tell(Enum<?> e, String msg) {
+        ObjectNode node = ZugManager.makeTxtNode(Map.entry(ZugFields.MSG,msg));
+        if (area != null) node.put(ZugFields.TITLE,area.title);
+        if (room != null) node.put(ZugFields.ROOM,room.title);
+        getUser().tell(e,node);
+    }
+
+    public void tell(Enum<?> e, ObjectNode node) {
+        getUser().tell(e,(ZugManager.joinNodes(
+                node,
+                area != null ? ZugManager.makeTxtNode(Map.entry(ZugFields.TITLE,area.title)) : null,
+                room != null ? ZugManager.makeTxtNode(Map.entry(ZugFields.ROOM,room.title)) : null
+        )));
     }
 
     public void msg(String msg) {

@@ -12,10 +12,10 @@ abstract public class ZugUser {
     String name;
     boolean loggedIn;
 
-    Set areas = Collections.synchronizedSet(new LinkedHashSet<>());
+    Set<ZugArea> areas = Collections.synchronizedSet(new LinkedHashSet<>());
 
     public ZugUser(Connection c, String n) {
-        conn = c; name = n; loggedIn = true;
+        setConn(c); setName(n); loggedIn = true;
 
     }
 
@@ -39,13 +39,13 @@ abstract public class ZugUser {
         return areas.add(area);
     }
 
-    public void tell(Enum t) { tell(t,""); }
+    public void tell(Enum<?> t) { tell(t,""); }
 
-    public void tell(Enum t, String msg) {
+    public void tell(Enum<?> t, String msg) {
         if (loggedIn && conn != null) conn.tell(ZugManager.VERBOSE ? t.name() : String.valueOf(t.ordinal()),msg);
     }
 
-    public void tell(Enum t, JsonNode json) {
+    public void tell(Enum<?> t, JsonNode json) {
         if (loggedIn && conn != null) conn.tell(ZugManager.VERBOSE ? t.name() : String.valueOf(t.ordinal()),json);
     }
 

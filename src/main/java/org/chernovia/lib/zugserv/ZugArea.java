@@ -6,26 +6,17 @@ import java.util.*;
 
 abstract public class ZugArea extends ZugRoom {
 
-    String title;
     String password;
     ZugUser creator;
     final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
     ObjectNode options = ZugManager.JSON_MAPPER.createObjectNode();
 
     public ZugArea(String t, ZugUser c) {
-        this(t,ZugServ.UNKNOWN_STRING,c);
+        this(t,ZugFields.UNKNOWN_STRING,c);
     }
 
     public ZugArea(String t, String p, ZugUser c) {
         title = t; password = p; creator = c;
-    }
-
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
     }
 
     public ZugUser getCreator() {
@@ -45,7 +36,7 @@ abstract public class ZugArea extends ZugRoom {
     }
 
     public boolean okPass(String pwd) {
-        return (password.equals(ZugServ.UNKNOWN_STRING) || pwd.equals(password));
+        return (password.equals(ZugFields.UNKNOWN_STRING) || pwd.equals(password));
     }
 
     public boolean isOccupant(Connection conn, boolean byOrigin) {
@@ -84,7 +75,7 @@ abstract public class ZugArea extends ZugRoom {
     public void setOptions(ObjectNode options) { this.options = options; }
 
     @Override
-    public void spamX(Enum t, String msg, Occupant... ignoreList) {
+    public void spamX(Enum<?> t, String msg, Occupant... ignoreList) {
         super.spamX(t,msg,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
@@ -93,7 +84,7 @@ abstract public class ZugArea extends ZugRoom {
     }
 
     @Override
-    public void spamX(Enum t, ObjectNode msgNode, Occupant... ignoreList) {
+    public void spamX(Enum<?> t, ObjectNode msgNode, Occupant... ignoreList) {
         super.spamX(t,msgNode,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);

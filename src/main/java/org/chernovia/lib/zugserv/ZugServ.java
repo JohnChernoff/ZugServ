@@ -4,17 +4,8 @@ import java.util.Vector;
 
 public interface ZugServ {
 	enum ServType { TYPE_SOCK, TYPE_WEBSOCK, TYPE_IRC, TYPE_TWITCH, TYPE_DISCORD, TYPE_UNKNOWN }
+	enum MsgTypes { txt,login,pwd,log_ok,serv_msg,err_msg,priv_msg,broadcast }
 	int NO_CHAN = -1;
-	String UNKNOWN_STRING = "STRING_UNKNOWN"; //TODO: get rid of this in favor of either Optional or @Nullable
-	String TYPE = "type", DATA = "data", MSG = "msg", JSON = "json", TITLE = "title", SOURCE = "source";
-	String MSG_TXT = "txt",
-	MSG_LOGIN = "login",
-	MSG_PASS = "pwd",
-	MSG_LOG_SUCCESS = "log_OK",
-	MSG_SERV = "serv_msg", 
-	MSG_ERR = "err_msg",
-	MSG_PRIV = "priv_msg", 
-	MSG_CAST = "broadcast";
 	Vector<Connection> getAllConnections(boolean active);
 	void broadcast(String type,String msg);
 	void tch(int ch, String type, String msg);
@@ -30,3 +21,14 @@ public interface ZugServ {
 	void setMaxChannels(int c);
 	ConnListener getConnListener();
 }
+
+/*
+	String MSG_TXT = "txt",
+	MSG_LOGIN = "login",
+	MSG_PASS = "pwd",
+	MSG_LOG_SUCCESS = "log_OK",
+	MSG_SERV = "serv_msg",
+	MSG_ERR = "err_msg",
+	MSG_PRIV = "priv_msg",
+	MSG_CAST = "broadcast";
+ */

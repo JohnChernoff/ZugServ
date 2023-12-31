@@ -1,8 +1,11 @@
 package org.chernovia.lib.zugserv;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 abstract public class ZugRoom {
@@ -19,15 +22,15 @@ abstract public class ZugRoom {
 
     final ConcurrentHashMap<String,Occupant> occupants = new ConcurrentHashMap<>();
 
-    public Occupant addOrGetOccupant(Occupant occupant) {
-        return occupants.putIfAbsent(occupant.user.name,occupant);
+    public Optional<Occupant> addOrGetOccupant(Occupant occupant) {
+        return Optional.ofNullable(occupants.putIfAbsent(occupant.user.name,occupant));
     }
 
-    public Occupant dropOccupant(Occupant occupant) {
+    public Optional<Occupant> dropOccupant(Occupant occupant) {
         return dropOccupant(occupant.user);
     }
-    public Occupant dropOccupant(ZugUser user) {
-        return occupants.remove(user.getName());
+    public Optional<Occupant> dropOccupant(ZugUser user) {
+        return Optional.ofNullable(occupants.remove(user.getName()));
     }
 
     public int numOccupants() {
@@ -38,11 +41,11 @@ abstract public class ZugRoom {
         return occupants.values();
     }
 
-    public Occupant getOccupant(ZugUser user) {
+    public Optional<Occupant> getOccupant(ZugUser user) {
         return getOccupant(user.name);
     }
-    public Occupant getOccupant(String name) {
-        return occupants.get(name);
+    public Optional<Occupant> getOccupant(String name) {
+        return Optional.ofNullable(occupants.get(name));
     }
 
     public void spam(Enum<?> t) {
@@ -79,6 +82,34 @@ abstract public class ZugRoom {
         }
     }
 
-    abstract public ObjectNode toJSON();
+    public void update(Occupant occupant) {
+        occupant.tell(ZugFields.ServTypes.updateArea,toJSON(false));
+    }
+
+    public void updateAll() {
+        System.out.println("Updating all");
+        spam(ZugFields.ServTypes.updateArea,toJSON(false));
+    }
+
+    public void msg(ZugUser user, String msg) {
+        user.tell(ZugFields.ServTypes.roomMsg,ZugUtils.makeTxtNode
+                (Map.entry(ZugFields.MSG,msg),Map.entry(ZugFields.TITLE,getTitle())));
+    }
+    public void err(ZugUser user, String msg) {
+        user.tell(ZugFields.ServTypes.errMsg,ZugUtils.makeTxtNode
+                (Map.entry(ZugFields.MSG,msg),Map.entry(ZugFields.TITLE,getTitle())));
+    }
+
+    public ObjectNode toJSON() { return toJSON(false); }
+    public ObjectNode toJSON(boolean titleOnly) {
+        ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
+        if (!titleOnly) {
+            ArrayNode arrayNode = ZugUtils.JSON_MAPPER.createArrayNode();
+            getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON(true)));
+            node.set(ZugFields.OCCUPANTS,arrayNode);
+        }
+        node.put(ZugFields.TITLE,title);
+        return node;
+    }
 
 }

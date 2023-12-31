@@ -8,12 +8,13 @@ abstract public class Occupant {
     ZugUser user;
     public ZugUser getUser() { return user; }
     public void setUser(ZugUser user) { this.user = user; }
-    ZugArea area;
-    ZugRoom room;
+    ZugArea area = null;
+    ZugRoom room = null;
     boolean isClone = false;
+    boolean muted = false;
     public ZugArea getArea() { return area; }
     public boolean setArea(ZugArea a) {
-        if (isClone || area == a) return false;
+        if (a == null || isClone || area == a) return false;
         if (area != null) area.dropOccupant(this);
         area = a; area.addOrGetOccupant(this);
         return true;
@@ -26,30 +27,43 @@ abstract public class Occupant {
         return true;
     }
 
+    public boolean isMuted() {
+        return muted;
+    }
+
+    public void setMuted(boolean muted) {
+        this.muted = muted;
+    }
+
     public Occupant(ZugUser u, ZugArea a) {
         this(u,a,null);
     }
 
     public Occupant(ZugUser u, ZugArea a, ZugRoom r) {
         setUser(u);
-        if (a != null && a.getOccupant(u) != null) isClone = true;
+        if (a != null && a.getOccupant(u).isPresent()) isClone = true;
         else {
-            setArea(a); setRoom(r);
+
+            if (a != null && setArea(a)) {
+                //ZugManager.log("Creating Occupant: in " + a.title + ", occupants: " + a.occupants.values().size());
+                a.updateAll();
+            }
+            if (r != null && setRoom(r)) r.updateAll();
         }
     }
 
     public void tell(Enum<?> e, String msg) {
-        ObjectNode node = ZugManager.makeTxtNode(Map.entry(ZugFields.MSG,msg));
+        ObjectNode node = ZugUtils.makeTxtNode(Map.entry(ZugFields.MSG,msg));
         if (area != null) node.put(ZugFields.TITLE,area.title);
         if (room != null) node.put(ZugFields.ROOM,room.title);
         getUser().tell(e,node);
     }
 
     public void tell(Enum<?> e, ObjectNode node) {
-        getUser().tell(e,(ZugManager.joinNodes(
+        if (!muted) getUser().tell(e,(ZugUtils.joinNodes(
                 node,
-                area != null ? ZugManager.makeTxtNode(Map.entry(ZugFields.TITLE,area.title)) : null,
-                room != null ? ZugManager.makeTxtNode(Map.entry(ZugFields.ROOM,room.title)) : null
+                area != null ? ZugUtils.makeTxtNode(Map.entry(ZugFields.TITLE,area.title)) : null,
+                room != null ? ZugUtils.makeTxtNode(Map.entry(ZugFields.ROOM,room.title)) : null
         )));
     }
 
@@ -65,6 +79,15 @@ abstract public class Occupant {
         return user.getName().equalsIgnoreCase(o.user.name);
     }
 
-    abstract public ObjectNode toJSON();
+    public ObjectNode toJSON() { return toJSON(false); }
+    public ObjectNode toJSON(boolean userOnly) {
+        ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
+        if (!userOnly) {
+            node.set(ZugFields.AREA,area != null ? area.toJSON() : null);
+            node.set(ZugFields.ROOM,room != null ? room.toJSON() : null);
+        }
+        node.set(ZugFields.USER,user.toJSON());
+        return node;
+    }
 
 }

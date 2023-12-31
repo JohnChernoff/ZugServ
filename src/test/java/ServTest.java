@@ -24,7 +24,7 @@ public class ServTest implements ConnListener {
         TestUser user = new TestUser(conn,"New user");
         user.tell(ZugServ.MsgTypes.serv_msg,"You said: " + msg);
 
-        area = new TestArea("TestArea", user); log("Adding: " + user.addArea(area));
+        area = new TestArea("TestArea", user, null); log("Adding: " + user.addArea(area));
 
         TestOccupant occupant = new TestOccupant(user,area); area.addOrGetOccupant(occupant);
 
@@ -55,10 +55,6 @@ class TestUser extends ZugUser {
     public TestUser(Connection c, String n) {
         super(c, n);
     }
-    @Override
-    public ObjectNode toJSON() {
-        return null;
-    }
 }
 
 class TestOccupant extends Occupant {
@@ -74,28 +70,8 @@ class TestOccupant extends Occupant {
 }
 
 class TestArea extends ZugArea {
-
-    public TestArea(String t, TestUser c) {
-        super(t, c);
+    public TestArea(String t, TestUser c, AreaListener l) {
+        super(t, c, l);
     }
 
-    @Override
-    public void msg(ZugUser user, String msg) {
-
-    }
-
-    @Override
-    public void err(ZugUser user, String msg) {
-
-    }
-
-    @Override
-    public void log(String msg) {
-
-    }
-
-    @Override
-    public ObjectNode toJSON() {
-        return null;
-    }
 }

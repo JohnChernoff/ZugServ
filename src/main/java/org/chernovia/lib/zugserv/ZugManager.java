@@ -5,45 +5,66 @@ import chariot.ClientAuth;
 import chariot.api.AccountAuth;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.web.WebSockServ;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 abstract public class ZugManager extends Thread implements ConnListener {
 
-    public static boolean VERBOSE = true;
-    public static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+    static final Logger logger = Logger.getLogger("ZugServLog");
+    private static boolean VERBOSE = true; //for enum names vs ordinal
+
     ConcurrentHashMap<String,ZugUser> users = new ConcurrentHashMap<>();
     ConcurrentHashMap<String,ZugArea> areas = new ConcurrentHashMap<>();
-    WebSockServ serv;
+    ZugServ serv;
+
+    public ZugManager(ZugServ.ServType type) { this(type,0); }
+    public ZugManager(ZugServ.ServType type, int port) {
+        setLoggingLevel(Level.INFO);
+        serv = switch (type) {
+            case TYPE_SOCK, TYPE_IRC, TYPE_TWITCH, TYPE_DISCORD, TYPE_UNKNOWN -> null;
+            case TYPE_WEBSOCK -> new WebSockServ(port,this);
+        };
+    }
+
+    public static void setLoggingLevel(Level level) {
+        logger.setLevel(level); log("Logging Level: " + level);
+    }
+    public static void setVerbosity(boolean v) {
+        VERBOSE = v; log("Verbosity: " + VERBOSE);
+
+    }
+    public static boolean getVerbosity() { return VERBOSE; }
 
     public ConcurrentHashMap<String,ZugUser> getUsers() {
         return users;
     }
 
-    public ZugUser addOrGetUser(ZugUser user) {
-        return users.putIfAbsent(user.getName(),user);
+    public Optional<ZugUser> addOrGetUser(ZugUser user) {
+        return Optional.ofNullable(users.putIfAbsent(user.getName(), user));
     }
 
-    public ZugUser removeUser(ZugUser user) {
-        return users.remove(user.getName());
+    public Optional<ZugUser> removeUser(ZugUser user) {
+        return Optional.ofNullable(users.remove(user.getName()));
     }
 
-    public ZugArea addOrGetArea(ZugArea area) {
-        return areas.putIfAbsent(area.getTitle(),area);
+    public Optional<ZugArea> addOrGetArea(ZugArea area) {
+        return Optional.ofNullable(areas.putIfAbsent(area.getTitle(), area));
     }
 
-    public ZugArea removeArea(ZugArea area) {
-        return areas.remove(area.getTitle());
+    public Optional<ZugArea> removeArea(ZugArea area) {
+        return Optional.ofNullable(areas.remove(area.getTitle()));
     }
 
     public Collection<ZugArea> getAreas() {
         return areas.values();
     }
 
-    public WebSockServ getServ() {
+    public ZugServ getServ() {
         return serv;
     }
 
@@ -60,8 +81,8 @@ abstract public class ZugManager extends Thread implements ConnListener {
         return areaList;
     }
 
-    public ZugArea getAreaByTitle(String title) {
-        return areas.get(title);
+    public Optional<ZugArea> getAreaByTitle(String title) {
+        return Optional.ofNullable(areas.get(title));
     }
 
     public List<ZugUser> getUsersByConn(Connection conn) {
@@ -69,9 +90,9 @@ abstract public class ZugManager extends Thread implements ConnListener {
         for (ZugUser user : users.values()) if (user.conn.equals(conn)) userList.add(user); return userList;
     }
 
-    public ZugUser getUserByConn(Connection conn) {
-        for (ZugUser user : users.values()) if (user.conn.equals(conn)) return user;
-        return null;
+    public Optional<ZugUser> getUserByConn(Connection conn) {
+        for (ZugUser user : users.values()) if (user.conn.equals(conn)) return Optional.of(user);
+        return Optional.empty();
     }
 
     public List<ZugUser> getUsersByName(String name) {
@@ -80,9 +101,9 @@ abstract public class ZugManager extends Thread implements ConnListener {
         return userList;
     }
 
-    public ZugUser getUserByName(String name) {
-        for (ZugUser user : users.values()) if (user.getName().equals(name)) return user;
-        return null;
+    public Optional<ZugUser> getUserByName(String name) {
+        for (ZugUser user : users.values()) if (user.getName().equals(name)) return Optional.of(user);
+        return Optional.empty();
     }
 
     public boolean handleLichessLogin(Connection conn, String token) {
@@ -137,7 +158,22 @@ abstract public class ZugManager extends Thread implements ConnListener {
 
     public abstract void err(Connection conn, String msg);
     public abstract void msg(Connection conn, String msg);
-    public abstract void log(String msg);
+
+    public static void log(String msg) {
+        log(Level.INFO,msg);
+    }
+
+    public static void log(String msg, String source) {
+        log(Level.INFO,msg,source);
+    }
+
+    public static void log(Level level, String msg) {
+        log(level,msg,"ZugServ: ");
+    }
+
+    public static void log(Level level, String msg, String source) {
+        logger.log(level,source + ": " + msg);
+    }
 
     /**
      * Called upon completion of a successful PKCE lichess account authentication.
@@ -148,7 +184,7 @@ abstract public class ZugManager extends Thread implements ConnListener {
     public abstract void handleMsg(Connection conn, String type, JsonNode dataNode);
     public void newMsg(Connection conn, int chan, String msg) {
         try {
-            JsonNode msgNode = JSON_MAPPER.readTree(msg);
+            JsonNode msgNode = ZugUtils.JSON_MAPPER.readTree(msg);
             JsonNode typeNode = msgNode.get("type"), dataNode = msgNode.get("data");
             if (typeNode == null || dataNode == null) {
                 err(conn,"Error: Bad Data(null)"); //return;
@@ -170,16 +206,12 @@ abstract public class ZugManager extends Thread implements ConnListener {
         for (ZugArea area : getAreas()) area.observers.remove(conn);
     }
 
-    public String getTxtNode(JsonNode node, String field) {
-        return getOptionalTxtNode(node,field).orElse(ZugFields.UNKNOWN_STRING);
-    }
-
     /**
      * @param node JSON container node
      * @param name name of a text field
      * @return Optional String value of text field
      */
-    public static Optional<String> getOptionalTxtNode(JsonNode node, String name) {
+    public static Optional<String> getTxtNode(JsonNode node, String name) {
         JsonNode n = node.get(name);
         if (n == null) return Optional.empty(); else return Optional.of(n.asText());
     }
@@ -192,6 +224,11 @@ abstract public class ZugManager extends Thread implements ConnListener {
     public static Optional<Integer> getIntNode(JsonNode node, String name) {
         JsonNode n = node.get(name);
         if (n == null) return Optional.empty(); else return Optional.of(n.asInt());
+    }
+
+    public static Optional<Boolean> getBoolNode(JsonNode node, String name) {
+        JsonNode n = node.get(name);
+        if (n == null) return Optional.empty(); else return Optional.of(n.asBoolean());
     }
 
     public boolean equalsType(String str,Enum<?> field) {
@@ -207,51 +244,21 @@ abstract public class ZugManager extends Thread implements ConnListener {
     }
     static boolean isVerbose() { return VERBOSE; }
     static void setVerbose(boolean b) { VERBOSE = b; }
-    @SafeVarargs
-    public static ObjectNode makeTxtNode(Map.Entry<String,String>... fields) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (Map.Entry<String, String> pair : fields) node.put(pair.getKey(),pair.getValue());
-        return node;
-    }
-    @SafeVarargs
-    public static ObjectNode makeIntNode(Map.Entry<String,Integer>... fields) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (Map.Entry<String, Integer> pair : fields) node.put(pair.getKey(),pair.getValue());
-        return node;
-    }
-    @SafeVarargs
-    public static ObjectNode makeFloatNode(Map.Entry<String,Float>... fields) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (Map.Entry<String, Float> pair : fields) node.put(pair.getKey(),pair.getValue());
-        return node;
-    }
-    @SafeVarargs
-    public static ObjectNode makeDoubleNode(Map.Entry<String,Double>... fields) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (Map.Entry<String, Double> pair : fields) node.put(pair.getKey(),pair.getValue());
-        return node;
-    }
-    @SafeVarargs
-    public static ObjectNode makeBooleanNode(Map.Entry<String,Boolean>... fields) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (Map.Entry<String, Boolean> pair : fields) node.put(pair.getKey(),pair.getValue());
-        return node;
-    }
-    @SafeVarargs
-    public static ObjectNode makeJSONNode(Map.Entry<String,JsonNode>... fields) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (Map.Entry<String, JsonNode> pair : fields) node.set(pair.getKey(),pair.getValue());
-        return node;
+
+    public ObjectNode usersToJSON(boolean nameOnly) {
+        ArrayNode arrayNode = ZugUtils.JSON_MAPPER.createArrayNode();
+        users.values().forEach(user -> arrayNode.add(user.toJSON(nameOnly)));
+        return ZugUtils.makeJSONNode(Map.entry(ZugFields.USERS,arrayNode));
     }
 
-    public static ObjectNode joinNodes(ObjectNode... nodes) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (ObjectNode n : nodes) if (n != null) node.setAll(n);
-        return node;
+    public ObjectNode areasToJSON(boolean titleOnly) {
+        ArrayNode arrayNode = ZugUtils.JSON_MAPPER.createArrayNode();
+        areas.values().forEach(area -> arrayNode.add(area.toJSON(titleOnly)));
+        return ZugUtils.makeJSONNode(Map.entry(ZugFields.AREAS,arrayNode));
     }
 
-    public static <E> Optional<E> getRandomElement (Collection<E> e) {
-        return e.stream().skip((int) (e.size() * Math.random())).findFirst();
+    public ObjectNode toJSON() {
+        return ZugUtils.joinNodes(usersToJSON(true),areasToJSON(true));
     }
 
 }

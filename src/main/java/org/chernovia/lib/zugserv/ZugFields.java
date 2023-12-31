@@ -1,16 +1,27 @@
 package org.chernovia.lib.zugserv;
 
 public interface ZugFields {
-    enum ServTypes { none, reqLogin, logOK, noLog, errMsg, servMsg }
-    enum ClientTypes { none, login, getOptions, setOptions }
+    enum ServTypes { none, obs, unObs, reqLogin, logOK, noLog, errMsg, servMsg, servUserMsg, areaUserMsg, areaMsg, roomMsg, privMsg, updateUsers, updateAreas, updateArea, updateRoom, updateServ, updateUser, updateOccupant }
+    enum ClientTypes {
+        none, obs, unObs, loginLichess, getOptions, setOptions, newRoom, joinRoom, newArea, joinArea, partArea, areaMsg, roomMsg, servMsg, privMsg, updateArea, updateRoom, updateServ, updateUser, updateOccupant, setMute
+    }
 
     String UNKNOWN_STRING = "STRING_UNKNOWN"; //TODO: get rid of this in favor of either Optional or @Nullable
     String TYPE = "type",
             DATA = "data",
             MSG = "msg",
+            NAME = "name",
+            USER = "user",
+            USERS = "users",
             JSON = "json",
             TITLE = "title",
             ROOM = "room",
-            SOURCE = "source",
-            TOKEN = "token"; //TODO: title - area?
+            AREA = "area",
+            AREAS = "areas",
+            CREATOR = "creator",
+            TOKEN = "token",
+            LOGGED_IN = "logged_in",
+            OCCUPANTS = "occupants",
+            OBSERVERS = "observers",
+            OPTIONS = "options";
 }

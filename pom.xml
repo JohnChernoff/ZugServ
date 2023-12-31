@@ -1,10 +1,29 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>org.chernovia.lib.zugserv.web</groupId>
+  <groupId>io.github.johnchernoff</groupId>
   <artifactId>zugserv</artifactId>
-  <version>0.9</version>
+  <version>0.97</version>
   <name>ZugServ</name>
   <description>Java WebServer Framework</description>
+
+    <url>https://github.com/JohnChernoff/ZugServ</url>
+    <licenses>
+        <license>
+            <name>The Apache Software License, Version 2.0</name>
+            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>John Chernoff</name>
+            <email>jachernoff@gmail.com</email>
+        </developer>
+    </developers>
+    <scm>
+        <connection>scm:git:git://github.com/JohnChernoff/ZugServ.git</connection>
+        <developerConnection>scm:git:ssh://github.com/JohnChernoff/ZugServ.git</developerConnection>
+        <url>https://github.com/JohnChernoff/ZugServ/tree/master</url>
+    </scm>
   
   <dependencies>
       	<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
@@ -100,6 +119,21 @@
                 </execution>
             </executions>
         </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>1.5</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
 
     </plugins>
   </build>

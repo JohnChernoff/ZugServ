@@ -42,12 +42,18 @@ abstract public class ZugUser {
     public void tell(Enum<?> t) { tell(t,""); }
 
     public void tell(Enum<?> t, String msg) {
-        if (loggedIn && conn != null) conn.tell(ZugManager.VERBOSE ? t.name() : String.valueOf(t.ordinal()),msg);
+        if (loggedIn && conn != null) conn.tell(ZugManager.getVerbosity() ? t.name() : String.valueOf(t.ordinal()),msg);
     }
 
     public void tell(Enum<?> t, JsonNode json) {
-        if (loggedIn && conn != null) conn.tell(ZugManager.VERBOSE ? t.name() : String.valueOf(t.ordinal()),json);
+        if (loggedIn && conn != null) conn.tell(ZugManager.getVerbosity() ? t.name() : String.valueOf(t.ordinal()),json);
     }
 
-    abstract public ObjectNode toJSON();
+    public ObjectNode toJSON() { return toJSON(false); }
+    public ObjectNode toJSON(boolean nameOnly) {
+        ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
+        if (!nameOnly) node.put(ZugFields.LOGGED_IN,loggedIn); //TODO: time connected, etc.
+        node.put(ZugFields.NAME,name);
+        return node;
+    }
 }

@@ -134,23 +134,22 @@ public class ManualWebSockConn extends ConnAdapter implements Runnable {
 		running = true;
 		if (handshake()) listener.connected(this);
 		else {
-			logger.log(Level.WARNING, "Bad Handshake!");
-			close();
+			close("Bad Handshake");
 		}
 		while (running) {
 			try {
 				if (in.available() > 0)
 					listener.newMsg(this, ZugServ.NO_CHAN, decode(in.readNBytes(in.available())));
 			} catch (IOException | IllegalArgumentException e) {
-				logger.log(Level.WARNING, e.getMessage());
-				close();
+				close(e.getMessage());
 			}
 		}
 		listener.disconnected(this);
 	}
 
 	@Override
-	public void close() { 
+	public void close(String reason) {
+		logger.log(Level.WARNING,"Closing socket: " + reason);
 		try { socket.close(); } catch (IOException e) { e.printStackTrace(); }
 		running = false;
 	}
@@ -169,7 +168,7 @@ public class ManualWebSockConn extends ConnAdapter implements Runnable {
 		node.put("type", type); node.set("data", msg);
 		if (!socket.isClosed()) {
 			try { out.write(encode(node.toString())); } 
-			catch (IOException e) { logger.log(Level.INFO,e.getMessage()); close(); }
+			catch (IOException e) { close(e.getMessage()); }
 		}
 	}
 }

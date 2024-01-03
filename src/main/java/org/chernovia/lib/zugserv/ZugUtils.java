@@ -2,13 +2,26 @@ package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 public class ZugUtils {
     public static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+    public static List<JSONifier> makeJSONifiers(List<Object> list) {
+        return list.stream().map(item -> item instanceof JSONifier ? (JSONifier)item : null).toList();
+    }
+    public static ObjectNode makeNoodle(String name, List<JSONifier> list) { //Noodle = array of JSON nodes
+        //List<JSONifier> items = list.stream().map(i -> i instanceof JSONifier ? (JSONifier)i : null).toList();
+        ObjectNode node = JSON_MAPPER.createObjectNode();
+        ArrayNode arrayNode = JSON_MAPPER.createArrayNode();
+        for (JSONifier n : list) if (n != null) arrayNode.add(n.toJSON());
+        node.set(name,arrayNode);
+        return node;
+    }
     @SafeVarargs
     public static ObjectNode makeTxtNode(Map.Entry<String,String>... fields) {
         ObjectNode node = JSON_MAPPER.createObjectNode();

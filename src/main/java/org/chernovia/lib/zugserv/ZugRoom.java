@@ -8,7 +8,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
-abstract public class ZugRoom {
+abstract public class ZugRoom extends Timeoutable implements JSONifier {
 
     String title;
 
@@ -20,17 +20,17 @@ abstract public class ZugRoom {
         this.title = title;
     }
 
-    final ConcurrentHashMap<String,Occupant> occupants = new ConcurrentHashMap<>();
+    final ConcurrentHashMap<ZugUser.UniqueName,Occupant> occupants = new ConcurrentHashMap<>();
 
     public Optional<Occupant> addOrGetOccupant(Occupant occupant) {
-        return Optional.ofNullable(occupants.putIfAbsent(occupant.user.name,occupant));
+        return Optional.ofNullable(occupants.putIfAbsent(occupant.user.getUniqueName(),occupant));
     }
 
     public Optional<Occupant> dropOccupant(Occupant occupant) {
         return dropOccupant(occupant.user);
     }
     public Optional<Occupant> dropOccupant(ZugUser user) {
-        return Optional.ofNullable(occupants.remove(user.getName()));
+        return Optional.ofNullable(occupants.remove(user.getUniqueName()));
     }
 
     public int numOccupants() {
@@ -42,9 +42,9 @@ abstract public class ZugRoom {
     }
 
     public Optional<Occupant> getOccupant(ZugUser user) {
-        return getOccupant(user.name);
+        return getOccupant(user.getUniqueName());
     }
-    public Optional<Occupant> getOccupant(String name) {
+    public Optional<Occupant> getOccupant(ZugUser.UniqueName name) {
         return Optional.ofNullable(occupants.get(name));
     }
 

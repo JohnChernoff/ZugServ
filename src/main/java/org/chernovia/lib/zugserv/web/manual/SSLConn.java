@@ -8,7 +8,6 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.InetAddress;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.net.ssl.SSLSocket;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -43,7 +42,7 @@ public class SSLConn extends ConnAdapter implements Runnable {
 	}
 
 	@Override
-	public void close() {
+	public void close(String reason) {
 		try { socket.close(); } catch (IOException e) { e.printStackTrace(); }
 		running = false;
 	}
@@ -59,7 +58,7 @@ public class SSLConn extends ConnAdapter implements Runnable {
 		node.put("type", type); node.set("data", msg);
 		if (!socket.isClosed()) {
 			try { writer.write(node.toString()); } 
-			catch (IOException e) { logger.log(Level.INFO,e.getMessage()); close(); }
+			catch (IOException e) { close(e.getMessage()); }
 		}
 	}
 
@@ -69,8 +68,7 @@ public class SSLConn extends ConnAdapter implements Runnable {
 			try {
 				listener.newMsg(this, ZugServ.NO_CHAN, reader.readLine());
 			} 
-			catch (IOException e) { logger.log(Level.WARNING,e.getMessage()); close(); }
-			catch (IllegalArgumentException e) { logger.log(Level.WARNING,e.getMessage()); close(); }
+			catch (IOException | IllegalArgumentException e) { close(e.getMessage()); }
 		}
 		listener.disconnected(this);
 	}

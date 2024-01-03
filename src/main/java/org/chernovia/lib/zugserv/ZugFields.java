@@ -1,9 +1,10 @@
 package org.chernovia.lib.zugserv;
 
 public interface ZugFields {
+    enum AuthSource { none, local, lichess, twitch, google }
     enum ServTypes { none, obs, unObs, reqLogin, logOK, noLog, errMsg, servMsg, servUserMsg, areaUserMsg, areaMsg, roomMsg, privMsg, updateUsers, updateAreas, updateArea, updateRoom, updateServ, updateUser, updateOccupant }
     enum ClientTypes {
-        none, obs, unObs, loginLichess, getOptions, setOptions, newRoom, joinRoom, newArea, joinArea, partArea, areaMsg, roomMsg, servMsg, privMsg, updateArea, updateRoom, updateServ, updateUser, updateOccupant, setMute
+        none, obs, unObs, login, loginGuest, loginLichess, getOptions, setOptions, newRoom, joinRoom, newArea, joinArea, partArea, areaMsg, roomMsg, servMsg, privMsg, updateArea, updateRoom, updateServ, updateUser, updateOccupant, setMute
     }
 
     String UNKNOWN_STRING = "STRING_UNKNOWN"; //TODO: get rid of this in favor of either Optional or @Nullable
@@ -11,6 +12,7 @@ public interface ZugFields {
             DATA = "data",
             MSG = "msg",
             NAME = "name",
+            SOURCE = "source",
             USER = "user",
             USERS = "users",
             JSON = "json",
@@ -23,5 +25,6 @@ public interface ZugFields {
             LOGGED_IN = "logged_in",
             OCCUPANTS = "occupants",
             OBSERVERS = "observers",
+            MUTED = "muted",
             OPTIONS = "options";
 }

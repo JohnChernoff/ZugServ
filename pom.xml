@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.johnchernoff</groupId>
   <artifactId>zugserv</artifactId>
-  <version>0.97</version>
+  <version>0.9.8</version>
   <name>ZugServ</name>
   <description>Java WebServer Framework</description>
 
@@ -10,7 +10,7 @@
     <licenses>
         <license>
             <name>The Apache Software License, Version 2.0</name>
-            <url>http://www.apache.org/licenses/LICENSE-2.0.txt</url>
+            <url>https://www.apache.org/licenses/LICENSE-2.0.txt</url>
         </license>
     </licenses>
     <developers>
@@ -64,6 +64,14 @@
 		  <artifactId>mysql-connector-java</artifactId>
 		  <version>8.0.32</version>
 	  </dependency>
+
+      <!--
+      <dependency>
+          <groupId>net.datafaker</groupId>
+          <artifactId>datafaker</artifactId>
+          <version>2.0.2</version>
+      </dependency> -->
+
 
   </dependencies>
 

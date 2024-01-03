@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.*;
+import org.java_websocket.framing.CloseFrame;
 
 public class WebSockConn extends ConnAdapter {
 	private static final Logger logger = Logger.getLogger(WebSockConn.class.getName());
@@ -23,7 +24,11 @@ public class WebSockConn extends ConnAdapter {
 	public org.java_websocket.WebSocket getSock() { return socket; }
 	
 	@Override
-	public void close() { socket.close(); }
+	public void close(String reason) { close(CloseFrame.NORMAL,reason); }
+
+	public void close(int code, String reason) {
+		socket.close(code,reason);
+	}
 
 	@Override
 	public InetAddress getAddress() { return socket.getRemoteSocketAddress().getAddress(); }

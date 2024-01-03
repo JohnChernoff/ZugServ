@@ -7,15 +7,18 @@ import java.util.LinkedHashSet;
 import java.util.Set;
 
 
-abstract public class ZugUser {
+abstract public class ZugUser extends Timeoutable implements JSONifier {
     Connection conn;
-    String name;
+    UniqueName uniqueName;
     boolean loggedIn;
+   // long lastMessage = Long.MAX_VALUE;
+
+    record UniqueName(String name, ZugFields.AuthSource source) {}
 
     Set<ZugArea> areas = Collections.synchronizedSet(new LinkedHashSet<>());
 
-    public ZugUser(Connection c, String n) {
-        setConn(c); setName(n); loggedIn = true;
+    public ZugUser(Connection c, String n, ZugFields.AuthSource source) {
+        setConn(c); uniqueName = new UniqueName(n,source); loggedIn = true;
 
     }
 
@@ -24,12 +27,14 @@ abstract public class ZugUser {
         conn = c;
     }
 
-    public String getName() {
-        return name;
+    public ZugFields.AuthSource getSource() { return uniqueName.source; }
+
+    public UniqueName getUniqueName() {
+        return uniqueName;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public String getName() {
+        return uniqueName.name;
     }
 
     public boolean isLoggedIn() { return loggedIn; }
@@ -38,6 +43,7 @@ abstract public class ZugUser {
     public boolean addArea(ZugArea area) {
         return areas.add(area);
     }
+
 
     public void tell(Enum<?> t) { tell(t,""); }
 
@@ -52,8 +58,11 @@ abstract public class ZugUser {
     public ObjectNode toJSON() { return toJSON(false); }
     public ObjectNode toJSON(boolean nameOnly) {
         ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
-        if (!nameOnly) node.put(ZugFields.LOGGED_IN,loggedIn); //TODO: time connected, etc.
-        node.put(ZugFields.NAME,name);
+        if (!nameOnly) {
+            node.put(ZugFields.LOGGED_IN,loggedIn); //TODO: time connected, etc.
+            node.put(ZugFields.SOURCE,uniqueName.source.name());
+        }
+        node.put(ZugFields.NAME,uniqueName.name);
         return node;
     }
 }

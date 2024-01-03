@@ -22,7 +22,7 @@ public interface Connection {
 	void ban(long t,long id);
 	Ban getBan();
 	boolean isFlooding(int limit, long span);
-	void close();
+	void close(String reason);
 	void tell(String type, String msg);
 	void tell(String type, JsonNode msg);
 	Status getStatus();

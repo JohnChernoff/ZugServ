@@ -12,12 +12,18 @@ abstract public class ZugArea extends ZugRoom {
     final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
     ObjectNode options = ZugUtils.JSON_MAPPER.createObjectNode();
 
+    boolean exists = true;
+
     public ZugArea(String t, ZugUser c, AreaListener l) {
         this(t,ZugFields.UNKNOWN_STRING,c, l);
     }
 
     public ZugArea(String t, String p, ZugUser c, AreaListener l) {
         title = t; password = p; creator = c; listener = l; //l.areaCreated(this);
+    }
+
+    public boolean exists() {
+        return exists;
     }
 
     public AreaListener getListener() {

@@ -13,12 +13,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-abstract public class ZugManager extends Thread implements ConnListener {
+abstract public class ZugManager extends Thread implements ConnListener, JSONifier {
+
 
     static final Logger logger = Logger.getLogger("ZugServLog");
     private static boolean VERBOSE = true; //for enum names vs ordinal
 
-    ConcurrentHashMap<String,ZugUser> users = new ConcurrentHashMap<>();
+    ConcurrentHashMap<ZugUser.UniqueName,ZugUser> users = new ConcurrentHashMap<>();
     ConcurrentHashMap<String,ZugArea> areas = new ConcurrentHashMap<>();
     ZugServ serv;
 
@@ -40,12 +41,12 @@ abstract public class ZugManager extends Thread implements ConnListener {
     }
     public static boolean getVerbosity() { return VERBOSE; }
 
-    public ConcurrentHashMap<String,ZugUser> getUsers() {
+    public ConcurrentHashMap<ZugUser.UniqueName,ZugUser> getUsers() {
         return users;
     }
 
     public Optional<ZugUser> addOrGetUser(ZugUser user) {
-        return Optional.ofNullable(users.putIfAbsent(user.getName(), user));
+        return Optional.ofNullable(users.putIfAbsent(user.getUniqueName(), user));
     }
 
     public Optional<ZugUser> removeUser(ZugUser user) {
@@ -101,8 +102,13 @@ abstract public class ZugManager extends Thread implements ConnListener {
         return userList;
     }
 
-    public Optional<ZugUser> getUserByName(String name) {
-        for (ZugUser user : users.values()) if (user.getName().equals(name)) return Optional.of(user);
+    public Optional<ZugUser> getUserByName(String name, String source) {
+        List<ZugUser> userList = getUsersByName(name);
+        for (ZugUser user : userList) {
+            if (user.getName().equals(name)) {
+                if (source == null || user.getSource().name().equalsIgnoreCase(source)) return Optional.of(user);
+            }
+        }
         return Optional.empty();
     }
 
@@ -113,7 +119,7 @@ abstract public class ZugManager extends Thread implements ConnListener {
             ClientAuth client = Client.auth(token);
             AccountAuth aa = client.account();
             if (aa.profile().isPresent()) {
-                lichessLoggedIn(conn, aa.profile().get().name());
+                handleLogin(conn, aa.profile().get().name(),ZugFields.AuthSource.lichess);
                 return true;
             } else {
                 err(conn, "Login failure: bad token");
@@ -176,11 +182,12 @@ abstract public class ZugManager extends Thread implements ConnListener {
     }
 
     /**
-     * Called upon completion of a successful PKCE lichess account authentication.
+     * Called upon completion of a successful login.
      * @param conn An Internet Connection
-     * @param name Lichess username
+     * @param name username
+     * @param source the authentication source, if any
      */
-    public abstract void lichessLoggedIn(Connection conn, String name);
+    public abstract void handleLogin(Connection conn, String name, ZugFields.AuthSource source);
     public abstract void handleMsg(Connection conn, String type, JsonNode dataNode);
     public void newMsg(Connection conn, int chan, String msg) {
         try {

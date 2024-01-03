@@ -3,7 +3,7 @@ package org.chernovia.lib.zugserv;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Map;
 
-abstract public class Occupant {
+abstract public class Occupant implements JSONifier {
 
     ZugUser user;
     public ZugUser getUser() { return user; }
@@ -12,6 +12,7 @@ abstract public class Occupant {
     ZugRoom room = null;
     boolean isClone = false;
     boolean muted = false;
+    boolean away = false;
     public ZugArea getArea() { return area; }
     public boolean setArea(ZugArea a) {
         if (a == null || isClone || area == a) return false;
@@ -76,7 +77,7 @@ abstract public class Occupant {
     }
 
     public boolean eq(Occupant o) {
-        return user.getName().equalsIgnoreCase(o.user.name);
+        return user.getUniqueName().equals(o.user.getUniqueName());
     }
 
     public ObjectNode toJSON() { return toJSON(false); }

@@ -12,6 +12,16 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
 
     String title;
 
+    public int getMaxOccupants() {
+        return maxOccupants;
+    }
+
+    public void setMaxOccupants(int maxOccupants) {
+        this.maxOccupants = maxOccupants;
+    }
+
+    int maxOccupants = 99;
+
     public String getTitle() {
         return title;
     }
@@ -83,20 +93,20 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
     }
 
     public void update(Occupant occupant) {
-        occupant.tell(ZugFields.ServTypes.updateArea,toJSON(false));
+        occupant.tell(ZugFields.ServMsgType.updateArea,toJSON(false));
     }
 
     public void updateAll() {
         System.out.println("Updating all");
-        spam(ZugFields.ServTypes.updateArea,toJSON(false));
+        spam(ZugFields.ServMsgType.updateArea,toJSON(false));
     }
 
     public void msg(ZugUser user, String msg) {
-        user.tell(ZugFields.ServTypes.roomMsg,ZugUtils.makeTxtNode
+        user.tell(ZugFields.ServMsgType.roomMsg,ZugUtils.makeTxtNode
                 (Map.entry(ZugFields.MSG,msg),Map.entry(ZugFields.TITLE,getTitle())));
     }
     public void err(ZugUser user, String msg) {
-        user.tell(ZugFields.ServTypes.errMsg,ZugUtils.makeTxtNode
+        user.tell(ZugFields.ServMsgType.errMsg,ZugUtils.makeTxtNode
                 (Map.entry(ZugFields.MSG,msg),Map.entry(ZugFields.TITLE,getTitle())));
     }
 

@@ -219,6 +219,7 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
      * @return Optional String value of text field
      */
     public static Optional<String> getTxtNode(JsonNode node, String name) {
+        if (node == null) return Optional.empty();
         JsonNode n = node.get(name);
         if (n == null) return Optional.empty(); else return Optional.of(n.asText());
     }
@@ -229,13 +230,56 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
      * @return Optional value of int field
      */
     public static Optional<Integer> getIntNode(JsonNode node, String name) {
+        if (node == null) return Optional.empty();
         JsonNode n = node.get(name);
         if (n == null) return Optional.empty(); else return Optional.of(n.asInt());
     }
 
+    public static Optional<Double> getDblNode(JsonNode node, String name) {
+        if (node == null) return Optional.empty();
+        JsonNode n = node.get(name);
+        if (n == null) return Optional.empty(); else return Optional.of(n.asDouble());
+    }
+
     public static Optional<Boolean> getBoolNode(JsonNode node, String name) {
+        if (node == null) return Optional.empty();
         JsonNode n = node.get(name);
         if (n == null) return Optional.empty(); else return Optional.of(n.asBoolean());
+    }
+
+    public static Optional<JsonNode> getJSONNode(JsonNode node, String name) {
+        if (node == null) return Optional.empty();
+        JsonNode n = node.get(name);
+        if (n == null) return Optional.empty(); else return Optional.of(n);
+    }
+
+    public static Optional<JsonNode> getNodes(JsonNode n, String... fields) {
+        if (n == null) return Optional.empty();
+        JsonNode node = n.deepCopy();
+        for (String name : fields) {
+            node = node.get(name); if (node == null) return Optional.empty();
+        }
+        return Optional.of(node);
+    }
+
+    public static Optional<String> getStringTree(JsonNode n, String... fields) {
+        JsonNode node = getNodes(n, fields).orElse(null);
+        if (node == null) return Optional.empty(); else return Optional.of(node.asText());
+    }
+
+    public static Optional<Integer> getIntTree(JsonNode n, String... fields) {
+        JsonNode node = getNodes(n, fields).orElse(null);
+        if (node == null) return Optional.empty(); else return Optional.of(node.asInt());
+    }
+
+    public static Optional<Double> getDoubleTree(JsonNode n, String... fields) {
+        JsonNode node = getNodes(n, fields).orElse(null);
+        if (node == null) return Optional.empty(); else return Optional.of(node.asDouble());
+    }
+
+    public static Optional<Boolean> getBoolTree(JsonNode n, String... fields) {
+        JsonNode node = getNodes(n, fields).orElse(null);
+        if (node == null) return Optional.empty(); else return Optional.of(node.asBoolean());
     }
 
     public boolean equalsType(String str,Enum<?> field) {

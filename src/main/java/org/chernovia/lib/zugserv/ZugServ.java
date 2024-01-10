@@ -4,7 +4,7 @@ import java.util.Vector;
 
 public interface ZugServ {
 	enum ServType { TYPE_SOCK, TYPE_WEBSOCK, TYPE_IRC, TYPE_TWITCH, TYPE_DISCORD, TYPE_UNKNOWN }
-	enum MsgTypes { txt,login,pwd,log_ok,serv_msg,err_msg,priv_msg,broadcast }
+	//enum MsgType { txt,login,pwd,log_ok,serv_msg,err_msg,priv_msg,broadcast }
 	int NO_CHAN = -1;
 	Vector<Connection> getAllConnections(boolean active);
 	void broadcast(String type,String msg);

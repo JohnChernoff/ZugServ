@@ -22,7 +22,7 @@ public class ServTest implements ConnListener {
         log(conn.getID() + " on chan " + channel + ": " + msg);
 
         TestUser user = new TestUser(conn,"New user");
-        user.tell(ZugServ.MsgTypes.serv_msg,"You said: " + msg);
+        user.tell(ZugFields.ServMsgType.servMsg,"You said: " + msg);
 
         area = new TestArea("TestArea", user, null); log("Adding: " + user.addArea(area));
 
@@ -30,8 +30,8 @@ public class ServTest implements ConnListener {
 
         if (occupant.eq(new TestOccupant(user,area))) occupant.err(occupant.toJSON().textValue());
 
-        user.tell(ZugServ.MsgTypes.serv_msg,user.toJSON());
-        user.tell(ZugServ.MsgTypes.login);
+        user.tell(ZugFields.ServMsgType.servMsg,user.toJSON());
+        user.tell(ZugFields.ServMsgType.reqLogin);
         log("Logged in: " + user.isLoggedIn());
 
     }

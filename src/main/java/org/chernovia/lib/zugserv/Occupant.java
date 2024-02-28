@@ -28,10 +28,13 @@ abstract public class Occupant implements JSONifier {
         return true;
     }
 
+    public boolean isClone() { return isClone; }
+    public void setClone(boolean clone) { isClone = clone; }
+    public boolean isAway() { return away; }
+    public void setAway(boolean b) { away = b; }
     public boolean isMuted() {
         return muted;
     }
-
     public void setMuted(boolean muted) {
         this.muted = muted;
     }
@@ -44,7 +47,6 @@ abstract public class Occupant implements JSONifier {
         setUser(u);
         if (a != null && a.getOccupant(u).isPresent()) isClone = true;
         else {
-
             if (a != null && setArea(a)) {
                 //ZugManager.log("Creating Occupant: in " + a.title + ", occupants: " + a.occupants.values().size());
                 a.updateAll();
@@ -53,15 +55,23 @@ abstract public class Occupant implements JSONifier {
         }
     }
 
+    public void tell(Enum<?> e) {
+        tell(e,"");
+    }
+
+    public void tell(String msg) {
+        tell(ZugFields.ServMsgType.servMsg,msg);
+    }
+
     public void tell(Enum<?> e, String msg) {
-        ObjectNode node = ZugUtils.makeTxtNode(Map.entry(ZugFields.MSG,msg));
+        ObjectNode node = msg.isBlank() ? ZugUtils.JSON_MAPPER.createObjectNode() : ZugUtils.makeTxtNode(Map.entry(ZugFields.MSG,msg));
         if (area != null) node.put(ZugFields.TITLE,area.title);
         if (room != null) node.put(ZugFields.ROOM,room.title);
         getUser().tell(e,node);
     }
 
     public void tell(Enum<?> e, ObjectNode node) {
-        if (!muted) getUser().tell(e,(ZugUtils.joinNodes(
+        if (!isMuted()) getUser().tell(e,(ZugUtils.joinNodes(
                 node,
                 area != null ? ZugUtils.makeTxtNode(Map.entry(ZugFields.TITLE,area.title)) : null,
                 room != null ? ZugUtils.makeTxtNode(Map.entry(ZugFields.ROOM,room.title)) : null

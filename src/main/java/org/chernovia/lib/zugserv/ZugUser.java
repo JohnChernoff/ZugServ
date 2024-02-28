@@ -13,7 +13,7 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {
     boolean loggedIn;
    // long lastMessage = Long.MAX_VALUE;
 
-    record UniqueName(String name, ZugFields.AuthSource source) {}
+    public record UniqueName(String name, ZugFields.AuthSource source) {}
 
     Set<ZugArea> areas = Collections.synchronizedSet(new LinkedHashSet<>());
 
@@ -44,7 +44,9 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {
         return areas.add(area);
     }
 
-
+    public void tell(String msg) {
+        tell(ZugFields.ServMsgType.servMsg,msg);
+    }
     public void tell(Enum<?> t) { tell(t,""); }
 
     public void tell(Enum<?> t, String msg) {

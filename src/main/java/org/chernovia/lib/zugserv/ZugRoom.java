@@ -32,11 +32,12 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
 
     final ConcurrentHashMap<ZugUser.UniqueName,Occupant> occupants = new ConcurrentHashMap<>();
 
-    public Optional<Occupant> addOrGetOccupant(Occupant occupant) {
+    public Optional<Occupant> addOrGetOccupant(Occupant occupant) { //TODO: should ZugManager call this?
         return Optional.ofNullable(occupants.putIfAbsent(occupant.user.getUniqueName(),occupant));
     }
 
     public Optional<Occupant> dropOccupant(Occupant occupant) {
+        occupant.setArea(null);
         return dropOccupant(occupant.user);
     }
     public Optional<Occupant> dropOccupant(ZugUser user) {
@@ -51,12 +52,22 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
         return occupants.values();
     }
 
+    public Collection<Occupant> getActiveOccupants() {
+        return getOccupants().stream().filter(occupant -> occupant.getUser().isLoggedIn()).toList();
+    }
+
     public Optional<Occupant> getOccupant(ZugUser user) {
         return getOccupant(user.getUniqueName());
     }
     public Optional<Occupant> getOccupant(ZugUser.UniqueName name) {
         return Optional.ofNullable(occupants.get(name));
     }
+
+    public void spam(String msg) {
+        spam(ZugFields.ServMsgType.areaMsg,msg);
+    }
+
+    //public void spam(Enum<?> t, Occupant... exclude) { spam(t,"",exclude); }
 
     public void spam(Enum<?> t) {
         spam(t,"");
@@ -77,28 +88,26 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
                     occupant.tell(t,msg);
                 }
             }
-            else occupant.tell(t,msg);
+            else if (!occupant.away) occupant.tell(t,msg);
         }
     }
 
     public void spamX(Enum<?> t, ObjectNode msgNode, Occupant... exclude) {
-        for (Occupant occupant : occupants.values()) {
+        occupants.values().forEach(occupant -> {
             if (exclude != null) { //System.out.println("Checking ignore list");
                 if (Arrays.stream(exclude).noneMatch(o -> o.equals(occupant))) {
-                    occupant.tell(t,msgNode);
+                    occupant.tell(t, msgNode);
                 }
-            }
-            else occupant.tell(t,msgNode);
-        }
+            } else if (!occupant.away) occupant.tell(t, msgNode);
+        });
     }
 
     public void update(Occupant occupant) {
-        occupant.tell(ZugFields.ServMsgType.updateArea,toJSON(false));
+        occupant.tell(ZugFields.ServMsgType.updateArea,toJSON());
     }
 
-    public void updateAll() {
-        System.out.println("Updating all");
-        spam(ZugFields.ServMsgType.updateArea,toJSON(false));
+    public void updateAll() { //System.out.println("Updating all");
+        spam(ZugFields.ServMsgType.updateArea,toJSON());
     }
 
     public void msg(ZugUser user, String msg) {

@@ -17,34 +17,34 @@ abstract public class ZugArea extends ZugRoom {
     public class Option implements JSONifier {
         public final String text;
         public final boolean boolVal;
-        public final int intVal, intMin, intMax;
-        public final double dblVal, dblMin, dblMax;
+        public final int intVal, intMin, intMax, intInc;
+        public final double dblVal, dblMin, dblMax, dblInc;
         public Option(String t) {
             text = t; boolVal = false;
-            intVal = intMin = intMax = Integer.MIN_VALUE;
-            dblVal = dblMin = dblMax = Double.MIN_VALUE;
+            intVal = intMin = intMax = intInc = Integer.MIN_VALUE;
+            dblVal = dblMin = dblMax = dblInc = Double.MIN_VALUE;
         }
         public Option(boolean bool) {
             text = null; boolVal = bool;
-            intVal = intMin = intMax = Integer.MIN_VALUE;
-            dblVal = dblMin = dblMax = Double.MIN_VALUE;
+            intVal = intMin = intMax = intInc = Integer.MIN_VALUE;
+            dblVal = dblMin = dblMax = dblInc = Double.MIN_VALUE;
         }
-        public Option(int i, int min, int max) {
+        public Option(int i, int min, int max, int inc) {
             text = null; boolVal = false;
-            intVal = i; intMin = min; intMax = max;
-            dblVal = dblMin = dblMax = Double.MIN_VALUE;
+            intVal = i; intMin = min; intMax = max; intInc = inc;
+            dblVal = dblMin = dblMax = dblInc = Double.MIN_VALUE;
         }
-        public Option(double d, double min, double max) {
+        public Option(double d, double min, double max, double inc) {
             text = null; boolVal = false;
-            intVal = intMin = intMax = Integer.MIN_VALUE;
-            dblVal = d; dblMin = min; dblMax = max;
+            intVal = intMin = intMax = intInc = Integer.MIN_VALUE;
+            dblVal = d; dblMin = min; dblMax = max; dblInc = inc;
         }
 
         public ObjectNode toJSON() {
-            if (text != null) return optionToJSON(text,null,null);
-            else if (intVal != Integer.MIN_VALUE) return optionToJSON(intVal,intMin,intMax);
-            else if (dblVal != Double.MIN_VALUE) return optionToJSON(dblVal,dblMin,dblMax);
-            else return optionToJSON(boolVal,null,null);
+            if (text != null) return optionToJSON(text,null,null,null);
+            else if (intVal != Integer.MIN_VALUE) return optionToJSON(intVal,intMin,intMax,intInc);
+            else if (dblVal != Double.MIN_VALUE) return optionToJSON(dblVal,dblMin,dblMax,dblInc);
+            else return optionToJSON(boolVal,null,null,null);
         }
     }
 
@@ -161,12 +161,12 @@ abstract public class ZugArea extends ZugRoom {
         if (user.equals(creator)) setOption(field,s); else err(user,"Permission denied(not creator)");
     }
     public void setOption(String field, Object o) {
-         options.set(field,optionToJSON(field,o,null,null));
+         options.set(field,optionToJSON(field,o,null,null,null));
     }
-    public ObjectNode optionToJSON(Object o, Number minVal, Number maxVal) {
-        return optionToJSON(null,o,minVal,maxVal);
+    public ObjectNode optionToJSON(Object o, Number minVal, Number maxVal, Number incVal) {
+        return optionToJSON(null,o,minVal,maxVal,incVal);
     }
-    public ObjectNode optionToJSON(String field, Object o, Number minVal, Number maxVal) {
+    public ObjectNode optionToJSON(String field, Object o, Number minVal, Number maxVal, Number incVal) {
         ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
         if (o instanceof String str) {
             node.put(ZugFields.VAL,str);
@@ -180,7 +180,8 @@ abstract public class ZugArea extends ZugRoom {
             else ZugManager.getDoubleTree(options,field,ZugFields.MIN).ifPresent(min -> node.put(ZugFields.MIN,min));
             if (maxVal instanceof Double maxDbl) node.put(ZugFields.MAX,maxDbl);
             else ZugManager.getDoubleTree(options,field,ZugFields.MAX).ifPresent(max -> node.put(ZugFields.MAX,max));
-            node.put(ZugFields.INT,false);
+            if (incVal instanceof Double inc) node.put(ZugFields.INC,inc);
+            else ZugManager.getDoubleTree(options,field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
         }
         else if (o instanceof Integer i) { //ZugManager.log(field + " -> adding int: " + i);
             node.put(ZugFields.VAL,i);
@@ -188,7 +189,8 @@ abstract public class ZugArea extends ZugRoom {
             else ZugManager.getIntTree(options,field,ZugFields.MIN).ifPresent(min -> node.put(ZugFields.MIN,min));
             if (maxVal instanceof Integer maxInt) node.put(ZugFields.MAX,maxInt);
             else ZugManager.getIntTree(options,field,ZugFields.MAX).ifPresent(max -> node.put(ZugFields.MAX,max));
-            node.put(ZugFields.INT,true);
+            if (incVal instanceof Integer inc) node.put(ZugFields.INC,inc);
+            else ZugManager.getDoubleTree(options,field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
         }
         return node;
     }

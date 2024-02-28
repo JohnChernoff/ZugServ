@@ -164,7 +164,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
             getTxtNode(dataNode, ZugFields.TITLE)
                     .ifPresentOrElse(title -> getAreaByTitle(title)
                                     .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                    .ifPresentOrElse(occupant -> handleUserAreaMsg(user,zugArea,getTxtNode(dataNode,ZugFields.MSG).orElse("")),
+                                                    .ifPresentOrElse(occupant -> handleAreaMsg(occupant,zugArea,getTxtNode(dataNode,ZugFields.MSG).orElse("")),
                                                             () ->  err(user, ERR_NOT_OCCUPANT)),
                                             () -> err(user, ERR_TITLE_NOT_FOUND)),
                             () -> err(user, ERR_NO_TITLE));
@@ -221,6 +221,13 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         return node;
     }
 
+    public ObjectNode occupantMsgToJSON(Occupant occupant, String msg) {
+        ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
+        node.set(ZugFields.OCCUPANT, occupant.toJSON());
+        node.put(ZugFields.MSG,msg);
+        return node;
+    }
+
     public Optional<Occupant> getOccupant(ZugUser user, JsonNode dataNode) {
         return getArea(dataNode).flatMap(area -> area.getOccupant(user));
     }
@@ -229,8 +236,8 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         spam(ZugFields.ServMsgType.servUserMsg,userMsgToJSON(user,msg));
     }
 
-    public void handleUserAreaMsg(ZugUser user, ZugArea area, String msg) {
-        area.spam(ZugFields.ServMsgType.areaUserMsg,userMsgToJSON(user,msg));
+    public void handleAreaMsg(Occupant occupant, ZugArea area, String msg) {
+        area.spam(ZugFields.ServMsgType.areaUserMsg,occupantMsgToJSON(occupant,msg));
     }
 
     public void handlePrivateMsg(ZugUser user1, String name, String source, String msg) {
@@ -255,6 +262,17 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         user.tell(ZugFields.ServMsgType.logOK,user.toJSON());
         updateUsers(true);
         user.tell(ZugFields.ServMsgType.updateAreas,areasToJSON(true));
+    }
+
+    public ZugUser.UniqueName getUniqueName(JsonNode dataNode) {
+        String name = getTxtNode(dataNode,"name").orElse("");
+        try {
+            return new ZugUser.UniqueName(name,
+                    ZugFields.AuthSource.valueOf(getTxtNode(dataNode,"source").orElse("none")));
+        }
+        catch (IllegalArgumentException arg) {
+            return new ZugUser.UniqueName(name, ZugFields.AuthSource.none);
+        }
     }
 
     public abstract Optional<ZugUser> handleCreateUser(Connection conn, String name, ZugFields.AuthSource source);

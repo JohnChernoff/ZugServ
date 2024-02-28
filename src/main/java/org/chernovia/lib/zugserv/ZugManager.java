@@ -128,6 +128,10 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
         return false;
     }
 
+    public void spam(String msg) {
+        spam(ZugFields.ServMsgType.servMsg,msg);
+    }
+
     public void spam(Enum<?> type,String msg) {
         for (ZugUser user : users.values()) user.tell(type,msg);
     }

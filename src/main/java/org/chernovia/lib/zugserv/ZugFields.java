@@ -1,8 +1,8 @@
 package org.chernovia.lib.zugserv;
 
 public interface ZugFields {
-    enum AuthSource { none, local, lichess, twitch, google }
-    enum ServMsgType { none, obs, unObs, reqLogin, logOK, noLog, errMsg, servMsg, servUserMsg, areaUserMsg, areaMsg, roomMsg, privMsg,
+    enum AuthSource { none, local, lichess, twitch, google, bot }
+    enum ServMsgType { none, obs, unObs, reqLogin, logOK, noLog, errMsg, servMsg, servUserMsg, areaUserMsg, areaMsg, roomMsg, privMsg, joinArea, partArea,
         updateUsers, updateAreas, updateArea, updateRoom, updateServ, updateUser, updateOccupant, updateOptions }
     enum ClientMsgType { none, obs, unObs, login, loginGuest, loginLichess, getOptions, setOptions, newRoom, joinRoom, newArea, joinArea, partArea, areaMsg, roomMsg, servMsg, privMsg,
         updateArea, updateRoom, updateServ, updateUser, updateOccupant, setMute
@@ -24,12 +24,14 @@ public interface ZugFields {
             CREATOR = "creator",
             TOKEN = "token",
             LOGGED_IN = "logged_in",
+            OCCUPANT = "occupant",
             OCCUPANTS = "occupants",
             OBSERVERS = "observers",
             MUTED = "muted",
             VAL = "val",
             MIN = "min",
             MAX = "max",
-            INT = "int",
+            INC = "inc",
+            CHAT_COLOR = "chat_color",
             OPTIONS = "options";
 }

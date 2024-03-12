@@ -12,7 +12,26 @@ public abstract class ConnAdapter implements Connection {
 	private boolean auto;
 	private Status status;
 	private long userID;
-	
+
+	private long latency = 0;
+	private long lastPing = System.currentTimeMillis();
+
+	public long lastPing() {
+		return lastPing;
+	}
+
+	public void setLastPing(long lastPing) {
+		this.lastPing = lastPing;
+	}
+
+	public long getLatency() {
+		return latency;
+	}
+
+	public void setLatency(long latency) {
+		this.latency = latency;
+	}
+
 	public boolean isSameOrigin(Connection conn) {
 		if (conn == null) return false; else return (conn.getID() == userID);
 	}

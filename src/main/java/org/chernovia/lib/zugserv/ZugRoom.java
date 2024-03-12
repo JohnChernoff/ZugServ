@@ -12,23 +12,9 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
 
     String title;
 
-    public int getMaxOccupants() {
-        return maxOccupants;
-    }
-
-    public void setMaxOccupants(int maxOccupants) {
-        this.maxOccupants = maxOccupants;
-    }
-
     int maxOccupants = 99;
 
-    public String getTitle() {
-        return title;
-    }
-
-    public void setTitle(String title) {
-        this.title = title;
-    }
+    boolean isPrivate = false;
 
     final ConcurrentHashMap<ZugUser.UniqueName,Occupant> occupants = new ConcurrentHashMap<>();
 
@@ -42,6 +28,22 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
     }
     public Optional<Occupant> dropOccupant(ZugUser user) {
         return Optional.ofNullable(occupants.remove(user.getUniqueName()));
+    }
+
+    public boolean isPrivate() {
+        return isPrivate;
+    }
+
+    public void setPrivate(boolean aPrivate) {
+        isPrivate = aPrivate;
+    }
+
+    public int getMaxOccupants() {
+        return maxOccupants;
+    }
+
+    public void setMaxOccupants(int maxOccupants) {
+        this.maxOccupants = maxOccupants;
     }
 
     public int numOccupants() {
@@ -61,6 +63,14 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
     }
     public Optional<Occupant> getOccupant(ZugUser.UniqueName name) {
         return Optional.ofNullable(occupants.get(name));
+    }
+
+    public String getTitle() {
+        return title;
+    }
+
+    public void setTitle(String title) {
+        this.title = title;
     }
 
     public void spam(String msg) {
@@ -102,12 +112,16 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
         });
     }
 
-    public void update(Occupant occupant) {
-        occupant.tell(ZugFields.ServMsgType.updateArea,toJSON());
+    public void update(ZugUser user) {
+        user.tell(ZugFields.ServMsgType.updateArea,toJSON());
     }
 
-    public void updateAll() { //System.out.println("Updating all");
+    public void updateAll() {
         spam(ZugFields.ServMsgType.updateArea,toJSON());
+    }
+
+    public void updateOccupants() { //System.out.println("Updating occupants");
+        spam(ZugFields.ServMsgType.updateOccupants,occupantsToJSON());
     }
 
     public void msg(ZugUser user, String msg) {
@@ -121,12 +135,16 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
 
     public ObjectNode toJSON() { return toJSON(false); }
     public ObjectNode toJSON(boolean titleOnly) {
+        if (!titleOnly) return occupantsToJSON();
         ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
-        if (!titleOnly) {
-            ArrayNode arrayNode = ZugUtils.JSON_MAPPER.createArrayNode();
-            getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON(true)));
-            node.set(ZugFields.OCCUPANTS,arrayNode);
-        }
+        node.put(ZugFields.TITLE,title);
+        return node;
+    }
+    public ObjectNode occupantsToJSON() {
+        ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
+        ArrayNode arrayNode = ZugUtils.JSON_MAPPER.createArrayNode();
+        getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON(true)));
+        node.set(ZugFields.OCCUPANTS,arrayNode);
         node.put(ZugFields.TITLE,title);
         return node;
     }

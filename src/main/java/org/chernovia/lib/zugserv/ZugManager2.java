@@ -1,13 +1,11 @@
 package org.chernovia.lib.zugserv;
 
-//import net.datafaker.Faker;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Optional;
 import java.util.logging.Level;
 
 abstract public class ZugManager2 extends ZugManager implements AreaListener, Runnable {
-    //public static Faker faker = new Faker();
     public static String
             ERR_USER_NOT_FOUND = "User not found",
             ERR_OCCUPANT_NOT_FOUND = "Occupant not found",
@@ -53,6 +51,12 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
             users.remove(user.getUniqueName());
         });
     }
+
+    public WorkerProc pingProc = new WorkerProc(30000L, this::pingAll);
+    public synchronized void pingAll() {
+        getUsers().values().stream().filter(ZugUser::isLoggedIn).forEach(user -> user.tell(ZugFields.ServMsgType.ping));
+    }
+
     boolean requirePassword = true;
     boolean allowGuests = true;
 
@@ -112,6 +116,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         if (user != null) user.action();
         log(Level.FINEST,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
 
+
         if (!requirePassword && equalsType(type, ZugFields.ClientMsgType.login)) {
             handleLogin(conn,generateUserName(getTxtNode(dataNode,ZugFields.NAME).orElse("guest")),
                     ZugFields.AuthSource.none);
@@ -139,7 +144,11 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
             getTxtNode(dataNode, ZugFields.TITLE)
                     .ifPresentOrElse(title -> getAreaByTitle(title)
                                     .ifPresentOrElse(zugArea -> err(user, "Already exists: " + title),
-                                            () -> handleCreateArea(user, title, dataNode).ifPresent(zugArea -> { addOrGetArea(zugArea); updateAreas(true);  })),
+                                            () -> handleCreateArea(user, title, dataNode).ifPresent(zugArea -> {
+                                                addOrGetArea(zugArea);
+                                                updateAreas(true);
+                                                user.tell(ZugFields.ServMsgType.createArea, zugArea.toJSON(true));
+                                            })),
                             () -> err(user, ERR_NO_TITLE));
         } else if (user != null && equalsType(type, ZugFields.ClientMsgType.joinArea)) {
             getTxtNode(dataNode, ZugFields.TITLE)
@@ -156,7 +165,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
             getTxtNode(dataNode, ZugFields.TITLE)
                     .ifPresentOrElse(title -> getAreaByTitle(title)
                                     .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                    .ifPresentOrElse(occupant -> { if (canPartArea(occupant, dataNode)) { zugArea.dropOccupant(occupant); zugArea.updateAll(); }},
+                                                    .ifPresentOrElse(occupant -> { if (canPartArea(occupant, dataNode)) { zugArea.dropOccupant(occupant); zugArea.updateOccupants(); }},
                                                             () ->  err(user, ERR_NOT_OCCUPANT)),
                                             () -> err(user, ERR_TITLE_NOT_FOUND)),
                             () -> err(user, ERR_NO_TITLE));
@@ -171,7 +180,11 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         } else if (equalsType(type, ZugFields.ClientMsgType.updateServ)) {
             updateServ(conn);
         } else if (user != null && equalsType(type, ZugFields.ClientMsgType.updateArea)) {
-            getArea(dataNode).ifPresent(area -> area.getOccupant(user).ifPresent(area::update));
+            getArea(dataNode).ifPresent(area -> {
+                        if (!area.isPrivate()) area.update(user);
+                        else getOccupant(user,dataNode).ifPresent(occupant -> area.update(occupant.getUser()));
+                    }
+            );
         } else if (user != null && equalsType(type, ZugFields.ClientMsgType.updateOccupant)) {
             String areaTitle = getTxtNode(dataNode,ZugFields.TITLE).orElse("");
             getAreaByTitle(areaTitle)

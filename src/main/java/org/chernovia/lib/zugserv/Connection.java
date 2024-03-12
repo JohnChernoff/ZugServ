@@ -32,4 +32,8 @@ public interface Connection {
 	void setCurrentChannel(int chan);
 	void joinChan(int chan);
 	void partChan(int chan);
+	long lastPing();
+	void setLastPing(long t);
+	long getLatency();
+	void setLatency(long t);
 }

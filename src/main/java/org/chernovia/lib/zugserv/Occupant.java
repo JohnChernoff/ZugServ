@@ -49,9 +49,9 @@ abstract public class Occupant implements JSONifier {
         else {
             if (a != null && setArea(a)) {
                 //ZugManager.log("Creating Occupant: in " + a.title + ", occupants: " + a.occupants.values().size());
-                a.updateAll();
+                a.updateOccupants();
             }
-            if (r != null && setRoom(r)) r.updateAll();
+            if (r != null && setRoom(r)) r.updateOccupants();
         }
     }
 

@@ -15,7 +15,6 @@ import java.util.logging.Logger;
 
 abstract public class ZugManager extends Thread implements ConnListener, JSONifier {
 
-
     static final Logger logger = Logger.getLogger("ZugServLog");
     private static boolean VERBOSE = true; //for enum names vs ordinal
 
@@ -27,7 +26,7 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
     public ZugManager(ZugServ.ServType type, int port) {
         setLoggingLevel(Level.INFO);
         serv = switch (type) {
-            case TYPE_SOCK, TYPE_IRC, TYPE_TWITCH, TYPE_DISCORD, TYPE_UNKNOWN -> null;
+            case TYPE_SOCK, TYPE_IRC, TYPE_TWITCH, TYPE_DISCORD, TYPE_UNKNOWN -> null; //TODO: implement?
             case TYPE_WEBSOCK -> new WebSockServ(port,this);
         };
     }
@@ -163,8 +162,8 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
         conn.tell(ZugManager.packType(type),msg);
     }
 
-    public void err(ZugUser user,String msg) { err(user.getConn(),msg); }
-    public void msg(ZugUser user,String msg) { msg(user.getConn(),msg); }
+    public void err(ZugUser user,String msg) { if (user != null) err(user.getConn(),msg); }
+    public void msg(ZugUser user,String msg) { if (user != null) msg(user.getConn(),msg); }
 
     public abstract void err(Connection conn, String msg);
     public abstract void msg(Connection conn, String msg);
@@ -199,6 +198,9 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
             JsonNode typeNode = msgNode.get("type"), dataNode = msgNode.get("data");
             if (typeNode == null || dataNode == null) {
                 err(conn,"Error: Bad Data(null)"); //return;
+            }
+            else if (equalsType(typeNode.asText(), ZugFields.ClientMsgType.pong)) {
+                conn.setLatency(System.currentTimeMillis() - conn.lastPing());
             }
             else {
                 handleMsg(conn,typeNode.asText(),dataNode);

@@ -95,6 +95,11 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
         return Optional.empty();
     }
 
+    public Optional<ZugUser> getUserByAddress(Connection conn) {
+        for (ZugUser user : users.values()) if (user.conn.isSameOrigin(conn)) return Optional.of(user);
+        return Optional.empty();
+    }
+
     public List<ZugUser> getUsersByName(String name) {
         final List<ZugUser> userList = new Vector<>();
         for (ZugUser user : users.values()) if (user.getName().equals(name)) userList.add(user);

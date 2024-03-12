@@ -99,7 +99,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         return getTxtNode(dataNode, ZugFields.TITLE).flatMap(this::getAreaByTitle);
     }
 
-    public String generateUserName(String name) {
+    public String generateUserName(Connection conn, String name) {
         final StringBuilder userName = new StringBuilder(name);
         int i = 0; int l = name.length()+1;
         while (users.values().stream().anyMatch(user -> user.getName().equalsIgnoreCase(userName.toString()))) {
@@ -116,12 +116,12 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         if (user != null) user.action();
         log(Level.FINEST,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
 
-
         if (!requirePassword && equalsType(type, ZugFields.ClientMsgType.login)) {
-            handleLogin(conn,generateUserName(getTxtNode(dataNode,ZugFields.NAME).orElse("guest")),
+            handleLogin(conn,generateUserName(conn,getTxtNode(dataNode,ZugFields.NAME).orElse("guest")),
                     ZugFields.AuthSource.none);
         } else if (allowGuests && equalsType(type, ZugFields.ClientMsgType.loginGuest)) {
-            handleLogin(conn,generateUserName("guest"),ZugFields.AuthSource.none); //TODO: prevent other user accounts as "guest"
+            getUserByAddress(conn).ifPresentOrElse(prevUser -> swapConnection(prevUser,conn),
+                    () -> handleLogin(conn,generateUserName(conn,"guest"),ZugFields.AuthSource.none)); //TODO: prevent other user accounts as "guest"
         } else if (equalsType(type, ZugFields.ClientMsgType.loginLichess)) {
             if (user == null) {
                 getTxtNode(dataNode,ZugFields.TOKEN).ifPresentOrElse(
@@ -262,12 +262,16 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
 
     public void handleLogin(Connection conn, String name, ZugFields.AuthSource source) {
         handleCreateUser(conn,name,source).ifPresentOrElse(user ->
-                        addOrGetUser(user).ifPresentOrElse(prevUser -> {
-                            msg(user, "Already logged in, swapping connections");
-                            prevUser.setConn(user.conn);
-                            handleLoggedIn(prevUser);
-                        }, () -> handleLoggedIn(user)),
+                        addOrGetUser(user).ifPresentOrElse(prevUser -> swapConnection(prevUser,user.conn),
+                                () -> handleLoggedIn(user)),
                 () -> err(conn,"Login error"));
+    }
+
+    public void swapConnection(ZugUser prevUser, Connection newConn) {
+        newConn.tell(ZugFields.ServMsgType.alertMsg.name(),"Already logged in, swapping connections");
+        prevUser.setConn(newConn);
+        //prevUser.tell(ZugFields.ServMsgType.alertMsg,"Already logged in, swapping connections");
+        handleLoggedIn(prevUser);
     }
 
     private void handleLoggedIn(ZugUser user) {

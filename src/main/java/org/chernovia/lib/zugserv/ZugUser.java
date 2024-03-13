@@ -62,8 +62,8 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {
         ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
         if (!nameOnly) {
             node.put(ZugFields.LOGGED_IN,loggedIn); //TODO: time connected, etc.
-            node.put(ZugFields.SOURCE,uniqueName.source.name());
         }
+        node.put(ZugFields.SOURCE,uniqueName.source.name());
         node.put(ZugFields.NAME,uniqueName.name);
         return node;
     }

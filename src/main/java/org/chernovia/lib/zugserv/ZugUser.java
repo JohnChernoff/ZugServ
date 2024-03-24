@@ -6,37 +6,43 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
-
-abstract public class ZugUser extends Timeoutable implements JSONifier {
-    Connection conn;
-    UniqueName uniqueName;
-    boolean loggedIn;
-   // long lastMessage = Long.MAX_VALUE;
-
-    public record UniqueName(String name, ZugFields.AuthSource source) {}
-
+abstract public class ZugUser extends Timeoutable implements JSONifier {  // long lastMessage = Long.MAX_VALUE;
+    private Connection conn;
+    private UniqueName uniqueName;
+    private boolean loggedIn;
+    private String loginToken;
+    public record UniqueName(String name, ZugFields.AuthSource source) {
+        @Override
+        public String toString() {
+            return name + (source == ZugFields.AuthSource.none ? "" : ("@" + source.name()));
+        }
+    }
     Set<ZugArea> areas = Collections.synchronizedSet(new LinkedHashSet<>());
 
-    public ZugUser(Connection c, String n, ZugFields.AuthSource source) {
-        setConn(c); uniqueName = new UniqueName(n,source); loggedIn = true;
-
+    public ZugUser(Connection c, String name, ZugFields.AuthSource source, String token) {
+        setConn(c); uniqueName = new UniqueName(name,source); loggedIn = true; loginToken = token;
     }
 
     public Connection getConn() { return conn; }
     public void setConn(Connection c) {
         conn = c;
     }
-
     public ZugFields.AuthSource getSource() { return uniqueName.source; }
-
+    public String getLoginToken() {
+        return loginToken;
+    }
+    public void setLoginToken(String loginToken) {
+        this.loginToken = loginToken;
+    }
+    public void setUniqueName(UniqueName uniqueName) {
+        this.uniqueName = uniqueName;
+    }
     public UniqueName getUniqueName() {
         return uniqueName;
     }
-
     public String getName() {
         return uniqueName.name;
     }
-
     public boolean isLoggedIn() { return loggedIn; }
     public void setLoggedIn(boolean b) { loggedIn = b; }
 

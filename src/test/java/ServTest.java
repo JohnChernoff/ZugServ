@@ -53,7 +53,7 @@ public class ServTest implements ConnListener {
 
 class TestUser extends ZugUser {
     public TestUser(Connection c, String n) {
-        super(c, n, ZugFields.AuthSource.none);
+        super(c, n, ZugFields.AuthSource.none,"");
     }
 }
 

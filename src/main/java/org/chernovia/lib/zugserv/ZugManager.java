@@ -87,16 +87,16 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
 
     public List<ZugUser> getUsersByConn(Connection conn) {
         final List<ZugUser> userList = new Vector<>();
-        for (ZugUser user : users.values()) if (user.conn.equals(conn)) userList.add(user); return userList;
+        for (ZugUser user : users.values()) if (user.getConn().equals(conn)) userList.add(user); return userList;
     }
 
     public Optional<ZugUser> getUserByConn(Connection conn) {
-        for (ZugUser user : users.values()) if (user.conn.equals(conn)) return Optional.of(user);
+        for (ZugUser user : users.values()) if (user.getConn().equals(conn)) return Optional.of(user);
         return Optional.empty();
     }
 
     public Optional<ZugUser> getUserByAddress(Connection conn) {
-        for (ZugUser user : users.values()) if (user.conn.isSameOrigin(conn)) return Optional.of(user);
+        for (ZugUser user : users.values()) if (user.getConn().isSameOrigin(conn)) return Optional.of(user);
         return Optional.empty();
     }
 
@@ -117,13 +117,13 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
     }
 
     public boolean handleLichessLogin(Connection conn, String token) {
-        if (token.equals(ZugFields.UNKNOWN_STRING)) {
+        if (token == null || token.isEmpty() || token.equals(ZugFields.UNKNOWN_STRING)) {
             err(conn, "Bad name/token");
         } else { //log("Logging in with token: " + token.asText());
             ClientAuth client = Client.auth(token);
             AccountAuth aa = client.account();
             if (aa.profile().isPresent()) {
-                handleLogin(conn, aa.profile().get().name(),ZugFields.AuthSource.lichess);
+                handleLogin(conn, aa.profile().get().name(),ZugFields.AuthSource.lichess,token);
                 return true;
             } else {
                 err(conn, "Login failure: bad token");
@@ -195,7 +195,7 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
      * @param name username
      * @param source the authentication source, if any
      */
-    public abstract void handleLogin(Connection conn, String name, ZugFields.AuthSource source);
+    public abstract void handleLogin(Connection conn, String name, ZugFields.AuthSource source, String token);
     public abstract void handleMsg(Connection conn, String type, JsonNode dataNode);
     public void newMsg(Connection conn, int chan, String msg) {
         try {

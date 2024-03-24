@@ -28,6 +28,14 @@ abstract public class Occupant implements JSONifier {
         return true;
     }
 
+    public String getName() {
+        if (area.getOccupants()
+                .stream()
+                .anyMatch(occupant -> occupant.user.getName().equalsIgnoreCase(user.getName())
+                && occupant.user.getSource() != user.getSource())) return user.getUniqueName().toString();
+        else return user.getName();
+    }
+
     public boolean isClone() { return isClone; }
     public void setClone(boolean clone) { isClone = clone; }
     public boolean isAway() { return away; }

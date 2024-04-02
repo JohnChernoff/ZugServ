@@ -25,7 +25,8 @@ import org.chernovia.lib.zugserv.*;
 public class ManualWebSockConn extends ConnAdapter implements Runnable {
 	public static final Logger logger = Logger.getLogger(WebSockConn.class.getName());
 	public static final ObjectMapper mapper = new ObjectMapper();
-	Socket socket;
+	private final Socket socket;
+	private InetAddress address;
 	InputStream in; BufferedReader reader;
 	OutputStream out; Scanner scanner;
 	ConnListener listener;
@@ -33,7 +34,9 @@ public class ManualWebSockConn extends ConnAdapter implements Runnable {
 	boolean running = false;
 	
 	public ManualWebSockConn(Socket sock, ConnListener l) {
-		socket = sock; listener = l; setID(getAddress().hashCode());
+		socket = sock; listener = l;
+		address = sock.getInetAddress();
+		setID(getAddress().hashCode());
 		try { 
 			in = sock.getInputStream(); out = sock.getOutputStream(); 
 			reader = new BufferedReader(new InputStreamReader(in));
@@ -155,7 +158,12 @@ public class ManualWebSockConn extends ConnAdapter implements Runnable {
 	}
 
 	@Override
-	public InetAddress getAddress() { return socket.getInetAddress(); }
+	public void setAddress(InetAddress a) {
+		address = a;
+	}
+
+	@Override
+	public InetAddress getAddress() { return address; }
 
 	@Override
 	public void tell(String type, String msg) {

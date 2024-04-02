@@ -40,7 +40,7 @@ public class WebSockServ extends WebSocketServer implements ZugServ {
 	public void onOpen(org.java_websocket.WebSocket socket, ClientHandshake handshake) {
 		if (getConn(socket) == null) {
 	        WebSockConn conn = new WebSockConn(socket);
-	        logger.log(Level.INFO,"Incoming Connection at address: " + conn.getAddress());
+	        logger.log(Level.INFO,"Incoming Connection at address: " + conn.getSock().getRemoteSocketAddress());
 	        connections.add(conn);
 			connListener.connected(conn);
 		}

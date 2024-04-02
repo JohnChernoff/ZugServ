@@ -4,10 +4,10 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.util.Collection;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.*;
 
 public class ZugUtils {
     public static final ObjectMapper JSON_MAPPER = new ObjectMapper();
@@ -67,5 +67,17 @@ public class ZugUtils {
 
     public static <E> Optional<E> getRandomElement (Collection<E> e) {
         return e.stream().skip((int) (e.size() * Math.random())).findFirst();
+    }
+
+    public static InetAddress getAddressFromString(String addressStr) {
+        try {
+            String[] byteStrs = addressStr.split("\\.");
+            byte[] bytes = new byte[byteStrs.length];
+            for (int i=0;i<byteStrs.length;i++) bytes[i] = Byte.parseByte(byteStrs[i]);
+            return InetAddress.getByAddress(bytes);
+        }
+        catch (UnknownHostException augh) {
+            return InetAddress.getLoopbackAddress();
+        }
     }
 }

@@ -2,6 +2,11 @@ package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Arrays;
+import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 
@@ -128,6 +133,16 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
                         token -> handleLichessLogin(conn,token), () -> err(conn,"Empty token"));
             }
             else err(conn,"Already logged in");
+        } else if (equalsType(type, ZugFields.ClientMsgType.ip)) {
+            getTxtNode(dataNode, ZugFields.ADDRESS).ifPresent(addressStr -> {
+                        try {
+                            conn.setAddress(InetAddress.getByName(addressStr));
+                            log("Incoming address: " + conn.getAddress());
+                        }
+                        catch (UnknownHostException oops) { log("Unknown Host: " + addressStr); }
+                    }
+            );
+            tell(conn,ZugFields.ServMsgType.ip,ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.ADDRESS,conn.getAddress().toString()));
         } else if (equalsType(type, ZugFields.ClientMsgType.obs)) {
             getArea(dataNode).ifPresent(area -> area.addObserver(conn));
         } else if (equalsType(type, ZugFields.ClientMsgType.unObs)) {
@@ -303,7 +318,9 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
     public abstract Optional<ZugUser> handleCreateUser(Connection conn, String name, ZugFields.AuthSource source, String token);
     public abstract Optional<ZugArea> handleCreateArea(ZugUser user, String title, JsonNode dataNode);
     public abstract Optional<Occupant> handleCreateOccupant(ZugUser user, ZugArea area, JsonNode dataNode);
-    public abstract boolean canPartArea(Occupant occupant, JsonNode dataNode);
+    public boolean canPartArea(Occupant occupant, JsonNode dataNode) { //why does this exist? :)
+        return true;
+    };
     public abstract void handleUnsupportedMsg(Connection conn, String type, JsonNode dataNode, ZugUser user);
 
     public void areaFinished(ZugArea area) {

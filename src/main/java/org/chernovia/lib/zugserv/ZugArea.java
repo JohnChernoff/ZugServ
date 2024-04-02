@@ -148,7 +148,6 @@ abstract public class ZugArea extends ZugRoom {
     public String getOpt(Enum<?> field, String def) {
         return getOptTxt(field.name()).orElse(def);
     }
-
     public Optional<Integer> getOptInt(String field) { return ZugManager.getIntTree(options,field,ZugFields.VAL); }
     public Optional<Double> getOptDbl(String field) { return ZugManager.getDoubleTree(options,field,ZugFields.VAL); }
     public Optional<String> getOptTxt(String field) { return ZugManager.getStringTree(options,field,ZugFields.VAL); }
@@ -157,12 +156,40 @@ abstract public class ZugArea extends ZugRoom {
     public void setOptions(ZugUser user, JsonNode node) {
         if (user.equals(creator)) options = (ObjectNode)node; else err(user,"Permission denied(not creator)");
     }
-    public void setOption(ZugUser user, String field, String s) {
-        if (user.equals(creator)) setOption(field,s); else err(user,"Permission denied(not creator)");
+    public boolean setOption(ZugUser user, String field, String s) {
+        if (user.equals(creator)) return setOption(field,s); else {
+            err(user,"Permission denied(not creator)");
+            return false;
+        }
     }
-    public void setOption(String field, Object o) {
-         options.set(field,optionToJSON(field,o,null,null,null));
+    public boolean setOption(ZugUser user, Enum<?> field, String s) {
+        if (user.equals(creator)) return setOption(field,s); else {
+            err(user,"Permission denied(not creator)");
+            return false;
+        }
     }
+
+    public boolean setOption(Enum<?> field, Object o) { //options.set(field.name(),optionToJSON(field.name(),o,null,null,null));
+        return setOption(field.name(),o);
+    }
+
+    public boolean setOption(String field, Object o) {
+        if (o instanceof Number n) {
+            JsonNode previousOption = options.get(field);
+            if (previousOption != null) {
+                JsonNode previousValue = previousOption.get(ZugFields.VAL);
+                if (previousValue.isNumber()) {
+                    JsonNode minNode = previousOption.get(ZugFields.MIN);
+                    JsonNode maxNode = previousOption.get(ZugFields.MAX);
+                    if (minNode != null && n.doubleValue() < minNode.asDouble()) return false;
+                    else if (maxNode != null && n.doubleValue() > maxNode.asDouble()) return false;
+                }
+            }
+        }
+        options.set(field, optionToJSON(field, o, null, null, null));
+        return true;
+    }
+
     public ObjectNode optionToJSON(Object o, Number minVal, Number maxVal, Number incVal) {
         return optionToJSON(null,o,minVal,maxVal,incVal);
     }

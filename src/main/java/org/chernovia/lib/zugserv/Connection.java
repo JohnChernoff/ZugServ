@@ -15,6 +15,7 @@ public interface Connection {
 	long getID();
 	void setID(long id);
 	//String getHandle();	void setHandle(String h);
+	void setAddress(InetAddress address);
 	InetAddress getAddress();
 	boolean isSameOrigin(Connection conn);
 	boolean isAuto();

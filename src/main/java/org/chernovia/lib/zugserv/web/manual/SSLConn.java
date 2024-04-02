@@ -20,14 +20,15 @@ public class SSLConn extends ConnAdapter implements Runnable {
 
 	public static final Logger logger = Logger.getLogger(WebSockConn.class.getName());
 	public static final ObjectMapper mapper = new ObjectMapper();
-	SSLSocket socket;
+	private final SSLSocket socket;
+	private InetAddress address;
 	InputStream in; BufferedReader reader;
 	OutputStream out; BufferedWriter writer;
 	ConnListener listener;
 	boolean running = false;
 	
 	public SSLConn(SSLSocket sock, ConnListener l) {
-		socket = sock; listener = l;
+		socket = sock; listener = l; address = sock.getInetAddress(); //setID?
 		try { 
 			in = sock.getInputStream(); out = sock.getOutputStream(); 
 			reader = new BufferedReader(new InputStreamReader(in));
@@ -35,10 +36,16 @@ public class SSLConn extends ConnAdapter implements Runnable {
 		}
 		catch (IOException argh) { argh.printStackTrace(); }
 	}
-	
+
+
+	@Override
+	public void setAddress(InetAddress a) {
+		address = a;
+	}
+
 	@Override
 	public InetAddress getAddress() {
-		return socket.getInetAddress();
+		return address;
 	}
 
 	@Override

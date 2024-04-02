@@ -2,14 +2,16 @@ package org.chernovia.lib.zugserv;
 
 public interface ZugFields {
     enum AuthSource { none, local, lichess, twitch, google, bot }
-    enum ServMsgType { none, ping, obs, unObs, reqLogin, logOK, noLog, errMsg, alertMsg, servMsg, servUserMsg, areaUserMsg, areaMsg, roomMsg, privMsg, joinArea, partArea, createArea,
-        updateUsers, updateAreas, updateArea, updateRoom, updateServ, updateUser, updateOccupant, updateOccupants, updateOptions }
-    enum ClientMsgType { none, pong, obs, unObs, login, loginGuest, loginLichess, getOptions, setOptions, newRoom, joinRoom, newArea, joinArea, partArea, areaMsg, roomMsg, servMsg, privMsg,
-        updateArea, updateRoom, updateServ, updateUser, updateOccupant, setMute
+    enum ServMsgType { none, ip, ipReq, ping, obs, unObs, reqLogin, logOK, noLog, errMsg, alertMsg, servMsg, servUserMsg, areaUserMsg, areaMsg, roomMsg, privMsg,
+        joinArea, partArea, createArea, startArea, updateUsers, updateAreas, updateArea, updateRoom, updateServ, updateUser, updateOccupant, updateOccupants, updateOptions
+    }
+    enum ClientMsgType { none, ip, pong, obs, unObs, login, loginGuest, loginLichess, getOptions, setOptions,
+        newRoom, joinRoom, newArea, joinArea, startArea, partArea, areaMsg, roomMsg, servMsg, privMsg, updateArea, updateRoom, updateServ, updateUser, updateOccupant, setMute
     }
 
     String UNKNOWN_STRING = "STRING_UNKNOWN"; //TODO: get rid of this in favor of either Optional or @Nullable
     String TYPE = "type",
+            ADDRESS = "address",
             DATA = "data",
             MSG = "msg",
             NAME = "name",

@@ -15,10 +15,13 @@ public class WebSockConn extends ConnAdapter {
 	private static final Logger logger = Logger.getLogger(WebSockConn.class.getName());
 	private static final ObjectMapper mapper = new ObjectMapper();
 	private final org.java_websocket.WebSocket socket;
+	private InetAddress address;
 	//private ConnListener listener;
 	
 	public WebSockConn(org.java_websocket.WebSocket sock) { //, ConnListener l
-		socket = sock; setID(getAddress().hashCode()); //listener = l; setHandle(Connection.UNKNOWN_HANDLE);
+		socket = sock;
+		setAddress(sock.getRemoteSocketAddress().getAddress());
+		setID(getAddress().hashCode()); //listener = l; setHandle(Connection.UNKNOWN_HANDLE);
 	}
 	
 	public org.java_websocket.WebSocket getSock() { return socket; }
@@ -31,7 +34,12 @@ public class WebSockConn extends ConnAdapter {
 	}
 
 	@Override
-	public InetAddress getAddress() { return socket.getRemoteSocketAddress().getAddress(); }
+	public void setAddress(InetAddress a) {
+		address = a;
+	}
+
+	@Override
+	public InetAddress getAddress() { return address; }
 
 	@Override
 	public void tell(String type, String msg) {

@@ -29,7 +29,7 @@ abstract public class Occupant implements JSONifier {
     }
 
     public String getName() {
-        if (area.getOccupants()
+        if (area != null && area.getOccupants()
                 .stream()
                 .anyMatch(occupant -> occupant.user.getName().equalsIgnoreCase(user.getName())
                 && occupant.user.getSource() != user.getSource())) return user.getUniqueName().toString();
@@ -55,8 +55,7 @@ abstract public class Occupant implements JSONifier {
         setUser(u);
         if (a != null && a.getOccupant(u).isPresent()) isClone = true;
         else {
-            if (a != null && setArea(a)) {
-                //ZugManager.log("Creating Occupant: in " + a.title + ", occupants: " + a.occupants.values().size());
+            if (a != null && setArea(a)) { //ZugManager.log("Creating Occupant: in " + a.title + ", occupants: " + a.occupants.values().size());
                 a.updateOccupants();
             }
             if (r != null && setRoom(r)) r.updateOccupants();

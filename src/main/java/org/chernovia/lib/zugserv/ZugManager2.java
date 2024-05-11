@@ -2,11 +2,8 @@ package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Arrays;
-import java.util.Map;
 import java.util.Optional;
 import java.util.logging.Level;
 
@@ -104,7 +101,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         return getTxtNode(dataNode, ZugFields.TITLE).flatMap(this::getAreaByTitle);
     }
 
-    public String generateUserName(Connection conn, String name) {
+    public String generateUserName(String name) {
         final StringBuilder userName = new StringBuilder(name);
         int i = 0; int l = name.length()+1;
         while (users.values().stream().anyMatch(user -> user.getName().equalsIgnoreCase(userName.toString()))) {
@@ -120,13 +117,14 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         log(Level.FINEST,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
 
         if (!requirePassword && equalsType(type, ZugFields.ClientMsgType.login)) {
-            handleLogin(conn,generateUserName(conn,getTxtNode(dataNode,ZugFields.NAME).orElse("guest")),
+            handleLogin(conn,generateUserName(getTxtNode(dataNode,ZugFields.NAME).orElse("guest")),
                     ZugFields.AuthSource.none,"");
         } else if (allowGuests && equalsType(type, ZugFields.ClientMsgType.loginGuest)) {
             getUsers().values().stream()
-                    .filter(u -> u.getName().startsWith("guest") && u.getConn().getAddress().equals(conn.getAddress()))
+                    .filter(u -> u.getSource().equals(ZugFields.AuthSource.none) && u.getConn().getAddress().equals(conn.getAddress()))
                     .findAny().ifPresentOrElse(prevGuest -> swapConnection(prevGuest,conn),
-                            () -> handleLogin(conn,generateUserName(conn,"guest"),ZugFields.AuthSource.none,"")); //TODO: prevent other user accounts as "guest"
+                            () -> handleLogin(conn,generateUserName(getTxtNode(dataNode,ZugFields.NAME).orElse("guest")),
+                                    ZugFields.AuthSource.none,""));
         } else if (equalsType(type, ZugFields.ClientMsgType.loginLichess)) {
             if (user == null) {
                 getTxtNode(dataNode,ZugFields.TOKEN).ifPresentOrElse(
@@ -176,7 +174,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
             getTxtNode(dataNode, ZugFields.TITLE)
                     .ifPresentOrElse(title -> getAreaByTitle(title)
                                     .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                    .ifPresentOrElse(occupant -> err(user, "Already joined"),
+                                                    .ifPresentOrElse(zugArea::rejoin,
                                                             () -> {
                                                                 if (zugArea.occupants.size() < zugArea.getMaxOccupants()) handleCreateOccupant(user, zugArea, dataNode);
                                                                 else err(user,"Game full: " + title);

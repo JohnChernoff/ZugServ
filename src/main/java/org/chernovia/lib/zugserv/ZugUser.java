@@ -46,6 +46,10 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
     public boolean isLoggedIn() { return loggedIn; }
     public void setLoggedIn(boolean b) { loggedIn = b; }
 
+    public boolean isGuest() {
+        return getUniqueName().source().equals(ZugFields.AuthSource.none);
+    }
+
     public boolean addArea(ZugArea area) {
         return areas.add(area);
     }

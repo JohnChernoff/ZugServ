@@ -22,6 +22,10 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
         return Optional.ofNullable(occupants.putIfAbsent(occupant.user.getUniqueName(),occupant));
     }
 
+    public void rejoin(Occupant occupant) {
+        err(occupant.user, "Already joined");
+    }
+
     public Optional<Occupant> dropOccupant(Occupant occupant) {
         occupant.setArea(null);
         return dropOccupant(occupant.user);

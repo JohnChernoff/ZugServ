@@ -220,6 +220,10 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
                             () -> updateUser(user.getConn(), user));
         } else if (equalsType(type, ZugFields.ClientMsgType.setMute)) {
             getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.MUTED).ifPresent(occupant::setMuted));
+        } else if (equalsType(type, ZugFields.ClientMsgType.ban)) {
+            getArea(dataNode).ifPresent(area -> getOccupant(user, dataNode)
+                    .flatMap(occupant -> getUniqueName(dataNode.get(ZugFields.NAME)))
+                    .ifPresent(name -> area.banOccupant(user, name, true)));
         } else if (equalsType(type, ZugFields.ClientMsgType.getOptions)) {
             getArea(dataNode).ifPresent(area -> area.updateOptions(user));
         } else if (equalsType(type, ZugFields.ClientMsgType.setOptions)) {
@@ -302,14 +306,14 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         user.tell(ZugFields.ServMsgType.updateAreas,areasToJSON(true));
     }
 
-    public ZugUser.UniqueName getUniqueName(JsonNode dataNode) {
-        String name = getTxtNode(dataNode,"name").orElse("");
+    public Optional<ZugUser.UniqueName> getUniqueName(JsonNode dataNode) {
+        String name = getTxtNode(dataNode,ZugFields.NAME).orElse("");
         try {
-            return new ZugUser.UniqueName(name,
-                    ZugFields.AuthSource.valueOf(getTxtNode(dataNode,"source").orElse("none")));
+            return Optional.of(new ZugUser.UniqueName(name,
+                    ZugFields.AuthSource.valueOf(getTxtNode(dataNode,"source").orElse("none"))));
         }
         catch (IllegalArgumentException arg) {
-            return new ZugUser.UniqueName(name, ZugFields.AuthSource.none);
+            return Optional.empty(); //new ZugUser.UniqueName(name, ZugFields.AuthSource.none);
         }
     }
 

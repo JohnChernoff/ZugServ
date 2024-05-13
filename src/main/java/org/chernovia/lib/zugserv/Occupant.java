@@ -13,6 +13,8 @@ abstract public class Occupant implements JSONifier {
     boolean isClone = false;
     boolean muted = false;
     boolean away = false;
+    boolean banned = false;
+
     public ZugArea getArea() { return area; }
     public boolean setArea(ZugArea a) {
         if (a == null || isClone || area == a) return false;
@@ -100,6 +102,8 @@ abstract public class Occupant implements JSONifier {
     public ObjectNode toJSON() { return toJSON(false); }
     public ObjectNode toJSON(boolean userOnly) {
         ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
+        node.put("away",away);
+        node.put("banned",banned);
         if (!userOnly) {
             node.set(ZugFields.AREA,area != null ? area.toJSON() : null);
             node.set(ZugFields.ROOM,room != null ? room.toJSON() : null);

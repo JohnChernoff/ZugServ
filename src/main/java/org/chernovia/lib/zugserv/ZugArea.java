@@ -52,6 +52,7 @@ abstract public class ZugArea extends ZugRoom {
     String password;
     ZugUser creator;
     final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
+    final Set<ZugUser.UniqueName> banList = Collections.synchronizedSet(new HashSet<>());
     ObjectNode options = ZugUtils.JSON_MAPPER.createObjectNode();
 
     boolean exists = true;
@@ -92,6 +93,8 @@ abstract public class ZugArea extends ZugRoom {
         return (password.equals(ZugFields.UNKNOWN_STRING) || pwd.equals(password));
     }
 
+    public boolean isBanned(ZugUser.UniqueName name) { return banList.contains(name); }
+
     public boolean isOccupant(Connection conn, boolean byOrigin) {
         for (Occupant occupant : getOccupants()) {
             if (byOrigin) {
@@ -115,6 +118,26 @@ abstract public class ZugArea extends ZugRoom {
 
     void handleNoDefault(Enum<?> field) {
         new Error("No Default: " + field.name()).printStackTrace();
+    }
+
+    public void banOccupant(ZugUser bannor, ZugUser.UniqueName uniqueName, boolean drop) {
+        Occupant occupant = getOccupant(uniqueName).orElse(null);
+        if (occupant == null) {
+            err(bannor, "Not found: " + uniqueName.name());
+        }
+        else banOccupant(bannor,occupant,drop);
+    }
+
+    public void banOccupant(ZugUser bannor, Occupant occupant, boolean drop) {
+        if (getCreator().equals(bannor)) {
+            banList.add(occupant.user.getUniqueName());
+            occupant.banned = true;
+            if (drop) dropOccupant(occupant);
+            spam(occupant.user.getName() + " has been banned");
+        }
+        else {
+            err(bannor,"Only this area's creator can ban");
+        }
     }
 
     public int getOptInt(Enum<?> field) {

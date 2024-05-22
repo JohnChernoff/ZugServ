@@ -100,20 +100,13 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
         return Optional.empty();
     }
 
-    public List<ZugUser> getUsersByName(String name) {
-        final List<ZugUser> userList = new Vector<>();
-        for (ZugUser user : users.values()) if (user.getName().equals(name)) userList.add(user);
-        return userList;
+    public Optional<ZugUser> getUserByName(String name, String source) {
+        return getUserByUniqueName(new ZugUser.UniqueName(name,ZugFields.AuthSource.valueOf(source)));
     }
 
-    public Optional<ZugUser> getUserByName(String name, String source) {
-        List<ZugUser> userList = getUsersByName(name);
-        for (ZugUser user : userList) {
-            if (user.getName().equals(name)) {
-                if (source == null || user.getSource().name().equalsIgnoreCase(source)) return Optional.of(user);
-            }
-        }
-        return Optional.empty();
+    public Optional<ZugUser> getUserByUniqueName(ZugUser.UniqueName name) {
+        ZugUser user = users.get(name);
+        return user == null ? Optional.empty() : Optional.of(user);
     }
 
     public boolean handleLichessLogin(Connection conn, String token) {
@@ -232,7 +225,7 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
     public static Optional<String> getTxtNode(JsonNode node, String name) {
         if (node == null) return Optional.empty();
         JsonNode n = node.get(name);
-        if (n == null) return Optional.empty(); else return Optional.of(n.asText());
+        if (n == null || !n.isTextual()) return Optional.empty(); else return Optional.of(n.asText());
     }
 
     /**

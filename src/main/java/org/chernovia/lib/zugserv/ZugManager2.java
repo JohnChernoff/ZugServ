@@ -84,7 +84,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
 
     @Override
     public void connected(Connection conn) {
-        tell(conn, ZugFields.ServMsgType.reqLogin);
+        tell(conn, ZugFields.ServMsgType.reqLogin,ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.ID,conn.getID()));
     }
 
     @Override
@@ -141,9 +141,9 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
                     }
             );
             tell(conn,ZugFields.ServMsgType.ip,ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.ADDRESS,conn.getAddress().toString()));
-        } else if (equalsType(type, ZugFields.ClientMsgType.obs)) {
+        } else if (equalsType(type, ZugFields.ClientMsgType.obs)) { log("Obs requested: " + conn.getID());
             getArea(dataNode).ifPresent(area -> area.addObserver(conn));
-        } else if (equalsType(type, ZugFields.ClientMsgType.unObs)) {
+        } else if (equalsType(type, ZugFields.ClientMsgType.unObs)) {  log("UnObs requested: " + conn.getID());
             getArea(dataNode).ifPresent(area -> area.removeObserver(conn));
         } else if (user != null) handleUserMsg(user,type,dataNode);
         else { //err(conn,"Please login first");
@@ -155,9 +155,8 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         user.action();
         if (equalsType(type, ZugFields.ClientMsgType.servMsg)) {
             handleUserServMsg(user,getTxtNode(dataNode,ZugFields.MSG).orElse(""));
-        } else if (equalsType(type, ZugFields.ClientMsgType.privMsg)) {
-            getTxtNode(dataNode,ZugFields.USER).ifPresentOrElse(userName -> handlePrivateMsg(user,userName,
-                            getTxtNode(dataNode, ZugFields.SOURCE).orElse(null),
+        } else if (equalsType(type, ZugFields.ClientMsgType.privMsg)) { //log("Private Message: " + dataNode);
+            getUniqueName(dataNode).ifPresentOrElse(uName -> handlePrivateMsg(user,uName,
                             getTxtNode(dataNode,ZugFields.MSG).orElse("")),
                     () -> err(user,"Missing user name"));
         } else if (equalsType(type, ZugFields.ClientMsgType.newArea)) {
@@ -278,8 +277,8 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         area.spam(ZugFields.ServMsgType.areaUserMsg,occupantMsgToJSON(occupant,msg));
     }
 
-    public void handlePrivateMsg(ZugUser user1, String name, String source, String msg) {
-        getUserByName(name,source).ifPresentOrElse(user2 -> {
+    public void handlePrivateMsg(ZugUser user1, ZugUser.UniqueName name, String msg) { //log("Handling privMsg to: " + name);
+        getUserByUniqueName(name).ifPresentOrElse(user2 -> {
             user2.tell(ZugFields.ServMsgType.privMsg,userMsgToJSON(user1,msg));
             user1.tell(ZugFields.ServMsgType.servMsg,"Message sent to " + name + ": " + msg);
         }, () -> err(user1,"User not found: " + name));
@@ -307,10 +306,15 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
     }
 
     public Optional<ZugUser.UniqueName> getUniqueName(JsonNode dataNode) {
-        String name = getTxtNode(dataNode,ZugFields.NAME).orElse("");
+        String source = getTxtNode(dataNode,ZugFields.SOURCE)
+                .orElse(getTxtNode(dataNode.get(ZugFields.NAME),ZugFields.SOURCE)
+                        .orElse(""));
+        String name = getTxtNode(dataNode,ZugFields.NAME)
+                .orElse(getTxtNode(dataNode.get(ZugFields.NAME),ZugFields.NAME)
+                        .orElse(""));
         try {
             return Optional.of(new ZugUser.UniqueName(name,
-                    ZugFields.AuthSource.valueOf(getTxtNode(dataNode,"source").orElse("none"))));
+                    ZugFields.AuthSource.valueOf(source)));
         }
         catch (IllegalArgumentException arg) {
             return Optional.empty(); //new ZugUser.UniqueName(name, ZugFields.AuthSource.none);

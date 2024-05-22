@@ -18,8 +18,9 @@ abstract public class Occupant implements JSONifier {
     public ZugArea getArea() { return area; }
     public boolean setArea(ZugArea a) {
         if (a == null || isClone || area == a) return false;
-        if (area != null) area.dropOccupant(this);
+        if (area != null) area.dropOccupant(this); //shouldn't occur, really
         area = a; area.addOrGetOccupant(this);
+        area.observers.remove(user.getConn());
         return true;
     }
     public ZugRoom getRoom() { return room; }

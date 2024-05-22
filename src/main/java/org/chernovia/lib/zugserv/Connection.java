@@ -25,7 +25,7 @@ public interface Connection {
 	boolean isFlooding(int limit, long span);
 	void close(String reason);
 	void tell(String type, String msg);
-	void tell(String type, JsonNode msg);
+	void tell(String type, JsonNode msg); //TODO: make type an enum?
 	Status getStatus();
 	void setStatus(Status status);
 	List<Integer> getChannels();

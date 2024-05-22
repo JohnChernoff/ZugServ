@@ -25,6 +25,7 @@ public interface ZugFields {
             AREAS = "areas",
             CREATOR = "creator",
             TOKEN = "token",
+            ID = "id",
             LOGGED_IN = "logged_in",
             OCCUPANT = "occupant",
             OCCUPANTS = "occupants",

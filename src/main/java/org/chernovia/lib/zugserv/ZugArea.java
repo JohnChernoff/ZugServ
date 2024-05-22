@@ -1,6 +1,7 @@
 package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.*;
 
@@ -95,25 +96,38 @@ abstract public class ZugArea extends ZugRoom {
 
     public boolean isBanned(ZugUser.UniqueName name) { return banList.contains(name); }
 
+    public boolean isOccupant(Connection conn) {
+        for (Occupant occupant : getOccupants()) {
+           Connection c = occupant.getUser().getConn();
+           if (c != null && (c.equals(conn) || c.isSameOrigin(conn))) return true;
+        }
+        return false;
+    }
+
     public boolean isOccupant(Connection conn, boolean byOrigin) {
         for (Occupant occupant : getOccupants()) {
-            if (byOrigin) {
-                if (occupant.getUser().getConn().isSameOrigin(conn)) return true;
+            Connection c = occupant.getUser().getConn();
+            if (c != null) {
+                if (byOrigin) {
+                    if (c.isSameOrigin(conn)) return true;
+                }
+                else if (c.equals(conn)) return true;
             }
-            else if (occupant.getUser().getConn().equals(conn)) return true;
         }
         return false;
     }
 
     public boolean addObserver(Connection conn) {
-        if (isOccupant(conn,true)) return false;
+        if (conn == null || isOccupant(conn,false)) return false; //(isOccupant(conn,true))
+        conn.tell(ZugFields.ServMsgType.obs.name(),ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.TITLE,title));
         return observers.add(conn);
+    }
+    public boolean removeObserver(Connection conn) {
+        if (conn != null) conn.tell(ZugFields.ServMsgType.unObs.name(),ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.TITLE,title));
+        return observers.remove(conn);
     }
     public boolean isObserver(Connection conn) {
         return observers.contains(conn);
-    }
-    public boolean removeObserver(Connection conn) {
-        return observers.remove(conn);
     }
 
     void handleNoDefault(Enum<?> field) {
@@ -257,7 +271,7 @@ abstract public class ZugArea extends ZugRoom {
         super.spamX(t,msg,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(ZugManager.packType(t),msg);
+            else conn.tell(ZugManager.packType(t),ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.MSG,msg).put(ZugFields.TITLE,title));
         }
     }
 
@@ -266,7 +280,7 @@ abstract public class ZugArea extends ZugRoom {
         super.spamX(t,msgNode,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(ZugManager.packType(t),msgNode);
+            else conn.tell(ZugManager.packType(t),msgNode.put(ZugFields.TITLE,title));
         }
     }
 
@@ -282,6 +296,9 @@ abstract public class ZugArea extends ZugRoom {
         if (!titleOnly) {
             node.set(ZugFields.OPTIONS,options);
             node.put(ZugFields.CREATOR,creator != null ? creator.getName() : ""); //or toJSON?
+            ArrayNode arrayNode = ZugUtils.JSON_MAPPER.createArrayNode();
+            observers.forEach(obs -> arrayNode.add(obs.getID()));
+            node.set(ZugFields.OBSERVERS,arrayNode);
         }
         return node;
     }

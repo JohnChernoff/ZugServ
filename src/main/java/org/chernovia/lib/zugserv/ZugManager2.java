@@ -114,6 +114,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
     @Override
     public void handleMsg(Connection conn, String type, JsonNode dataNode) {
         ZugUser user = getUserByConn(conn).orElse(null);
+        if (user != null) user.action();
         log(Level.FINEST,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
 
         if (!requirePassword && equalsType(type, ZugFields.ClientMsgType.login)) {
@@ -152,7 +153,6 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
     }
 
     public void handleUserMsg(ZugUser user, String type, JsonNode dataNode) {
-        user.action();
         if (equalsType(type, ZugFields.ClientMsgType.servMsg)) {
             handleUserServMsg(user,getTxtNode(dataNode,ZugFields.MSG).orElse(""));
         } else if (equalsType(type, ZugFields.ClientMsgType.privMsg)) { //log("Private Message: " + dataNode);

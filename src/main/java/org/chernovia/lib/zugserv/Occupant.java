@@ -41,7 +41,7 @@ abstract public class Occupant implements JSONifier {
 
     public boolean isClone() { return isClone; }
     public void setClone(boolean clone) { isClone = clone; }
-    public boolean isAway() { return away; }
+    public boolean isAway() { return !user.isLoggedIn() || away; }
     public void setAway(boolean b) { away = b; }
     public boolean isMuted() {
         return muted;

@@ -142,9 +142,9 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
                     }
             );
             tell(conn,ZugFields.ServMsgType.ip,ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.ADDRESS,conn.getAddress().toString()));
-        } else if (equalsType(type, ZugFields.ClientMsgType.obs)) { log("Obs requested: " + conn.getID());
+        } else if (equalsType(type, ZugFields.ClientMsgType.obs)) { log(Level.FINE,"Obs requested from: " + conn.getID());
             getArea(dataNode).ifPresent(area -> area.addObserver(conn));
-        } else if (equalsType(type, ZugFields.ClientMsgType.unObs)) {  log("UnObs requested: " + conn.getID());
+        } else if (equalsType(type, ZugFields.ClientMsgType.unObs)) {  log(Level.FINE,"UnObs requested from: " + conn.getID());
             getArea(dataNode).ifPresent(area -> area.removeObserver(conn));
         } else if (user != null) handleUserMsg(user,type,dataNode);
         else { //err(conn,"Please login first");

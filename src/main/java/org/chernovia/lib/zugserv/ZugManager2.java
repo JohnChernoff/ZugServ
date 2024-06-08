@@ -164,9 +164,8 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
                     .ifPresentOrElse(title -> getAreaByTitle(title)
                                     .ifPresentOrElse(zugArea -> err(user, "Already exists: " + title),
                                             () -> handleCreateArea(user, title, dataNode).ifPresent(zugArea -> {
-                                                addOrGetArea(zugArea);
-                                                updateAreas(true);
-                                                user.tell(ZugFields.ServMsgType.createArea, zugArea.toJSON(true));
+                                                addOrGetArea(zugArea);  handleAreaChange(zugArea, ZugFields.AreaChange.created);
+                                                user.tell(ZugFields.ServMsgType.createArea, zugArea.toJSON(true)); //TODO: make redundant?
                                             })),
                             () -> err(user, ERR_NO_TITLE));
         } else if (equalsType(type, ZugFields.ClientMsgType.joinArea)) {
@@ -235,13 +234,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         tell(conn, ZugFields.ServMsgType.updateServ,toJSON());
     }
 
-    public void updateAreas(boolean titleOnly) {
-        spam(ZugFields.ServMsgType.updateAreas,areasToJSON(titleOnly));
-    }
-
-    public void updateUsers(boolean nameOnly) {
-        spam(ZugFields.ServMsgType.updateUsers,usersToJSON(nameOnly));
-    }
+    //public void updateAreas(boolean titleOnly) { spam(ZugFields.ServMsgType.updateAreas,areasToJSON(titleOnly)); }
 
     public void updateOccupant(Connection conn, Occupant occupant) { //TODO: move to Occupant
         tell(conn, ZugFields.ServMsgType.updateOccupant,occupant.toJSON());
@@ -301,8 +294,8 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
     private void handleLoggedIn(ZugUser user) {
         user.setLoggedIn(true);
         user.tell(ZugFields.ServMsgType.logOK,user.toJSON());
-        updateUsers(true);
-        user.tell(ZugFields.ServMsgType.updateAreas,areasToJSON(true));
+        user.tell(ZugFields.ServMsgType.areaList,areasToJSON(true));
+        //spam(ZugFields.ServMsgType.userList,usersToJSON(true));
     }
 
     public Optional<ZugUser.UniqueName> getUniqueName(JsonNode dataNode) {
@@ -328,11 +321,15 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         return true;
     };
     public abstract void handleUnsupportedMsg(Connection conn, String type, JsonNode dataNode, ZugUser user);
+    public void handleAreaChange(ZugArea area, ZugFields.AreaChange change) {
+        spam(ZugFields.ServMsgType.updateAreaList,ZugUtils.JSON_MAPPER.createObjectNode()
+                .put(ZugFields.AREA_CHANGE,change.name()).set(ZugFields.AREA,area.toJSON(true)));
+    }
 
     public void areaFinished(ZugArea area) {
         area.exists = false;
         removeArea(area);
-        updateAreas(true);
+        handleAreaChange(area, ZugFields.AreaChange.deleted);
     }
 
 }

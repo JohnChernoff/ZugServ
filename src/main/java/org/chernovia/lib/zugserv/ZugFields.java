@@ -2,12 +2,14 @@ package org.chernovia.lib.zugserv;
 
 public interface ZugFields {
     enum AuthSource { none, local, lichess, twitch, google, bot }
-    enum ServMsgType { none, ip, ipReq, ping, obs, unObs, reqLogin, logOK, noLog, errMsg, alertMsg, servMsg, servUserMsg, areaUserMsg, areaMsg, roomMsg, privMsg,
-        joinArea, partArea, createArea, startArea, updateUsers, updateAreas, updateArea, updateRoom, updateServ, updateUser, updateOccupant, updateOccupants, updateOptions
+    enum ServMsgType { none, version, ip, ipReq, ping, obs, unObs, reqLogin, logOK, noLog, errMsg, alertMsg, servMsg, servUserMsg, areaUserMsg, areaMsg, roomMsg, privMsg,
+        joinArea, partArea, createArea, startArea, userList, areaList, updateAreaList, updateArea, updateRoom, updateServ, updateUser, updateOccupant, updateOccupants, updateOptions
     }
-    enum ClientMsgType { none, ip, pong, obs, unObs, login, loginGuest, loginLichess, getOptions, setOptions,
+    enum ClientMsgType { none, ip, pong, obs, unObs, login, loginGuest, loginLichess, getOptions, setOptions, listAreas,
         newRoom, joinRoom, newArea, joinArea, startArea, partArea, areaMsg, roomMsg, servMsg, privMsg, updateArea, updateRoom, updateServ, updateUser, updateOccupant, setMute, ban
     }
+
+    enum AreaChange {created,updated,deleted}
 
     String UNKNOWN_STRING = "STRING_UNKNOWN"; //TODO: get rid of this in favor of either Optional or @Nullable
     String TYPE = "type",
@@ -36,5 +38,6 @@ public interface ZugFields {
             MAX = "max",
             INC = "inc",
             CHAT_COLOR = "chat_color",
-            OPTIONS = "options";
+            OPTIONS = "options",
+            AREA_CHANGE = "area_change";
 }

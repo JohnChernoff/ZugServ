@@ -16,6 +16,7 @@ public interface ZugFields {
             ADDRESS = "address",
             DATA = "data",
             MSG = "msg",
+            UNAME = "uname", //unique name
             NAME = "name",
             SOURCE = "source",
             USER = "user",

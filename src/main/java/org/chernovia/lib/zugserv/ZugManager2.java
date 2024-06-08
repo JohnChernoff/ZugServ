@@ -163,10 +163,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
             getTxtNode(dataNode, ZugFields.TITLE)
                     .ifPresentOrElse(title -> getAreaByTitle(title)
                                     .ifPresentOrElse(zugArea -> err(user, "Already exists: " + title),
-                                            () -> handleCreateArea(user, title, dataNode).ifPresent(zugArea -> {
-                                                addOrGetArea(zugArea);  handleAreaChange(zugArea, ZugFields.AreaChange.created);
-                                                user.tell(ZugFields.ServMsgType.createArea, zugArea.toJSON(true)); //TODO: make redundant?
-                                            })),
+                                            () -> handleCreateArea(user, title, dataNode).ifPresent(zugArea -> createArea(zugArea,user))),
                             () -> err(user, ERR_NO_TITLE));
         } else if (equalsType(type, ZugFields.ClientMsgType.joinArea)) {
             getTxtNode(dataNode, ZugFields.TITLE)
@@ -174,7 +171,10 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
                                     .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
                                                     .ifPresentOrElse(zugArea::rejoin,
                                                             () -> {
-                                                                if (zugArea.occupants.size() < zugArea.getMaxOccupants()) handleCreateOccupant(user, zugArea, dataNode);
+                                                                if (zugArea.occupants.size() < zugArea.getMaxOccupants()) {
+                                                                    handleCreateOccupant(user, zugArea, dataNode)
+                                                                            .ifPresent(occupant -> occupant.tell(ZugFields.ServMsgType.joinArea,zugArea.toJSON()));
+                                                                }
                                                                 else err(user,"Game full: " + title);
                                                             }),
                                             () -> err(user, ERR_TITLE_NOT_FOUND)),
@@ -321,15 +321,29 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
         return true;
     };
     public abstract void handleUnsupportedMsg(Connection conn, String type, JsonNode dataNode, ZugUser user);
-    public void handleAreaChange(ZugArea area, ZugFields.AreaChange change) {
+    public void handleAreaListUpdate(ZugArea area, ZugFields.AreaChange change) {
         spam(ZugFields.ServMsgType.updateAreaList,ZugUtils.JSON_MAPPER.createObjectNode()
                 .put(ZugFields.AREA_CHANGE,change.name()).set(ZugFields.AREA,area.toJSON(true)));
+    }
+
+    public void createArea(ZugArea area, ZugUser creator) {
+        addOrGetArea(area);
+        areaCreated(area);
+        creator.tell(ZugFields.ServMsgType.createArea, area.toJSON(true)); //TODO: make redundant?
     }
 
     public void areaFinished(ZugArea area) {
         area.exists = false;
         removeArea(area);
-        handleAreaChange(area, ZugFields.AreaChange.deleted);
+        handleAreaListUpdate(area, ZugFields.AreaChange.deleted);
+    }
+
+    public void areaCreated(ZugArea area) {
+        handleAreaListUpdate(area, ZugFields.AreaChange.created);
+    }
+
+    public void areaUpdated(ZugArea area) {
+        handleAreaListUpdate(area, ZugFields.AreaChange.updated);
     }
 
 }

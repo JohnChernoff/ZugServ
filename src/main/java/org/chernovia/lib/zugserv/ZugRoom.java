@@ -138,8 +138,8 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
     }
 
     public ObjectNode toJSON() { return toJSON(false); }
-    public ObjectNode toJSON(boolean titleOnly) {
-        if (!titleOnly) return occupantsToJSON();
+    public ObjectNode toJSON(boolean listDataOnly) {
+        if (!listDataOnly) return occupantsToJSON();
         ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
         node.put(ZugFields.TITLE,title);
         return node;

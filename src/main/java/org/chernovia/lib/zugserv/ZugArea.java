@@ -291,11 +291,10 @@ abstract public class ZugArea extends ZugRoom {
     }
 
     @Override
-    public ObjectNode toJSON(boolean titleOnly) {
-        ObjectNode node = super.toJSON(titleOnly);
-        if (!titleOnly) {
+    public ObjectNode toJSON(boolean listDataOnly) {
+        ObjectNode node = super.toJSON(listDataOnly).set(ZugFields.CREATOR,creator != null ? creator.getUniqueName().toJSON() : null);
+        if (!listDataOnly) {
             node.set(ZugFields.OPTIONS,options);
-            node.put(ZugFields.CREATOR,creator != null ? creator.getName() : ""); //or toJSON?
             ArrayNode arrayNode = ZugUtils.JSON_MAPPER.createArrayNode();
             observers.forEach(obs -> arrayNode.add(obs.getID()));
             node.set(ZugFields.OBSERVERS,arrayNode);

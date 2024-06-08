@@ -31,8 +31,9 @@ abstract public class Occupant implements JSONifier {
         return true;
     }
 
-    public String getName() {
-        if (area != null && area.getOccupants()
+    public String getName() { return getName(true); }
+    public String getName(boolean smart) {
+        if (smart && area != null && area.getOccupants()
                 .stream()
                 .anyMatch(occupant -> occupant.user.getName().equalsIgnoreCase(user.getName())
                 && occupant.user.getSource() != user.getSource())) return user.getUniqueName().toString();

@@ -1,7 +1,6 @@
 package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.util.Map;
 
 abstract public class Occupant implements JSONifier {
 
@@ -75,7 +74,7 @@ abstract public class Occupant implements JSONifier {
     }
 
     public void tell(Enum<?> e, String msg) {
-        ObjectNode node = msg.isBlank() ? ZugUtils.newJSON() : ZugUtils.makeTxtNode(Map.entry(ZugFields.MSG,msg));
+        ObjectNode node = msg.isBlank() ? ZugUtils.newJSON() : ZugUtils.newJSON().put(ZugFields.MSG,msg);
         if (area != null) node.put(ZugFields.TITLE,area.title);
         if (room != null) node.put(ZugFields.ROOM,room.title);
         getUser().tell(e,node);
@@ -84,8 +83,8 @@ abstract public class Occupant implements JSONifier {
     public void tell(Enum<?> e, ObjectNode node) {
         if (!isMuted()) getUser().tell(e,(ZugUtils.joinNodes(
                 node,
-                area != null ? ZugUtils.makeTxtNode(Map.entry(ZugFields.TITLE,area.title)) : null,
-                room != null ? ZugUtils.makeTxtNode(Map.entry(ZugFields.ROOM,room.title)) : null
+                area != null ? ZugUtils.newJSON().put(ZugFields.TITLE,area.title) : null,
+                room != null ? ZugUtils.newJSON().put(ZugFields.ROOM,room.title) : null
         )));
     }
 

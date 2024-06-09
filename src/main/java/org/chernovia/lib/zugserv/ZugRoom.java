@@ -4,7 +4,6 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Arrays;
 import java.util.Collection;
-import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -129,12 +128,12 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
     }
 
     public void msg(ZugUser user, String msg) {
-        user.tell(ZugFields.ServMsgType.roomMsg,ZugUtils.makeTxtNode
-                (Map.entry(ZugFields.MSG,msg),Map.entry(ZugFields.TITLE,getTitle())));
+        user.tell(ZugFields.ServMsgType.roomMsg,
+                ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
     }
     public void err(ZugUser user, String msg) {
-        user.tell(ZugFields.ServMsgType.errMsg,ZugUtils.makeTxtNode
-                (Map.entry(ZugFields.MSG,msg),Map.entry(ZugFields.TITLE,getTitle())));
+        user.tell(ZugFields.ServMsgType.errMsg,
+                ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
     }
 
     public ObjectNode toJSON() { return toJSON(false); }

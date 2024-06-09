@@ -300,13 +300,13 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
     public ObjectNode usersToJSON(boolean nameOnly) {
         ArrayNode arrayNode = ZugUtils.newJSONArray();
         users.values().forEach(user -> arrayNode.add(nameOnly ? user.getUniqueName().toJSON() : user.toJSON()));
-        return ZugUtils.makeJSONNode(Map.entry(ZugFields.USERS,arrayNode));
+        return ZugUtils.newJSON().set(ZugFields.USERS,arrayNode);
     }
 
     public ObjectNode areasToJSON(boolean listDataOnly) {
         ArrayNode arrayNode = ZugUtils.newJSONArray();
         areas.values().forEach(area -> arrayNode.add(area.toJSON(listDataOnly)));
-        return ZugUtils.makeJSONNode(Map.entry(ZugFields.AREAS,arrayNode));
+        return ZugUtils.newJSON().set(ZugFields.AREAS,arrayNode);
     }
 
     public ObjectNode toJSON() {

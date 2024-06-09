@@ -262,8 +262,11 @@ abstract public class ZugArea extends ZugRoom {
     public ObjectNode getOptions() { return options; }
 
     public void updateOptions(ZugUser user) {
-        if (user == null) spam(ZugFields.ServMsgType.updateOptions,ZugUtils.makeJSONNode(Map.entry(ZugFields.OPTIONS,options)));
-        else user.tell(ZugFields.ServMsgType.updateOptions,ZugUtils.makeJSONNode(Map.entry(ZugFields.OPTIONS,options)).put(ZugFields.TITLE,title));
+        user.tell(ZugFields.ServMsgType.updateOptions,ZugUtils.newJSON().put(ZugFields.TITLE,title).set(ZugFields.OPTIONS,options));
+    }
+
+    public void spamOptions() {
+        spam(ZugFields.ServMsgType.updateOptions,ZugUtils.newJSON().set(ZugFields.OPTIONS,options));
     }
 
     @Override
@@ -286,8 +289,7 @@ abstract public class ZugArea extends ZugRoom {
 
     @Override
     public void msg(ZugUser user, String msg) {
-        user.tell(ZugFields.ServMsgType.areaMsg,ZugUtils.makeTxtNode
-                (Map.entry(ZugFields.MSG,msg),Map.entry(ZugFields.TITLE,getTitle())));
+        user.tell(ZugFields.ServMsgType.areaMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
     }
 
     @Override

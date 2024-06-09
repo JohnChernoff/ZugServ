@@ -42,42 +42,6 @@ public class ZugUtils {
         node.set(name,arrayNode);
         return node;
     }
-    @SafeVarargs
-    public static ObjectNode makeTxtNode(Map.Entry<String,String>... fields) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (Map.Entry<String, String> pair : fields) node.put(pair.getKey(),pair.getValue());
-        return node;
-    }
-    @SafeVarargs
-    public static ObjectNode makeIntNode(Map.Entry<String,Integer>... fields) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (Map.Entry<String, Integer> pair : fields) node.put(pair.getKey(),pair.getValue());
-        return node;
-    }
-    @SafeVarargs
-    public static ObjectNode makeFloatNode(Map.Entry<String,Float>... fields) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (Map.Entry<String, Float> pair : fields) node.put(pair.getKey(),pair.getValue());
-        return node;
-    }
-    @SafeVarargs
-    public static ObjectNode makeDoubleNode(Map.Entry<String,Double>... fields) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (Map.Entry<String, Double> pair : fields) node.put(pair.getKey(),pair.getValue());
-        return node;
-    }
-    @SafeVarargs
-    public static ObjectNode makeBooleanNode(Map.Entry<String,Boolean>... fields) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (Map.Entry<String, Boolean> pair : fields) node.put(pair.getKey(),pair.getValue());
-        return node;
-    }
-    @SafeVarargs
-    public static ObjectNode makeJSONNode(Map.Entry<String, JsonNode>... fields) {
-        ObjectNode node = JSON_MAPPER.createObjectNode();
-        for (Map.Entry<String, JsonNode> pair : fields) node.set(pair.getKey(),pair.getValue());
-        return node;
-    }
 
     public static ObjectNode joinNodes(ObjectNode... nodes) {
         ObjectNode node = JSON_MAPPER.createObjectNode();

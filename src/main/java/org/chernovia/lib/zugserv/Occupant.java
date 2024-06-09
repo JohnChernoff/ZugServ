@@ -75,7 +75,7 @@ abstract public class Occupant implements JSONifier {
     }
 
     public void tell(Enum<?> e, String msg) {
-        ObjectNode node = msg.isBlank() ? ZugUtils.JSON_MAPPER.createObjectNode() : ZugUtils.makeTxtNode(Map.entry(ZugFields.MSG,msg));
+        ObjectNode node = msg.isBlank() ? ZugUtils.newJSON() : ZugUtils.makeTxtNode(Map.entry(ZugFields.MSG,msg));
         if (area != null) node.put(ZugFields.TITLE,area.title);
         if (room != null) node.put(ZugFields.ROOM,room.title);
         getUser().tell(e,node);
@@ -103,7 +103,7 @@ abstract public class Occupant implements JSONifier {
 
     public ObjectNode toJSON() { return toJSON(false); }
     public ObjectNode toJSON(boolean userOnly) {
-        ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
+        ObjectNode node = ZugUtils.newJSON();
         node.put("away",away);
         node.put("banned",banned);
         if (!userOnly) {

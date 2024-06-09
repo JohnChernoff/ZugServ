@@ -1,5 +1,6 @@
 package org.chernovia.lib.zugserv;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -10,7 +11,26 @@ import java.net.UnknownHostException;
 import java.util.*;
 
 public class ZugUtils {
-    public static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+    private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
+
+    public static ObjectNode newJSON() {
+        return JSON_MAPPER.createObjectNode();
+    }
+
+    public static ArrayNode newJSONArray() {
+        return JSON_MAPPER.createArrayNode();
+
+    }
+
+    public static JsonNode readTree(String content) {
+        try {
+            return JSON_MAPPER.readTree(content);
+        } catch (JsonProcessingException e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
     public static List<JSONifier> makeJSONifiers(List<Object> list) {
         return list.stream().map(item -> item instanceof JSONifier ? (JSONifier)item : null).toList();
     }

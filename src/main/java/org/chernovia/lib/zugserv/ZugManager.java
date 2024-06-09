@@ -3,7 +3,6 @@ package org.chernovia.lib.zugserv;
 import chariot.Client;
 import chariot.ClientAuth;
 import chariot.api.AccountAuth;
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -191,21 +190,19 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
     public abstract void handleLogin(Connection conn, String name, ZugFields.AuthSource source, String token);
     public abstract void handleMsg(Connection conn, String type, JsonNode dataNode);
     public void newMsg(Connection conn, int chan, String msg) {
-        try {
-            JsonNode msgNode = ZugUtils.JSON_MAPPER.readTree(msg);
-            JsonNode typeNode = msgNode.get("type"), dataNode = msgNode.get("data");
-            if (typeNode == null || dataNode == null) {
-                err(conn,"Error: Bad Data(null)"); //return;
-            }
-            else if (equalsType(typeNode.asText(), ZugFields.ClientMsgType.pong)) {
-                conn.setLatency(System.currentTimeMillis() - conn.lastPing());
-            }
-            else {
-                handleMsg(conn,typeNode.asText(),dataNode);
-            }
+        JsonNode msgNode = ZugUtils.readTree(msg);
+        if (msgNode == null) {
+            log(Level.WARNING,"Bad JSON message: " + msg); return;
         }
-        catch (JsonProcessingException e) {
-            log(e.getMessage());
+        JsonNode typeNode = msgNode.get("type"), dataNode = msgNode.get("data");
+        if (typeNode == null || dataNode == null) {
+            err(conn,"Error: Bad Data(null)"); //return;
+        }
+        else if (equalsType(typeNode.asText(), ZugFields.ClientMsgType.pong)) {
+            conn.setLatency(System.currentTimeMillis() - conn.lastPing());
+        }
+        else {
+            handleMsg(conn,typeNode.asText(),dataNode);
         }
     }
 
@@ -301,13 +298,13 @@ abstract public class ZugManager extends Thread implements ConnListener, JSONifi
     static void setVerbose(boolean b) { VERBOSE = b; }
 
     public ObjectNode usersToJSON(boolean nameOnly) {
-        ArrayNode arrayNode = ZugUtils.JSON_MAPPER.createArrayNode();
+        ArrayNode arrayNode = ZugUtils.newJSONArray();
         users.values().forEach(user -> arrayNode.add(nameOnly ? user.getUniqueName().toJSON() : user.toJSON()));
         return ZugUtils.makeJSONNode(Map.entry(ZugFields.USERS,arrayNode));
     }
 
     public ObjectNode areasToJSON(boolean listDataOnly) {
-        ArrayNode arrayNode = ZugUtils.JSON_MAPPER.createArrayNode();
+        ArrayNode arrayNode = ZugUtils.newJSONArray();
         areas.values().forEach(area -> arrayNode.add(area.toJSON(listDataOnly)));
         return ZugUtils.makeJSONNode(Map.entry(ZugFields.AREAS,arrayNode));
     }

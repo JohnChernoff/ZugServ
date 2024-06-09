@@ -18,7 +18,7 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
         }
 
         public ObjectNode toJSON() {
-            return ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.SOURCE,source.name()).put(ZugFields.NAME,name);
+            return ZugUtils.newJSON().put(ZugFields.SOURCE,source.name()).put(ZugFields.NAME,name);
         }
     }
     Set<ZugArea> areas = Collections.synchronizedSet(new LinkedHashSet<>());
@@ -71,11 +71,7 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
         if (loggedIn && conn != null) conn.tell(ZugManager.getVerbosity() ? t.name() : String.valueOf(t.ordinal()),json);
     }
 
-    //public ObjectNode toJSON() { return toJSON(false); }
     public ObjectNode toJSON() {
-        ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
-        node.put(ZugFields.LOGGED_IN,loggedIn);
-        node.set(ZugFields.UNAME,uniqueName.toJSON());
-        return node;
+        return ZugUtils.newJSON().put(ZugFields.LOGGED_IN,loggedIn).set(ZugFields.UNAME,uniqueName.toJSON());
     }
 }

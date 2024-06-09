@@ -84,7 +84,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
 
     @Override
     public void connected(Connection conn) {
-        tell(conn, ZugFields.ServMsgType.reqLogin,ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.ID,conn.getID()));
+        tell(conn, ZugFields.ServMsgType.reqLogin,ZugUtils.newJSON().put(ZugFields.ID,conn.getID()));
     }
 
     @Override
@@ -141,7 +141,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
                         catch (UnknownHostException oops) { log("Unknown Host: " + addressStr); }
                     }
             );
-            tell(conn,ZugFields.ServMsgType.ip,ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.ADDRESS,conn.getAddress().toString()));
+            tell(conn,ZugFields.ServMsgType.ip,ZugUtils.newJSON().put(ZugFields.ADDRESS,conn.getAddress().toString()));
         } else if (equalsType(type, ZugFields.ClientMsgType.obs)) { log(Level.FINE,"Obs requested from: " + conn.getID());
             getArea(dataNode).ifPresent(area -> area.addObserver(conn));
         } else if (equalsType(type, ZugFields.ClientMsgType.unObs)) {  log(Level.FINE,"UnObs requested from: " + conn.getID());
@@ -245,17 +245,11 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
     }
 
     public ObjectNode userMsgToJSON(ZugUser user, String msg) {
-        ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
-        node.set(ZugFields.USER, user.toJSON());
-        node.put(ZugFields.MSG,msg);
-        return node;
+        return ZugUtils.newJSON().put(ZugFields.MSG,msg).set(ZugFields.USER,user.toJSON());
     }
 
     public ObjectNode occupantMsgToJSON(Occupant occupant, String msg) {
-        ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
-        node.set(ZugFields.OCCUPANT, occupant.toJSON());
-        node.put(ZugFields.MSG,msg);
-        return node;
+        return ZugUtils.newJSON().put(ZugFields.MSG,msg).set(ZugFields.OCCUPANT, occupant.toJSON());
     }
 
     public Optional<Occupant> getOccupant(ZugUser user, JsonNode dataNode) {
@@ -322,7 +316,7 @@ abstract public class ZugManager2 extends ZugManager implements AreaListener, Ru
     };
     public abstract void handleUnsupportedMsg(Connection conn, String type, JsonNode dataNode, ZugUser user);
     public void handleAreaListUpdate(ZugArea area, ZugFields.AreaChange change) {
-        spam(ZugFields.ServMsgType.updateAreaList,ZugUtils.JSON_MAPPER.createObjectNode()
+        spam(ZugFields.ServMsgType.updateAreaList,ZugUtils.newJSON()
                 .put(ZugFields.AREA_CHANGE,change.name()).set(ZugFields.AREA,area.toJSON(true)));
     }
 

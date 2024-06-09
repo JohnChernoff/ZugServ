@@ -54,7 +54,7 @@ abstract public class ZugArea extends ZugRoom {
     ZugUser creator;
     final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
     final Set<ZugUser.UniqueName> banList = Collections.synchronizedSet(new HashSet<>());
-    ObjectNode options = ZugUtils.JSON_MAPPER.createObjectNode();
+    ObjectNode options = ZugUtils.newJSON();
 
     boolean exists = true;
 
@@ -119,11 +119,11 @@ abstract public class ZugArea extends ZugRoom {
 
     public boolean addObserver(Connection conn) {
         if (conn == null || isOccupant(conn,false)) return false; //(isOccupant(conn,true))
-        conn.tell(ZugFields.ServMsgType.obs.name(),ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.TITLE,title));
+        conn.tell(ZugFields.ServMsgType.obs.name(),ZugUtils.newJSON().put(ZugFields.TITLE,title));
         return observers.add(conn);
     }
     public boolean removeObserver(Connection conn) {
-        if (conn != null) conn.tell(ZugFields.ServMsgType.unObs.name(),ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.TITLE,title));
+        if (conn != null) conn.tell(ZugFields.ServMsgType.unObs.name(),ZugUtils.newJSON().put(ZugFields.TITLE,title));
         return observers.remove(conn);
     }
     public boolean isObserver(Connection conn) {
@@ -231,7 +231,7 @@ abstract public class ZugArea extends ZugRoom {
         return optionToJSON(null,o,minVal,maxVal,incVal);
     }
     public ObjectNode optionToJSON(String field, Object o, Number minVal, Number maxVal, Number incVal) {
-        ObjectNode node = ZugUtils.JSON_MAPPER.createObjectNode();
+        ObjectNode node = ZugUtils.newJSON();
         if (o instanceof String str) {
             node.put(ZugFields.VAL,str);
         }
@@ -271,7 +271,7 @@ abstract public class ZugArea extends ZugRoom {
         super.spamX(t,msg,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(ZugManager.packType(t),ZugUtils.JSON_MAPPER.createObjectNode().put(ZugFields.MSG,msg).put(ZugFields.TITLE,title));
+            else conn.tell(ZugManager.packType(t),ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,title));
         }
     }
 
@@ -295,7 +295,7 @@ abstract public class ZugArea extends ZugRoom {
         ObjectNode node = super.toJSON(listDataOnly).set(ZugFields.CREATOR,creator != null ? creator.getUniqueName().toJSON() : null);
         if (!listDataOnly) {
             node.set(ZugFields.OPTIONS,options);
-            ArrayNode arrayNode = ZugUtils.JSON_MAPPER.createArrayNode();
+            ArrayNode arrayNode = ZugUtils.newJSONArray();
             observers.forEach(obs -> arrayNode.add(obs.getID()));
             node.set(ZugFields.OBSERVERS,arrayNode);
         }

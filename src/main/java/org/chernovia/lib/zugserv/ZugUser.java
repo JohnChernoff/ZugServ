@@ -64,11 +64,11 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
     public void tell(Enum<?> t) { tell(t,""); }
 
     public void tell(Enum<?> t, String msg) {
-        if (loggedIn && conn != null) conn.tell(ZugManager.getVerbosity() ? t.name() : String.valueOf(t.ordinal()),msg);
+        if (loggedIn && conn != null) conn.tell(ZugHandler.getVerbosity() ? t.name() : String.valueOf(t.ordinal()),msg);
     }
 
     public void tell(Enum<?> t, JsonNode json) {
-        if (loggedIn && conn != null) conn.tell(ZugManager.getVerbosity() ? t.name() : String.valueOf(t.ordinal()),json);
+        if (loggedIn && conn != null) conn.tell(ZugHandler.getVerbosity() ? t.name() : String.valueOf(t.ordinal()),json);
     }
 
     public ObjectNode toJSON() {

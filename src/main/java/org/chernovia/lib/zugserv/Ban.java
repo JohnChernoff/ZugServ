@@ -3,18 +3,19 @@ package org.chernovia.lib.zugserv;
 import java.net.InetAddress;
 
 public class Ban {
-	private long banID, bannorID;
+	private long banID;
+	private Connection bannorConn;
 	private long banStart, banEnd;
 	private InetAddress address;
 	
-	public Ban(long id, long t,InetAddress a, long bid) { this(id,System.currentTimeMillis(),t,a,bid); }
-	public Ban(long id, long startTime, long t, InetAddress a, long bid) {
+	public Ban(long id, long t,InetAddress a, Connection conn) { this(id,System.currentTimeMillis(),t,a,conn); }
+	public Ban(long id, long startTime, long t, InetAddress a, Connection conn) {
 		banID = id; banStart = startTime; 
 		banEnd = startTime + t; address = a;
-		bannorID = bid;
+		bannorConn = conn;
 	}
 	
-	public long getBannorID() { return bannorID; }
+	public Connection getBannor() { return bannorConn; }
 	
 	public void extend(int t) {
 		banEnd = System.currentTimeMillis() + t;

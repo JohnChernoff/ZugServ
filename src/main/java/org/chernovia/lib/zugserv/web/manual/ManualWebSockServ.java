@@ -1,11 +1,8 @@
 package org.chernovia.lib.zugserv.web.manual;
 
 import java.io.IOException;
-import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.UnknownHostException;
-import java.util.ArrayList;
 import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -54,13 +51,13 @@ public class ManualWebSockServ implements ZugServ, Runnable {
 	}
 
 	@Override
-	public void broadcast(String type, String msg) {
+	public void broadcast(ZugFields.ServMsgType  type, String msg) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void tch(int ch, String type, String msg) {
+	public void tch(int channelNumber, ZugFields.ServMsgType type, String msg) {
 		// TODO Auto-generated method stub
 		
 	}
@@ -71,7 +68,7 @@ public class ManualWebSockServ implements ZugServ, Runnable {
 	}
 
 	@Override
-	public ServType getType() { return ZugServ.ServType.TYPE_WEBSOCK; }
+	public ServType getType() { return ZugServ.ServType.WEBSOCK; }
 
 	@Override
 	public int getMaxConnections() {

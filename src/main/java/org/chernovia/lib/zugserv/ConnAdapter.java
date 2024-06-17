@@ -58,7 +58,7 @@ public abstract class ConnAdapter implements Connection {
 	public Ban getBan() { return ban; }
 
 	@Override
-	public void ban(long t,long id) { ban = new Ban(getID(),t,getAddress(),id); }
+	public void ban(long t,Connection conn) { ban = new Ban(getID(),t,getAddress(),conn); }
 	
 	@Override
 	public boolean isFlooding(int limit, long span) { return false; }

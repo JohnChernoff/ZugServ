@@ -81,13 +81,13 @@ public class SSLServ implements ZugServ, Runnable {
 	}
 
 	@Override
-	public void broadcast(String type, String msg) {
+	public void broadcast(ZugFields.ServMsgType  type, String msg) {
 		// TODO Auto-generated method stub
 		
 	}
 
 	@Override
-	public void tch(int ch, String type, String msg) {
+	public void tch(int channelNumber, ZugFields.ServMsgType type, String msg) {
 		// TODO Auto-generated method stub
 		
 	}
@@ -98,7 +98,7 @@ public class SSLServ implements ZugServ, Runnable {
 	}
 
 	@Override
-	public ServType getType() { return ZugServ.ServType.TYPE_WEBSOCK; }
+	public ServType getType() { return ZugServ.ServType.WEBSOCK; }
 
 	@Override
 	public int getMaxConnections() {

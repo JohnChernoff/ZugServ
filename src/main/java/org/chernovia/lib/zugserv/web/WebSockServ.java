@@ -2,6 +2,7 @@ package org.chernovia.lib.zugserv.web;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;
+import java.util.List;
 import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -32,8 +33,9 @@ public class WebSockServ extends WebSocketServer implements ZugServ {
 	public ConnListener getConnListener() { return connListener; }
 
 	@Override
-	public Vector<Connection> getAllConnections(boolean active) {
-		return connections;
+	public List<Connection> getAllConnections(boolean active) {
+		if (active) return connections.stream().filter(connection -> connection.getStatus().equals(Connection.Status.STATUS_OK)).toList();
+		else return connections;
 	}
 	
 	@Override
@@ -100,13 +102,13 @@ public class WebSockServ extends WebSocketServer implements ZugServ {
 	public boolean isPaused() { return paused; }	
 	
 	@Override
-	public ServType getType() { return ZugServ.ServType.TYPE_WEBSOCK; }
+	public ServType getType() { return ZugServ.ServType.WEBSOCK; }
 
 	@Override
-	public void broadcast(String type, String msg) {}
+	public void broadcast(ZugFields.ServMsgType type, String msg) {}
 
 	@Override
-	public void tch(int ch, String type, String msg) {}
+	public void tch(int channelNumber, ZugFields.ServMsgType  type, String msg) {}
 
 	@Override
 	public int getMaxConnections() { return 0; }

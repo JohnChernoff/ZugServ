@@ -185,10 +185,10 @@ abstract public class ZugArea extends ZugRoom {
     public String getOpt(Enum<?> field, String def) {
         return getOptTxt(field.name()).orElse(def);
     }
-    public Optional<Integer> getOptInt(String field) { return ZugManager.getIntTree(options,field,ZugFields.VAL); }
-    public Optional<Double> getOptDbl(String field) { return ZugManager.getDoubleTree(options,field,ZugFields.VAL); }
-    public Optional<String> getOptTxt(String field) { return ZugManager.getStringTree(options,field,ZugFields.VAL); }
-    public Optional<Boolean> getOptBool(String field) { return ZugManager.getBoolTree(options,field,ZugFields.VAL);}
+    public Optional<Integer> getOptInt(String field) { return ZugHandler.getIntTree(options,field,ZugFields.VAL); }
+    public Optional<Double> getOptDbl(String field) { return ZugHandler.getDoubleTree(options,field,ZugFields.VAL); }
+    public Optional<String> getOptTxt(String field) { return ZugHandler.getStringTree(options,field,ZugFields.VAL); }
+    public Optional<Boolean> getOptBool(String field) { return ZugHandler.getBoolTree(options,field,ZugFields.VAL);}
 
     public void setOptions(ZugUser user, JsonNode node) {
         if (user.equals(creator)) options = (ObjectNode)node; else err(user,"Permission denied(not creator)");
@@ -241,20 +241,20 @@ abstract public class ZugArea extends ZugRoom {
         else if (o instanceof Double d) { //ZugManager.log(field + " -> adding double: " + d);
             node.put(ZugFields.VAL,d);
             if (minVal instanceof Double minDbl) node.put(ZugFields.MIN,minDbl);
-            else ZugManager.getDoubleTree(options,field,ZugFields.MIN).ifPresent(min -> node.put(ZugFields.MIN,min));
+            else ZugHandler.getDoubleTree(options,field,ZugFields.MIN).ifPresent(min -> node.put(ZugFields.MIN,min));
             if (maxVal instanceof Double maxDbl) node.put(ZugFields.MAX,maxDbl);
-            else ZugManager.getDoubleTree(options,field,ZugFields.MAX).ifPresent(max -> node.put(ZugFields.MAX,max));
+            else ZugHandler.getDoubleTree(options,field,ZugFields.MAX).ifPresent(max -> node.put(ZugFields.MAX,max));
             if (incVal instanceof Double inc) node.put(ZugFields.INC,inc);
-            else ZugManager.getDoubleTree(options,field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
+            else ZugHandler.getDoubleTree(options,field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
         }
         else if (o instanceof Integer i) { //ZugManager.log(field + " -> adding int: " + i);
             node.put(ZugFields.VAL,i);
             if (minVal instanceof Integer minInt) node.put(ZugFields.MIN,minInt);
-            else ZugManager.getIntTree(options,field,ZugFields.MIN).ifPresent(min -> node.put(ZugFields.MIN,min));
+            else ZugHandler.getIntTree(options,field,ZugFields.MIN).ifPresent(min -> node.put(ZugFields.MIN,min));
             if (maxVal instanceof Integer maxInt) node.put(ZugFields.MAX,maxInt);
-            else ZugManager.getIntTree(options,field,ZugFields.MAX).ifPresent(max -> node.put(ZugFields.MAX,max));
+            else ZugHandler.getIntTree(options,field,ZugFields.MAX).ifPresent(max -> node.put(ZugFields.MAX,max));
             if (incVal instanceof Integer inc) node.put(ZugFields.INC,inc);
-            else ZugManager.getDoubleTree(options,field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
+            else ZugHandler.getDoubleTree(options,field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
         }
         return node;
     }
@@ -274,7 +274,7 @@ abstract public class ZugArea extends ZugRoom {
         super.spamX(t,msg,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(ZugManager.packType(t),ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,title));
+            else conn.tell(ZugHandler.packType(t),ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,title));
         }
     }
 
@@ -283,7 +283,7 @@ abstract public class ZugArea extends ZugRoom {
         super.spamX(t,msgNode,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(ZugManager.packType(t),msgNode.put(ZugFields.TITLE,title));
+            else conn.tell(ZugHandler.packType(t),msgNode.put(ZugFields.TITLE,title));
         }
     }
 

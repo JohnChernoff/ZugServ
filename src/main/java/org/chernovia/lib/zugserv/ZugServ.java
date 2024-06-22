@@ -1,5 +1,7 @@
 package org.chernovia.lib.zugserv;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import java.util.List;
 
 /**
@@ -12,32 +14,27 @@ public interface ZugServ {
 	enum ServType {SOCK, WEBSOCK, IRC, TWITCH, DISCORD, UNKNOWN}
 
 	/**
-	 * Denotes a nonexistent channel.
-	 */
-	int NO_CHAN = -1;
-
-	/**
-	 *
+	 * Returns a list of all Connections (conditionally filtered by connection status)
 	 * @param active returns only whatever the implmenting server considers "active" connections.
 	 * @return A list of all connected users.
 	 */
 	List<Connection> getAllConnections(boolean active);
 
 	/**
-	 * Send a message to all connected users.
-	 * @param type the server message type
+	 * Send an alphanumeric message to all connected users.
+	 * @param type the enumerated server message type
 	 * @param msg a plaintext message
+	 * @param active if true, sends only to "active" users
 	 */
-	void broadcast(ZugFields.ServMsgType type,String msg);
+	void broadcast(Enum<?> type,String msg, boolean active);
 
 	/**
-	 * Send a message to a channel. Currently not well supported.
-	 * @param channelNumber a number uniquely identifying a given channel (typically an array index)
-	 * @param type the server message type
-	 * @param msg a plaintext message
+	 * Send a JSON-encoded message to all connected users.
+	 * @param type the enumerated server message type
+	 * @param msg a JSON-encoded message
+	 * @param active if true, sends only to "active" users
 	 */
-	void tch(int channelNumber, ZugFields.ServMsgType type, String msg);
-
+	void broadcast(Enum<?> type, JsonNode msg, boolean active);
 
 	/**
 	 * Starts the server, which typically means to begin listening for incoming connections, etc.
@@ -52,8 +49,8 @@ public interface ZugServ {
 	boolean isRunning();
 
 	/**
-	 * Pauses or unpauses (resumes) the server, depending on the paused parameter.
-	 * @param paused
+	 * Pauses or unpauses (resumes) the server.
+	 * @param paused true for paused, false for unpaused/resumed
 	 */
 	void setPause(boolean paused);
 
@@ -64,10 +61,18 @@ public interface ZugServ {
 	 * @return the server transport type
 	 */
 	ServType getType();
+
+	/**
+	 * Returns the maximum number of allowed connections.
+	 * @return number of connections
+	 */
 	int getMaxConnections();
+
+	/**
+	 * Sets the maximum number of allowed connections.
+	 * @param c number of connections
+	 */
 	void setMaxConnections(int c);
-	int getMaxChannels();
-	void setMaxChannels(int c);
 
 	/**
 	 * Returns the listener of this server (generally a ZugHandler or ZugManager)

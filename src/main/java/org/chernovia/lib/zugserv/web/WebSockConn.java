@@ -1,10 +1,8 @@
 package org.chernovia.lib.zugserv.web;
 
-//import java.util.logging.Logger;
 import java.net.InetAddress;
 import java.util.logging.Level;
 import java.util.logging.Logger;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -16,12 +14,11 @@ public class WebSockConn extends ConnAdapter {
 	private static final ObjectMapper mapper = new ObjectMapper();
 	private final org.java_websocket.WebSocket socket;
 	private InetAddress address;
-	//private ConnListener listener;
-	
-	public WebSockConn(org.java_websocket.WebSocket sock) { //, ConnListener l
+
+	public WebSockConn(org.java_websocket.WebSocket sock) {
 		socket = sock;
 		setAddress(sock.getRemoteSocketAddress().getAddress());
-		setID(getAddress().hashCode()); //listener = l; setHandle(Connection.UNKNOWN_HANDLE);
+		setID(getAddress().hashCode());
 	}
 	
 	public org.java_websocket.WebSocket getSock() { return socket; }
@@ -42,14 +39,14 @@ public class WebSockConn extends ConnAdapter {
 	public InetAddress getAddress() { return address; }
 
 	@Override
-	public void tell(String type, String msg) {
+	public void tell(Enum<?> type, String msg) {
 		ObjectNode node = mapper.createObjectNode(); node.put(ZugFields.MSG, msg); tell(type,node);
 	}
 
 	@Override
-	public void tell(String type, JsonNode data) { //logger.log(Level.INFO,"Sending: " + data);
+	public void tell(Enum<?> type, JsonNode data) { //logger.log(Level.INFO,"Sending: " + data);
 		ObjectNode node = mapper.createObjectNode();
-		node.put(ZugFields.TYPE, type); node.set(ZugFields.DATA, data);
+		node.put(ZugFields.TYPE, type.name()); node.set(ZugFields.DATA, data);
 		if (!socket.isClosed()) {
 			socket.send(node.toString());
 		}

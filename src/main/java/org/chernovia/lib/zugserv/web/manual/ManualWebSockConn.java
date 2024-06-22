@@ -142,7 +142,7 @@ public class ManualWebSockConn extends ConnAdapter implements Runnable {
 		while (running) {
 			try {
 				if (in.available() > 0)
-					listener.newMsg(this, ZugServ.NO_CHAN, decode(in.readNBytes(in.available())));
+					listener.newMsg(this, decode(in.readNBytes(in.available())));
 			} catch (IOException | IllegalArgumentException e) {
 				close(e.getMessage());
 			}
@@ -166,14 +166,14 @@ public class ManualWebSockConn extends ConnAdapter implements Runnable {
 	public InetAddress getAddress() { return address; }
 
 	@Override
-	public void tell(String type, String msg) {
+	public void tell(Enum<?> type, String msg) {
 		ObjectNode node = mapper.createObjectNode(); node.put("msg", msg); tell(type,node);			
 	}
 
 	@Override
-	public void tell(String type, JsonNode msg) { //logger.log(Level.INFO,"Sending: " + msg);
+	public void tell(Enum<?> type, JsonNode msg) { //logger.log(Level.INFO,"Sending: " + msg);
 		ObjectNode node = mapper.createObjectNode();
-		node.put("type", type); node.set("data", msg);
+		node.put("type", type.name()); node.set("data", msg);
 		if (!socket.isClosed()) {
 			try { out.write(encode(node.toString())); } 
 			catch (IOException e) { close(e.getMessage()); }

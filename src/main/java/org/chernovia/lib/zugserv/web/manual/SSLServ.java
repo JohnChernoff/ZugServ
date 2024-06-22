@@ -4,6 +4,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.InetAddress;
 import javax.net.ssl.*;
+import com.fasterxml.jackson.databind.JsonNode;
 import org.chernovia.lib.zugserv.web.WebSockServ;
 import java.net.UnknownHostException;
 import java.security.KeyStore;
@@ -52,9 +53,6 @@ public class SSLServ implements ZugServ, Runnable {
             try {
                 SSLSocket newSocket = (SSLSocket)serverSocket.accept(); //TODO: fix below
                 logger.log(Level.INFO,"New socket creation at: " + newSocket.getInetAddress());
-                //WebSockConn conn = new WebSockConn((WebSocket)newSocket,connListener);
-                //connections.add(conn);
-                //new Thread(conn).start();
             } catch (IOException e) {
                 logger.log(Level.WARNING,"IO EXCEPTION OCCURED WHEN LISTENING FOR CHAT CLIENTS!");
                 e.printStackTrace();
@@ -81,15 +79,11 @@ public class SSLServ implements ZugServ, Runnable {
 	}
 
 	@Override
-	public void broadcast(ZugFields.ServMsgType  type, String msg) {
-		// TODO Auto-generated method stub
-		
+	public void broadcast(Enum<?> type, String msg, boolean active) {
 	}
 
 	@Override
-	public void tch(int channelNumber, ZugFields.ServMsgType type, String msg) {
-		// TODO Auto-generated method stub
-		
+	public void broadcast(Enum<?> type, JsonNode msg, boolean active) {
 	}
 
 	@Override
@@ -108,18 +102,6 @@ public class SSLServ implements ZugServ, Runnable {
 
 	@Override
 	public void setMaxConnections(int c) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public int getMaxChannels() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	@Override
-	public void setMaxChannels(int c) {
 		// TODO Auto-generated method stub
 		
 	}

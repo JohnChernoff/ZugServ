@@ -55,14 +55,14 @@ public class SSLConn extends ConnAdapter implements Runnable {
 	}
 
 	@Override
-	public void tell(String type, String msg) {
+	public void tell(Enum<?> type, String msg) {
 		ObjectNode node = mapper.createObjectNode(); node.put("msg", msg); tell(type,node);	
 	}
 
 	@Override
-	public void tell(String type, JsonNode msg) {
+	public void tell(Enum<?> type, JsonNode msg) {
 		ObjectNode node = mapper.createObjectNode();
-		node.put("type", type); node.set("data", msg);
+		node.put("type", type.name()); node.set("data", msg);
 		if (!socket.isClosed()) {
 			try { writer.write(node.toString()); } 
 			catch (IOException e) { close(e.getMessage()); }
@@ -73,7 +73,7 @@ public class SSLConn extends ConnAdapter implements Runnable {
 	public void run() {
 		while (running) {
 			try {
-				listener.newMsg(this, ZugServ.NO_CHAN, reader.readLine());
+				listener.newMsg(this, reader.readLine());
 			} 
 			catch (IOException | IllegalArgumentException e) { close(e.getMessage()); }
 		}

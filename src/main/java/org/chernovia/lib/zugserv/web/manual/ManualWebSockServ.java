@@ -6,6 +6,8 @@ import java.net.Socket;
 import java.util.Vector;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
+import com.fasterxml.jackson.databind.JsonNode;
 import org.chernovia.lib.zugserv.*;
 import org.chernovia.lib.zugserv.web.*;
 
@@ -51,24 +53,20 @@ public class ManualWebSockServ implements ZugServ, Runnable {
 	}
 
 	@Override
-	public void broadcast(ZugFields.ServMsgType  type, String msg) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public void tch(int channelNumber, ZugFields.ServMsgType type, String msg) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
 	public void startSrv() {
 		new Thread(this).start();
 	}
 
 	@Override
 	public ServType getType() { return ZugServ.ServType.WEBSOCK; }
+
+	@Override
+	public void broadcast(Enum<?> type, String msg, boolean active) {
+	}
+
+	@Override
+	public void broadcast(Enum<?> type, JsonNode msg, boolean active) {
+	}
 
 	@Override
 	public int getMaxConnections() {
@@ -78,18 +76,6 @@ public class ManualWebSockServ implements ZugServ, Runnable {
 
 	@Override
 	public void setMaxConnections(int c) {
-		// TODO Auto-generated method stub
-		
-	}
-
-	@Override
-	public int getMaxChannels() {
-		// TODO Auto-generated method stub
-		return 0;
-	}
-
-	@Override
-	public void setMaxChannels(int c) {
 		// TODO Auto-generated method stub
 		
 	}

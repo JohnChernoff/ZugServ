@@ -17,17 +17,20 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
 
     final ConcurrentHashMap<ZugUser.UniqueName,Occupant> occupants = new ConcurrentHashMap<>();
 
-    public Optional<Occupant> addOrGetOccupant(Occupant occupant) { //TODO: should ZugManager call this?
-        return Optional.ofNullable(occupants.putIfAbsent(occupant.user.getUniqueName(),occupant));
+    public boolean addOccupant(Occupant occupant) { //TODO: should ZugManager call this?
+        if (occupant.isClone()) return false;
+        if (occupants.putIfAbsent(occupant.getUser().getUniqueName(),occupant) == null) {
+            updateOccupants(); return true;
+        }
+        return false;
     }
 
     public void rejoin(Occupant occupant) {
-        err(occupant.user, "Already joined");
+        err(occupant.getUser(), "Already joined");
     }
 
-    public Optional<Occupant> dropOccupant(Occupant occupant) {
-        occupant.setArea(null);
-        return dropOccupant(occupant.user);
+    public Optional<Occupant> dropOccupant(Occupant occupant) { //occupant.setArea(null);
+        return dropOccupant(occupant.getUser());
     }
     public Optional<Occupant> dropOccupant(ZugUser user) {
         return Optional.ofNullable(occupants.remove(user.getUniqueName()));
@@ -101,7 +104,7 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
                     occupant.tell(t,msg);
                 }
             }
-            else if (!occupant.away) occupant.tell(t,msg);
+            else if (!occupant.isAway()) occupant.tell(t,msg);
         }
     }
 
@@ -111,7 +114,7 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
                 if (Arrays.stream(exclude).noneMatch(o -> o.equals(occupant))) {
                     occupant.tell(t, msgNode);
                 }
-            } else if (!occupant.away) occupant.tell(t, msgNode);
+            } else if (!occupant.isAway()) occupant.tell(t, msgNode);
         });
     }
 

@@ -53,7 +53,7 @@ abstract public class ZugArea extends ZugRoom {
     String password;
     ZugUser creator;
     final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
-    final Set<ZugUser.UniqueName> banList = Collections.synchronizedSet(new HashSet<>());
+    final List<Ban> banList = new ArrayList<>();
     ObjectNode options = ZugUtils.newJSON();
 
     boolean exists = true;
@@ -94,7 +94,9 @@ abstract public class ZugArea extends ZugRoom {
         return (password.equals(ZugFields.UNKNOWN_STRING) || pwd.equals(password));
     }
 
-    public boolean isBanned(ZugUser.UniqueName name) { return banList.contains(name); }
+    public boolean isBanned(ZugUser user) {
+        return banList.stream().anyMatch(ban -> ban.inEffect(user));
+    }
 
     public boolean isOccupant(Connection conn) {
         for (Occupant occupant : getOccupants()) {
@@ -119,11 +121,11 @@ abstract public class ZugArea extends ZugRoom {
 
     public boolean addObserver(Connection conn) {
         if (conn == null || isOccupant(conn,false)) return false; //(isOccupant(conn,true))
-        conn.tell(ZugFields.ServMsgType.obs.name(),ZugUtils.newJSON().put(ZugFields.TITLE,title));
+        conn.tell(ZugFields.ServMsgType.obs,ZugUtils.newJSON().put(ZugFields.TITLE,title));
         return observers.add(conn);
     }
     public boolean removeObserver(Connection conn) {
-        if (conn != null) conn.tell(ZugFields.ServMsgType.unObs.name(),ZugUtils.newJSON().put(ZugFields.TITLE,title));
+        if (conn != null) conn.tell(ZugFields.ServMsgType.unObs,ZugUtils.newJSON().put(ZugFields.TITLE,title));
         return observers.remove(conn);
     }
     public boolean isObserver(Connection conn) {
@@ -134,20 +136,19 @@ abstract public class ZugArea extends ZugRoom {
         new Error("No Default: " + field.name()).printStackTrace();
     }
 
-    public void banOccupant(ZugUser bannor, ZugUser.UniqueName uniqueName, boolean drop) {
+    public void banOccupant(ZugUser bannor, ZugUser.UniqueName uniqueName, long t, boolean drop) {
         Occupant occupant = getOccupant(uniqueName).orElse(null);
         if (occupant == null) {
             err(bannor, "Not found: " + uniqueName.name());
         }
-        else banOccupant(bannor,occupant,drop);
+        else banOccupant(bannor,occupant,t,drop);
     }
 
-    public void banOccupant(ZugUser bannor, Occupant occupant, boolean drop) {
+    public void banOccupant(ZugUser bannor, Occupant occupant, long t, boolean drop) {
         if (getCreator().equals(bannor)) {
-            banList.add(occupant.user.getUniqueName());
-            occupant.banned = true;
+            banList.add(new Ban(occupant.getUser(),t,bannor));
             if (drop) dropOccupant(occupant);
-            spam(occupant.user.getName() + " has been banned");
+            spam(occupant.getUser().getName() + " has been banned");
         }
         else {
             err(bannor,"Only this area's creator can ban");
@@ -270,11 +271,17 @@ abstract public class ZugArea extends ZugRoom {
     }
 
     @Override
+    public boolean addOccupant(Occupant occupant) {
+        if (super.addOccupant(occupant)) observers.remove(occupant.getUser().getConn()); else return false;
+        return true;
+    }
+
+    @Override
     public void spamX(Enum<?> t, String msg, Occupant... ignoreList) {
         super.spamX(t,msg,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(ZugHandler.packType(t),ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,title));
+            else conn.tell(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,title));
         }
     }
 
@@ -283,7 +290,7 @@ abstract public class ZugArea extends ZugRoom {
         super.spamX(t,msgNode,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(ZugHandler.packType(t),msgNode.put(ZugFields.TITLE,title));
+            else conn.tell(t,msgNode.put(ZugFields.TITLE,title));
         }
     }
 

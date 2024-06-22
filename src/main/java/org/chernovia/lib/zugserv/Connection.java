@@ -12,7 +12,6 @@ public interface Connection {
 	enum Status {
 		STATUS_DISCONNECTED, STATUS_ERR, STATUS_OK, STATUS_LOGIN, STATUS_PASS, STATUS_CLOSING
 	}
-	//String UNKNOWN_HANDLE = "?";
 
 	/**
 	 *
@@ -70,19 +69,6 @@ public interface Connection {
 	void automate(boolean a);
 
 	/**
-	 * Bans a user for a given time and bannor(moderator) Connection.
-	 * @param t
-	 * @param bannor
-	 */
-	void ban(long t,Connection bannor);
-
-	/**
-	 *
-	 * @return any Ban currently in effect for this Connection
-	 */
-	Ban getBan();
-
-	/**
 	 * Indicates if the Connection is currently flooding/spamming the server.  Currently unimplemented.
 	 * @param limit the acceptable amount of messages per a given timespan
 	 * @param span the timespan in milliseconds
@@ -98,17 +84,17 @@ public interface Connection {
 
 	/**
 	 * Sends an ASCII-based message to a Connection.
-	 * @param type the category/type of message (such as "alert","password_request",and so forth)
+	 * @param type an enumeration of the category/type of message (such as "alert","password_request",and so forth)
 	 * @param msg an alphanumeric message
 	 */
-	void tell(String type, String msg);
+	void tell(Enum<?> type, String msg);
 
 	/**
 	 * Sends JSON formatted data to a Connection.
-	 * @param type the category/type of message (such as "update","error",etc.)
+	 * @param type an enumeration of the category/type of message (such as "update","error",etc.)
 	 * @param msg the JSON data to be sent
 	 */
-	void tell(String type, JsonNode msg); //TODO: make type an enum?
+	void tell(Enum<?> type, JsonNode msg); //TODO: make type an enum?
 
 	/**
 	 *
@@ -121,22 +107,6 @@ public interface Connection {
 	 * @param status the status to set a Connection to
 	 */
 	void setStatus(Status status);
-
-	/**
-	 *
-	 * @return a list of currently supported channel ID numbers.  Currently unsupported.
-	 */
-	List<Integer> getChannels();
-
-	/**
-	 *
-	 * @return the number of channel the Connection is currently tuned to.
-	 */
-	int getCurrentChannel();
-
-	void setCurrentChannel(int chan);
-	void joinChan(int chan);
-	void partChan(int chan);
 
 	/**
 	 *

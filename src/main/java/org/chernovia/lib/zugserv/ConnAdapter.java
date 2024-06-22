@@ -1,13 +1,10 @@
 package org.chernovia.lib.zugserv;
 
-import java.util.ArrayList;
-
+/**
+ * The ConnAdapter Class performs some generic implementations of the ZugServ interface.
+ */
 public abstract class ConnAdapter implements Connection {
 	
-	private final ArrayList<Integer> channels = new ArrayList<>();
-	private int currChan = 0;
-	private Ban ban = null;
-	private String handle;
 	private ZugServ server;
 	private boolean auto;
 	private Status status;
@@ -55,19 +52,6 @@ public abstract class ConnAdapter implements Connection {
 	public void automate(boolean a) { auto = a; }
 
 	@Override
-	public Ban getBan() { return ban; }
-
-	@Override
-	public void ban(long t,Connection conn) { ban = new Ban(getID(),t,getAddress(),conn); }
-	
-	@Override
 	public boolean isFlooding(int limit, long span) { return false; }
-	
-	public ArrayList<Integer> getChannels() { return channels;	}
-	public void joinChan(int c) { channels.add(c); }
-	public void partChan(int c) { channels.remove(c); }
-	public int getCurrentChannel() { return currChan; }
-	public void setCurrentChannel(int chan) { currChan = chan; }
-	//public boolean inChan(int c) { return channels.contains(new Integer(c)); }
 
 }

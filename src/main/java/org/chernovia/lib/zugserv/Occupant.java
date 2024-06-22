@@ -2,32 +2,34 @@ package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+/**
+ * An Occupant encapsulates a ZugUser within a ZugArea.
+ */
 abstract public class Occupant implements JSONifier {
 
-    ZugUser user;
+    private ZugUser user;
     public ZugUser getUser() { return user; }
     public void setUser(ZugUser user) { this.user = user; }
-    ZugArea area = null;
-    ZugRoom room = null;
-    boolean isClone = false;
-    boolean muted = false;
-    boolean away = false;
-    boolean banned = false;
+    private final ZugArea area;
+    private ZugRoom room = null;
+    private boolean isClone = false;
+    private boolean muted = false;
+    private boolean away = false;
 
+    /**
+     * Gets the ZugArea the Occupant is currently in.
+     * @return the occupied ZugArea
+     */
     public ZugArea getArea() { return area; }
-    public boolean setArea(ZugArea a) {
-        if (a == null || isClone || area == a) return false;
-        if (area != null) area.dropOccupant(this); //shouldn't occur, really
-        area = a; area.addOrGetOccupant(this);
-        area.observers.remove(user.getConn());
-        return true;
-    }
     public ZugRoom getRoom() { return room; }
-    public boolean setRoom(ZugRoom r) {
-        if (isClone || room == r) return false;
-        if (room != null) room.dropOccupant(this);
-        room = r; room.addOrGetOccupant(this);
-        return true;
+    public void joinRoom(ZugRoom r) {
+        if (r.addOccupant(this)) {
+            room = r;
+            getUser().tell(ZugFields.ServMsgType.joinRoom,r.toJSON());
+        }
+    }
+    public void clearRoom() {
+        room = null; //TODO: send JSON?
     }
 
     public String getName() { return getName(true); }
@@ -56,12 +58,15 @@ abstract public class Occupant implements JSONifier {
 
     public Occupant(ZugUser u, ZugArea a, ZugRoom r) {
         setUser(u);
-        if (a != null && a.getOccupant(u).isPresent()) isClone = true;
-        else {
-            if (a != null && setArea(a)) { //ZugManager.log("Creating Occupant: in " + a.title + ", occupants: " + a.occupants.values().size());
-                a.updateOccupants();
+        area = a;
+        if (area != null) {
+            if (area.getOccupant(u).isPresent()) isClone = true;
+            else if (area.addOccupant(this)) {
+                getUser().tell(ZugFields.ServMsgType.joinArea,area.toJSON());
             }
-            if (r != null && setRoom(r)) r.updateOccupants();
+        }
+        if (!isClone && r != null) {
+            joinRoom(r);
         }
     }
 
@@ -104,7 +109,7 @@ abstract public class Occupant implements JSONifier {
     public ObjectNode toJSON(boolean userOnly) {
         ObjectNode node = ZugUtils.newJSON();
         node.put("away",away);
-        node.put("banned",banned);
+        node.put("banned",getArea().isBanned(getUser()));
         if (!userOnly) {
             node.set(ZugFields.AREA,area != null ? area.toJSON() : null);
             node.set(ZugFields.ROOM,room != null ? room.toJSON() : null);

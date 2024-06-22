@@ -18,15 +18,15 @@ public class ServTest implements ConnListener {
     }
 
     @Override
-    public void newMsg(Connection conn, int channel, String msg) {
-        log(conn.getID() + " on chan " + channel + ": " + msg);
+    public void newMsg(Connection conn, String msg) {
+        log(conn.getID() + ": " + msg);
 
         TestUser user = new TestUser(conn,"New user");
         user.tell(ZugFields.ServMsgType.servMsg,"You said: " + msg);
 
         area = new TestArea("TestArea", user, null); log("Adding: " + user.addArea(area));
 
-        TestOccupant occupant = new TestOccupant(user,area); area.addOrGetOccupant(occupant);
+        TestOccupant occupant = new TestOccupant(user,area); //area.addOrGetOccupant(occupant);
 
         if (occupant.eq(new TestOccupant(user,area))) occupant.err(occupant.toJSON().textValue());
 

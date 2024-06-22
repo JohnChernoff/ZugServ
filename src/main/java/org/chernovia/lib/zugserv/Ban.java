@@ -3,19 +3,18 @@ package org.chernovia.lib.zugserv;
 import java.net.InetAddress;
 
 public class Ban {
-	private long banID;
-	private Connection bannorConn;
+	private ZugUser bannedUser;
+	private ZugUser bannor;
 	private long banStart, banEnd;
-	private InetAddress address;
-	
-	public Ban(long id, long t,InetAddress a, Connection conn) { this(id,System.currentTimeMillis(),t,a,conn); }
-	public Ban(long id, long startTime, long t, InetAddress a, Connection conn) {
-		banID = id; banStart = startTime; 
-		banEnd = startTime + t; address = a;
-		bannorConn = conn;
+
+	public Ban(ZugUser u, long t, ZugUser u2) { this(u,System.currentTimeMillis(),t,u2); }
+	public Ban(ZugUser u, long startTime, long t,ZugUser u2) {
+		bannedUser = u; banStart = startTime;
+		banEnd = startTime + t;
+		bannor = u2;
 	}
 	
-	public Connection getBannor() { return bannorConn; }
+	public ZugUser getBannor() { return bannor; }
 	
 	public void extend(int t) {
 		banEnd = System.currentTimeMillis() + t;
@@ -27,23 +26,28 @@ public class Ban {
 		long t = System.currentTimeMillis();
 		return t > banStart && t < banEnd;
 	}
-	
+
+	public boolean inEffect(ZugUser user) {
+		return inEffect() && bannedUser.equals(user);
+	}
+
+	private boolean addressMatch(InetAddress a) {
+		return addressMatch(a,-1);
+	}
 	private boolean addressMatch(InetAddress a, int level) {
-		if (address == null || a == null) return false;
-		if (level == -1) return a.equals(address);
+		if (bannedUser.getConn().getAddress() == null || a == null) return false;
+		if (level == -1) return a.equals(bannedUser.getConn().getAddress());
 		else {
 			for (int i=0;i<level;i++) {
-				if (a.getAddress()[i] != address.getAddress()[i]) return false;
+				if (a.getAddress()[i] != bannedUser.getConn().getAddress().getAddress()[i]) return false;
 			}
 			return true;
 		}
 	}
 	
-	public boolean match(long id, InetAddress a) { return match(id,a,-1); }
-	public boolean match(long id, InetAddress a, int l) {
-		if (a != null) return addressMatch(a,l);
-		else return id == banID;
+	public boolean match(long id) {
+		return id == bannedUser.getConn().getID();
 	}
 	
-	public String toString() { return banID + ": " + address; }
+	public String toString() { return bannedUser.getUniqueName() + ": " + bannedUser.getConn().getAddress(); }
 }

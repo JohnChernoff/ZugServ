@@ -136,27 +136,15 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         for (ZugUser user : users.values()) user.tell(type,msgNode);
     }
 
-    public void broadcast(Enum<?> type,String msg) {
-        for (Connection conn : serv.getAllConnections(true)) {
-            conn.tell(VERBOSE ? type.name() : String.valueOf(type.ordinal()),msg);
-        }
-    }
-
-    public void broadcast(Enum<?> type,JsonNode msgNode) {
-        for (Connection conn : serv.getAllConnections(true)) {
-            conn.tell(VERBOSE ? type.name() : String.valueOf(type.ordinal()),msgNode);
-        }
-    }
-
     public void tell(Connection conn, Enum<?> type) {
         tell(conn,type,"");
     }
     public void tell(Connection conn, Enum<?> type, String msg) {
-        conn.tell(ZugHandler.packType(type),msg);
+        if (conn != null) conn.tell(type,msg);
     }
 
     public void tell(Connection conn, Enum<?> type, JsonNode msg) {
-        conn.tell(ZugHandler.packType(type),msg);
+        if (conn != null) conn.tell(type,msg);
     }
 
     public void err(ZugUser user,String msg) { if (user != null) err(user.getConn(),msg); }
@@ -188,8 +176,11 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
      * @param source the authentication source, if any
      */
     public abstract void handleLogin(Connection conn, String name, ZugFields.AuthSource source, String token);
+
     public abstract void handleMsg(Connection conn, String type, JsonNode dataNode);
-    public void newMsg(Connection conn, int chan, String msg) {
+
+    @Override
+    public void newMsg(Connection conn, String msg) {
         JsonNode msgNode = ZugUtils.readTree(msg);
         if (msgNode == null) {
             log(Level.WARNING,"Bad JSON message: " + msg); return;
@@ -287,13 +278,6 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         return (VERBOSE ? str.equalsIgnoreCase(field.name()) : str.equals(String.valueOf(field.ordinal())));
     }
 
-    /**
-     * @param field any Enumerated field
-     * @return if VERBOSE, the field name, else the field ordinal value as a String
-     */
-    static String packType(Enum<?> field) {
-        return VERBOSE ? field.name() : String.valueOf((field.ordinal()));
-    }
     static boolean isVerbose() { return VERBOSE; }
     static void setVerbose(boolean b) { VERBOSE = b; }
 

@@ -172,8 +172,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                                                     .ifPresentOrElse(zugArea::rejoin,
                                                             () -> {
                                                                 if (zugArea.occupants.size() < zugArea.getMaxOccupants()) {
-                                                                    handleCreateOccupant(user, zugArea, dataNode)
-                                                                            .ifPresent(occupant -> occupant.tell(ZugFields.ServMsgType.joinArea,zugArea.toJSON()));
+                                                                    handleCreateOccupant(user, zugArea, dataNode);
+                                                                            //.ifPresent(occupant -> occupant.joinArea(zugArea));
                                                                 }
                                                                 else err(user,"Game full: " + title);
                                                             }),
@@ -221,7 +221,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         } else if (equalsType(type, ZugFields.ClientMsgType.ban)) {
             getArea(dataNode).ifPresent(area -> getOccupant(user, dataNode)
                     .flatMap(occupant -> getUniqueName(dataNode.get(ZugFields.NAME)))
-                    .ifPresent(name -> area.banOccupant(user, name, true)));
+                    .ifPresent(name -> area.banOccupant(user, name, 15 * 60 * 1000,true)));
         } else if (equalsType(type, ZugFields.ClientMsgType.getOptions)) {
             getArea(dataNode).ifPresent(area -> area.updateOptions(user));
         } else if (equalsType(type, ZugFields.ClientMsgType.setOptions)) {
@@ -280,7 +280,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public void swapConnection(ZugUser prevUser, Connection newConn) {
-        newConn.tell(ZugFields.ServMsgType.alertMsg.name(),"Already logged in, swapping connections");
+        newConn.tell(ZugFields.ServMsgType.alertMsg,"Already logged in, swapping connections");
         prevUser.setConn(newConn);
         handleLoggedIn(prevUser);
     }

@@ -2,10 +2,13 @@ package org.chernovia.lib.zugserv;
 
 import java.time.Instant;
 
+/**
+ * This Class contains methods for determining if an Object has "timed out", i.e.,
+ * exceeded its alotted time since its last "action".
+ */
 public abstract class Timeoutable {
-
-    int idleTimeout = Integer.MAX_VALUE;
-    long lastActionTimestamp = Instant.now().getEpochSecond();
+    private int idleTimeout = Integer.MAX_VALUE;
+    private long lastActionTimestamp = Instant.now().getEpochSecond();
     public int getIdleTimeout() { return idleTimeout; }
     public void setIdleTimeout(int t) { idleTimeout = t; }
     public long getLastAction() { return lastActionTimestamp; }

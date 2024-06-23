@@ -28,7 +28,7 @@ public class ServTest implements ConnListener {
 
         TestOccupant occupant = new TestOccupant(user,area); //area.addOrGetOccupant(occupant);
 
-        if (occupant.eq(new TestOccupant(user,area))) occupant.err(occupant.toJSON().textValue());
+        if (occupant.eq(new TestOccupant(user,area))) occupant.tell(ZugFields.ServMsgType.errMsg,occupant.toJSON().textValue());
 
         user.tell(ZugFields.ServMsgType.servMsg,user.toJSON());
         user.tell(ZugFields.ServMsgType.reqLogin);

@@ -8,31 +8,71 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 abstract public class Occupant implements JSONifier {
 
     private ZugUser user;
-    public ZugUser getUser() { return user; }
-    public void setUser(ZugUser user) { this.user = user; }
     private final ZugArea area;
     private ZugRoom room = null;
     private boolean isClone = false;
-    private boolean muted = false;
+    private boolean deafened = false;
     private boolean away = false;
+
+    /**
+     * Gets the ZugUser associated with this Occupant.
+     * @return this Occupant's ZugUser
+     */
+    public ZugUser getUser() { return user; }
+
+    /**
+     * Gets the ZugUser associated with this Occupant.
+     * @param user the associated ZugUser
+     */
+    public void setUser(ZugUser user) { this.user = user; }
 
     /**
      * Gets the ZugArea the Occupant is currently in.
      * @return the occupied ZugArea
      */
     public ZugArea getArea() { return area; }
+
+    /**
+     * Gets the ZugRoom (if any) the Occupant is currently in.
+     * @return the occupied ZugRoom, if any, null if none
+     */
     public ZugRoom getRoom() { return room; }
-    public void joinRoom(ZugRoom r) {
+
+    /**
+     * Attemps to joins a ZugRoom.
+     * @param r The room to join
+     * @return true if successful
+     */
+    public boolean joinRoom(ZugRoom r) {
         if (r.addOccupant(this)) {
             room = r;
             getUser().tell(ZugFields.ServMsgType.joinRoom,r.toJSON());
+            return true;
         }
+        return false;
     }
-    public void clearRoom() {
+
+    /**
+     * Leaves a ZugRoom.
+     */
+    public void partRoom() {
         room = null; //TODO: send JSON?
     }
 
+    /**
+     * Gets an Occupant's name.
+     * If there are no other occupants with the same name, returns just the Occupant's name and no source.
+     * Otherwise, returns the Occupant's username and the source joined by the @ character.
+     * @return a String representation of the Occupant's name and (optionally) source
+     */
     public String getName() { return getName(true); }
+
+    /**
+     * Gets an Occupant's name. With smart set to true, works like getName().
+     * Otherwise, gets both Occupant username and source joined by the @ character.
+     * @param smart get Occupant name only when no other Occupant with the same same exists in the Area
+     * @return a String representation of the Occupant's name and (optionally) source
+     */
     public String getName(boolean smart) {
         if (smart && area != null && area.getOccupants()
                 .stream()
@@ -41,21 +81,57 @@ abstract public class Occupant implements JSONifier {
         else return user.getName();
     }
 
+    /**
+     * Indicates if the Occupant is a copy of an existing Occupant in the same ZugArea.
+     * @return true if a clone of a pre-existing Occupant, otherwise false
+     */
     public boolean isClone() { return isClone; }
-    public void setClone(boolean clone) { isClone = clone; }
+
+    /**
+     * Indicates if the Occupant is whatever the ZugArea it occupies considers idle.
+     * @return true if away, otherwise false
+     */
     public boolean isAway() { return !user.isLoggedIn() || away; }
+
+    /**
+     * Sets the away/idle status of an Occupant.
+     * @param b true for away
+     */
     public void setAway(boolean b) { away = b; }
-    public boolean isMuted() {
-        return muted;
-    }
-    public void setMuted(boolean muted) {
-        this.muted = muted;
+
+    /**
+     * Indicates if an Occupant can receive tells.
+     * @return true if deafened
+     */
+    public boolean isDeafened() {
+        return deafened;
     }
 
+    /**
+     * Sets whether an Occupant may receive tells.
+     * @param deafened true to deafen
+     */
+    public void setDeafened(boolean deafened) {
+        this.deafened = deafened;
+    }
+
+    /**
+     * Creates an Occupant and attempts to join an Area.
+     * Upon success, sends a notification to the user and an update to the ZugArea.
+     * @param u the ZugUser associated with this Occupant
+     * @param a the ZugArea to occupy
+     */
     public Occupant(ZugUser u, ZugArea a) {
         this(u,a,null);
     }
 
+    /**
+     * Creates an Occupant and attempts to join an Area.
+     * Upon success, sends a notification to the user and an update to the ZugArea and/or ZugRoom.
+     * @param u the ZugUser associated with this Occupant
+     * @param a the ZugArea to occupy
+     * @param r the ZugRoom to join
+     */
     public Occupant(ZugUser u, ZugArea a, ZugRoom r) {
         setUser(u);
         area = a;
@@ -70,42 +146,67 @@ abstract public class Occupant implements JSONifier {
         }
     }
 
-    public void tell(Enum<?> e) {
-        tell(e,"");
+    /**
+     * Sends a blank message with the indicated type.
+     * The message will automatically include the ZugArea and ZugRoom titles.
+     * @param type the enumerated message type
+     */
+    public void tell(Enum<?> type) {
+        tell(type,"");
     }
 
+    /**
+     * Sends a message with the default type (ZugFields.ServMsgType.servMsg).
+     * The message will automatically include the ZugArea and ZugRoom titles.
+     * @param msg an alphanumeric message
+     */
     public void tell(String msg) {
         tell(ZugFields.ServMsgType.servMsg,msg);
     }
 
-    public void tell(Enum<?> e, String msg) {
+    /**
+     * Sends a message with the indicated type.
+     * The message will automatically include the ZugArea and ZugRoom titles.
+     * @param type the enumerated message type
+     * @param msg an alphanumeric message
+     */
+    public void tell(Enum<?> type, String msg) {
         ObjectNode node = msg.isBlank() ? ZugUtils.newJSON() : ZugUtils.newJSON().put(ZugFields.MSG,msg);
-        if (area != null) node.put(ZugFields.TITLE,area.title);
-        if (room != null) node.put(ZugFields.ROOM,room.title);
-        getUser().tell(e,node);
+        if (area != null) node.put(ZugFields.TITLE,area.getTitle());
+        if (room != null) node.put(ZugFields.ROOM,room.getTitle());
+        getUser().tell(type,node);
     }
 
-    public void tell(Enum<?> e, ObjectNode node) {
-        if (!isMuted()) getUser().tell(e,(ZugUtils.joinNodes(
+    /**
+     * Sends a JSON-formatted message with the indicated type.
+     * The message will automatically include the ZugArea and ZugRoom titles.
+     * @param type the enumerated message type
+     * @param node a JSON-formatted message
+     */
+    public void tell(Enum<?> type, ObjectNode node) {
+        if (!isDeafened()) getUser().tell(type,(ZugUtils.joinNodes(
                 node,
-                area != null ? ZugUtils.newJSON().put(ZugFields.TITLE,area.title) : null,
-                room != null ? ZugUtils.newJSON().put(ZugFields.ROOM,room.title) : null
+                area != null ? ZugUtils.newJSON().put(ZugFields.TITLE,area.getTitle()) : null,
+                room != null ? ZugUtils.newJSON().put(ZugFields.ROOM,room.getTitle()) : null
         )));
     }
 
-    public void msg(String msg) {
-        area.msg(user,msg);
-    }
-
-    public void err(String msg) {
-        area.err(user,msg);
-    }
-
+    /**
+     * Determines if the Occupant has the name UniqueName as another.
+     * @param o the Occupant to compare to
+     * @return true if the same, otherwise false
+     */
     public boolean eq(Occupant o) {
         return user.getUniqueName().equals(o.user.getUniqueName());
     }
 
     public ObjectNode toJSON() { return toJSON(false); }
+
+    /**
+     * Serializes the Occupant to JSON.
+     * @param userOnly excludes ZugArea/ZugRoom information
+     * @return a JSON serialization of the Occupant
+     */
     public ObjectNode toJSON(boolean userOnly) {
         ObjectNode node = ZugUtils.newJSON();
         node.put("away",away);

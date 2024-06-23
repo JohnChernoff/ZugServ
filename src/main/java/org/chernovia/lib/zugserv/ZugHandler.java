@@ -75,7 +75,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     public List<ZugArea> getAreasByUser(ZugUser user) {
         final List<ZugArea> areaList = new Vector<>();
         for (ZugArea area : areas.values()) {
-            if (area.occupants.containsKey(user)) areaList.add(area);
+            if (area.getOccupant(user).isPresent()) areaList.add(area);
         }
         return areaList;
     }
@@ -202,7 +202,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
             log("Disconnected: " + user.getName());
             user.setLoggedIn(false);
         }
-        for (ZugArea area : getAreas()) area.observers.remove(conn);
+        for (ZugArea area : getAreas()) area.removeObserver(conn);
     }
 
     /**

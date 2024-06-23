@@ -6,6 +6,9 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Set;
 
+/**
+ * ZugUser encapsulates a Connection with indentiable data relating to an identifiable (typically logged in/authenticated) user.
+ */
 abstract public class ZugUser extends Timeoutable implements JSONifier {  // long lastMessage = Long.MAX_VALUE;
     private Connection conn;
     private UniqueName uniqueName;

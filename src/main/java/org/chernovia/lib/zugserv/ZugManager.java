@@ -43,7 +43,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public WorkerProc cleanupProc = new WorkerProc(30000L, this::cleanup);
     public synchronized void cleanup() {
         areas.values().stream().filter(Timeoutable::timedOut).forEach(area -> { //handle rooms?
-            area.spam(ZugFields.ServMsgType.servMsg,"Closing " + area.title + " (reason: timeout)");
+            area.spam(ZugFields.ServMsgType.servMsg,"Closing " + area.getTitle() + " (reason: timeout)");
             areaFinished(area);
         });
         users.values().stream().filter(user -> user.timedOut()
@@ -171,7 +171,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                                     .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
                                                     .ifPresentOrElse(zugArea::rejoin,
                                                             () -> {
-                                                                if (zugArea.occupants.size() < zugArea.getMaxOccupants()) {
+                                                                if (zugArea.numOccupants() < zugArea.getMaxOccupants()) {
                                                                     handleCreateOccupant(user, zugArea, dataNode);
                                                                             //.ifPresent(occupant -> occupant.joinArea(zugArea));
                                                                 }
@@ -217,7 +217,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                                             () -> err(user.getConn(), ERR_USER_NOT_FOUND)),
                             () -> updateUser(user.getConn(), user));
         } else if (equalsType(type, ZugFields.ClientMsgType.setMute)) {
-            getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.MUTED).ifPresent(occupant::setMuted));
+            getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.MUTED).ifPresent(occupant::setDeafened));
         } else if (equalsType(type, ZugFields.ClientMsgType.ban)) {
             getArea(dataNode).ifPresent(area -> getOccupant(user, dataNode)
                     .flatMap(occupant -> getUniqueName(dataNode.get(ZugFields.NAME)))
@@ -327,7 +327,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public void areaFinished(ZugArea area) {
-        area.exists = false;
+        area.setExistence(false);
         removeArea(area);
         handleAreaListUpdate(area, ZugFields.AreaChange.deleted);
     }

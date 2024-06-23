@@ -5,36 +5,78 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.*;
 
+/**
+ * ZugArea is a fuller featured extension of ZugRoom that includes passwords, bans, options, and observers.
+ */
 abstract public class ZugArea extends ZugRoom {
 
-    public Map<Enum<?>,Option> defaults = new HashMap<>();
+    private Map<Enum<?>,Option> defaults = new HashMap<>();
+
+    /**
+     * Sets a default Option value.
+     * @param field An anumerated field describing the Option
+     * @param option an Option value
+     */
     public void setDefault(Enum<?> field, Option option) {
         defaults.put(field,option);
     }
+
+    /**
+     * Initializes the area's options to their default values.
+     */
     public void initDefaults() {
         for (Enum<?> field : defaults.keySet()) options.set(field.name(),defaults.get(field).toJSON());
     }
 
+    /**
+     * The Option class represents a user settable value that can be either a String, a boolean, an integer, or a double.
+     */
     public class Option implements JSONifier {
         public final String text;
         public final boolean boolVal;
         public final int intVal, intMin, intMax, intInc;
         public final double dblVal, dblMin, dblMax, dblInc;
+
+        /**
+         * Creates a new String Option.
+         * @param t the String text
+         */
         public Option(String t) {
             text = t; boolVal = false;
             intVal = intMin = intMax = intInc = Integer.MIN_VALUE;
             dblVal = dblMin = dblMax = dblInc = Double.MIN_VALUE;
         }
+
+        /**
+         * Creates a new boolean Option.
+         * @param bool the boolean value
+         */
         public Option(boolean bool) {
             text = null; boolVal = bool;
             intVal = intMin = intMax = intInc = Integer.MIN_VALUE;
             dblVal = dblMin = dblMax = dblInc = Double.MIN_VALUE;
         }
+
+        /**
+         * Creates a new integer Option.
+         * @param i the integer value
+         * @param min the minimum integer value
+         * @param max the maximum integer value
+         * @param inc the granularity allowed between the minimum and maximum values (e.g., 2 with min/max values of 0/10 would allow for 0,2,4,6,8,10)
+         */
         public Option(int i, int min, int max, int inc) {
             text = null; boolVal = false;
             intVal = i; intMin = min; intMax = max; intInc = inc;
             dblVal = dblMin = dblMax = dblInc = Double.MIN_VALUE;
         }
+
+        /**
+         * Creates a new double Option.
+         * @param d the double value
+         * @param min the minimum double value
+         * @param max the maximum double value
+         * @param inc the granularity allowed between the minimum and maximum values (e.g., .5 with min/max values of 0/2.5 would allow for 0,.5,1,1.5,2,2.5)
+         */
         public Option(double d, double min, double max, double inc) {
             text = null; boolVal = false;
             intVal = intMin = intMax = intInc = Integer.MIN_VALUE;
@@ -49,27 +91,55 @@ abstract public class ZugArea extends ZugRoom {
         }
     }
 
-    final AreaListener listener;
-    String password;
-    ZugUser creator;
-    final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
-    final List<Ban> banList = new ArrayList<>();
-    ObjectNode options = ZugUtils.newJSON();
+    final private AreaListener listener;
+    private String password;
+    private ZugUser creator;
+    private final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
+    private final List<Ban> banList = new ArrayList<>();
+    private ObjectNode options = ZugUtils.newJSON();
+    private boolean exists = true;
 
-    boolean exists = true;
-
+    /**
+     * Constructs a ZugArea with a title, creator, and AreaListener.
+     * @param t the title
+     * @param c the creator
+     * @param l an AreaListener
+     */
     public ZugArea(String t, ZugUser c, AreaListener l) {
         this(t,ZugFields.UNKNOWN_STRING,c, l);
     }
 
+    /**
+     * Constructs a ZugArea with a title, password, creator, and AreaListener.
+     * @param t the title
+     * @param p the password
+     * @param c the creator
+     * @param l an AreaListener
+     */
     public ZugArea(String t, String p, ZugUser c, AreaListener l) {
-        title = t; password = p; creator = c; listener = l; //l.areaCreated(this);
+        setTitle(t); password = p; creator = c; listener = l; //l.areaCreated(this);
     }
 
+    /**
+     * Sets the existance of the ZugArea (i.e., if it's any longer being used)
+     * @param e true for existence
+     */
+    public void setExistence(boolean e) {
+        exists = e;
+    }
+
+    /**
+     * Indicates if the ZugArea "exists" (i.e., if it's any longer being used)
+     * @return true for existence
+     */
     public boolean exists() {
         return exists;
     }
 
+    /**
+     * Gets the AreaListener for the area (typically a species of ZugHandler or ZugManager).
+     * @return the area's AreaListener
+     */
     public AreaListener getListener() {
         return listener;
     }
@@ -94,48 +164,60 @@ abstract public class ZugArea extends ZugRoom {
         return (password.equals(ZugFields.UNKNOWN_STRING) || pwd.equals(password));
     }
 
+    /**
+     * Indicates if any bans on the user are currently in effect.
+     * @param user the user
+     * @return true if banned
+     */
     public boolean isBanned(ZugUser user) {
         return banList.stream().anyMatch(ban -> ban.inEffect(user));
     }
 
-    public boolean isOccupant(Connection conn) {
-        for (Occupant occupant : getOccupants()) {
-           Connection c = occupant.getUser().getConn();
-           if (c != null && (c.equals(conn) || c.isSameOrigin(conn))) return true;
-        }
-        return false;
-    }
-
-    public boolean isOccupant(Connection conn, boolean byOrigin) {
-        for (Occupant occupant : getOccupants()) {
-            Connection c = occupant.getUser().getConn();
-            if (c != null) {
-                if (byOrigin) {
-                    if (c.isSameOrigin(conn)) return true;
-                }
-                else if (c.equals(conn)) return true;
-            }
-        }
-        return false;
-    }
-
+    /**
+     * Adds an observer by Connection.
+     * @param conn the observing Connection
+     * @return false if Connection is null or already represents an Occupant
+     */
     public boolean addObserver(Connection conn) {
         if (conn == null || isOccupant(conn,false)) return false; //(isOccupant(conn,true))
-        conn.tell(ZugFields.ServMsgType.obs,ZugUtils.newJSON().put(ZugFields.TITLE,title));
+        conn.tell(ZugFields.ServMsgType.obs,ZugUtils.newJSON().put(ZugFields.TITLE,getTitle()));
         return observers.add(conn);
     }
+
+    /**
+     * Removes an observing Connection.
+     * @param conn the Connection
+     * @return true if successful
+     */
     public boolean removeObserver(Connection conn) {
-        if (conn != null) conn.tell(ZugFields.ServMsgType.unObs,ZugUtils.newJSON().put(ZugFields.TITLE,title));
+        if (conn != null) conn.tell(ZugFields.ServMsgType.unObs,ZugUtils.newJSON().put(ZugFields.TITLE,getTitle()));
         return observers.remove(conn);
     }
+
+    /**
+     * Indicates if a given Connection is currently observing the area.
+     * @param conn a Connection
+     * @return true if observing
+     */
     public boolean isObserver(Connection conn) {
         return observers.contains(conn);
     }
 
+    /**
+     * Called upon attempted access of a nonexistent Option default value.
+     * @param field the Option's descriptor field
+     */
     void handleNoDefault(Enum<?> field) {
         new Error("No Default: " + field.name()).printStackTrace();
     }
 
+    /**
+     * Bans an Occupant (by UniqueName).
+     * @param bannor The user (typically the creator of the area) executing the ban
+     * @param uniqueName the banned user's uniqueName (to prevent rejoining attempts)
+     * @param t the duration of the ban (in milliseconds)
+     * @param drop if true, the user is dropped from the Occupant list
+     */
     public void banOccupant(ZugUser bannor, ZugUser.UniqueName uniqueName, long t, boolean drop) {
         Occupant occupant = getOccupant(uniqueName).orElse(null);
         if (occupant == null) {
@@ -144,6 +226,13 @@ abstract public class ZugArea extends ZugRoom {
         else banOccupant(bannor,occupant,t,drop);
     }
 
+    /**
+     * Bans an Occupant.
+     * @param bannor The user (typically the creator of the area) executing the ban
+     * @param occupant the banned Occupant
+     * @param t the duration of the ban (in milliseconds)
+     * @param drop if true, the user is dropped from the Occupant list
+     */
     public void banOccupant(ZugUser bannor, Occupant occupant, long t, boolean drop) {
         if (getCreator().equals(bannor)) {
             banList.add(new Ban(occupant.getUser(),t,bannor));
@@ -155,63 +244,133 @@ abstract public class ZugArea extends ZugRoom {
         }
     }
 
+    /**
+     * Get the integer value of the Option associated with the given enumerated field.
+     * @param field the enumerated descriptor field
+     * @return the integer value if any, otherwise either the default value if any, or else zero and handleNoDefault() is called
+     */
     public int getOptInt(Enum<?> field) {
         if (defaults.containsKey(field)) return getOpt(field,defaults.get(field).intVal);
         else { handleNoDefault(field); return 0; }
     }
+
+    /**
+     * Get the integer value of the Option associated with the given enumerated field.
+     * @param field the enumerated descriptor field
+     * @param def a default value
+     * @return  the integer value if any, otherwise either the default value
+     */
     public int getOpt(Enum<?> field, int def) {
         return getOptInt(field.name()).orElse(def);
     }
 
+    /**
+     * Get the double value of the Option associated with the given enumerated field.
+     * @param field the enumerated descriptor field
+     * @return the double value if any, otherwise either the default value if any, or else 0.0 and handleNoDefault() is called
+     */
     public double getOptDbl(Enum<?> field) {
         if (defaults.containsKey(field)) return getOpt(field,defaults.get(field).dblVal);
         else { handleNoDefault(field); return 0.0; }
     }
+
+    /**
+     * Get the double value of the Option associated with the given enumerated field.
+     * @param field the enumerated descriptor field
+     * @param def a default value
+     * @return the double value if any, otherwise either the default value
+     */
     public double getOpt(Enum<?> field, double def) {
         return getOptDbl(field.name()).orElse(def);
     }
 
+    /**
+     * Get the boolean value of the Option associated with the given enumerated field.
+     * @param field the enumerated descriptor field
+     * @return the boolean value if any, otherwise either the default value if any, or else false and handleNoDefault() is called
+     */
     public boolean getOptBool(Enum<?> field) {
         if (defaults.containsKey(field)) return getOpt(field,defaults.get(field).boolVal);
         else { handleNoDefault(field); return false; }
     }
+
+    /**
+     * Get the boolean value of the Option associated with the given enumerated field.
+     * @param field the enumerated descriptor field
+     * @param def a default value
+     * @return the boolean value if any, otherwise either the default value
+     */
     public boolean getOpt(Enum<?> field, boolean def) {
         return getOptBool(field.name()).orElse(def);
     }
 
+    /**
+     * Get the String value of the Option associated with the given enumerated field.
+     * @param field the enumerated descriptor field
+     * @return the String value if any, otherwise either the default value if any, or else "" and handleNoDefault() is called
+     */
     public String getOptTxt(Enum<?> field) {
         if (defaults.containsKey(field)) return getOpt(field,defaults.get(field).text);
         else { handleNoDefault(field); return ""; }
     }
+
+    /**
+     * Get the String value of the Option associated with the given enumerated field.
+     * @param field the enumerated descriptor field
+     * @param def a default value
+     * @return the String value if any, otherwise either the default value
+     */
     public String getOpt(Enum<?> field, String def) {
         return getOptTxt(field.name()).orElse(def);
     }
-    public Optional<Integer> getOptInt(String field) { return ZugHandler.getIntTree(options,field,ZugFields.VAL); }
-    public Optional<Double> getOptDbl(String field) { return ZugHandler.getDoubleTree(options,field,ZugFields.VAL); }
-    public Optional<String> getOptTxt(String field) { return ZugHandler.getStringTree(options,field,ZugFields.VAL); }
-    public Optional<Boolean> getOptBool(String field) { return ZugHandler.getBoolTree(options,field,ZugFields.VAL);}
 
+    private Optional<Integer> getOptInt(String field) { return ZugHandler.getIntTree(options,field,ZugFields.VAL); }
+    private Optional<Double> getOptDbl(String field) { return ZugHandler.getDoubleTree(options,field,ZugFields.VAL); }
+    private Optional<String> getOptTxt(String field) { return ZugHandler.getStringTree(options,field,ZugFields.VAL); }
+    private Optional<Boolean> getOptBool(String field) { return ZugHandler.getBoolTree(options,field,ZugFields.VAL);}
+
+    /**
+     * Sets all options as JSON-formatted data.
+     * @param user the user attempting to set the options
+     * @param node the JSON-formatted data
+     */
     public void setOptions(ZugUser user, JsonNode node) {
         if (user.equals(creator)) options = (ObjectNode)node; else err(user,"Permission denied(not creator)");
     }
-    public boolean setOption(ZugUser user, String field, String s) {
-        if (user.equals(creator)) return setOption(field,s); else {
-            err(user,"Permission denied(not creator)");
-            return false;
-        }
-    }
-    public boolean setOption(ZugUser user, Enum<?> field, String s) {
-        if (user.equals(creator)) return setOption(field,s); else {
+
+    /**
+     * Sets an option with String data that can represent a text, integer, double, or boolean value.
+     * @param user the user responsible for the setting
+     * @param field the Option's descriptor field (as String)
+     * @param value a String representation of the value of the Option
+     * @return true upon success
+     */
+    public boolean setOption(ZugUser user, String field, String value) {
+        if (user.equals(creator)) return setOption(field,value); else {
             err(user,"Permission denied(not creator)");
             return false;
         }
     }
 
-    public boolean setOption(Enum<?> field, Object o) { //options.set(field.name(),optionToJSON(field.name(),o,null,null,null));
+    /**
+     * Sets an option with String data that can represent a text, integer, double, or boolean value.
+     * @param user the user responsible for the setting
+     * @param field the Option's descriptor field (as an Enumeration)
+     * @param value a String representation of the value of the Option
+     * @return true upon success
+     */
+    public boolean setOption(ZugUser user, Enum<?> field, String value) {
+        if (user.equals(creator)) return setOption(field,value); else {
+            err(user,"Permission denied(not creator)");
+            return false;
+        }
+    }
+
+    private boolean setOption(Enum<?> field, Object o) { //options.set(field.name(),optionToJSON(field.name(),o,null,null,null));
         return setOption(field.name(),o);
     }
 
-    public boolean setOption(String field, Object o) {
+    private boolean setOption(String field, Object o) {
         if (o instanceof Number n) {
             JsonNode previousOption = options.get(field);
             if (previousOption != null) {
@@ -228,10 +387,10 @@ abstract public class ZugArea extends ZugRoom {
         return true;
     }
 
-    public ObjectNode optionToJSON(Object o, Number minVal, Number maxVal, Number incVal) {
+    private ObjectNode optionToJSON(Object o, Number minVal, Number maxVal, Number incVal) {
         return optionToJSON(null,o,minVal,maxVal,incVal);
     }
-    public ObjectNode optionToJSON(String field, Object o, Number minVal, Number maxVal, Number incVal) {
+    private ObjectNode optionToJSON(String field, Object o, Number minVal, Number maxVal, Number incVal) {
         ObjectNode node = ZugUtils.newJSON();
         if (o instanceof String str) {
             node.put(ZugFields.VAL,str);
@@ -260,12 +419,23 @@ abstract public class ZugArea extends ZugRoom {
         return node;
     }
 
+    /**
+     * Get all options in JSON format.
+     * @return JSON-formatted option data
+     */
     public ObjectNode getOptions() { return options; }
 
+    /**
+     * Update a user of a (presumably changed) Option.
+     * @param user the ZugUser to update
+     */
     public void updateOptions(ZugUser user) {
-        user.tell(ZugFields.ServMsgType.updateOptions,ZugUtils.newJSON().put(ZugFields.TITLE,title).set(ZugFields.OPTIONS,options));
+        user.tell(ZugFields.ServMsgType.updateOptions,ZugUtils.newJSON().put(ZugFields.TITLE,getTitle()).set(ZugFields.OPTIONS,options));
     }
 
+    /**
+     * Update all Occupants of a (presumably changed) Option.
+     */
     public void spamOptions() {
         spam(ZugFields.ServMsgType.updateOptions,ZugUtils.newJSON().set(ZugFields.OPTIONS,options));
     }
@@ -281,7 +451,7 @@ abstract public class ZugArea extends ZugRoom {
         super.spamX(t,msg,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,title));
+            else conn.tell(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
         }
     }
 
@@ -290,7 +460,7 @@ abstract public class ZugArea extends ZugRoom {
         super.spamX(t,msgNode,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(t,msgNode.put(ZugFields.TITLE,title));
+            else conn.tell(t,msgNode.put(ZugFields.TITLE,getTitle()));
         }
     }
 

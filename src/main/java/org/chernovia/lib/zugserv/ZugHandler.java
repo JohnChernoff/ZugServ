@@ -12,11 +12,13 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * ZugHandler extends ConnListener and encapsulates ZugServ to provide basic server functionality.
+ */
 abstract public class ZugHandler extends Thread implements ConnListener, JSONifier {
 
-    static final Logger logger = Logger.getLogger("ZugServLog");
     private static boolean VERBOSE = true; //for enum names vs ordinal
-
+    static final Logger logger = Logger.getLogger("ZugServLog");
     ConcurrentHashMap<ZugUser.UniqueName,ZugUser> users = new ConcurrentHashMap<>();
     ConcurrentHashMap<String,ZugArea> areas = new ConcurrentHashMap<>();
     ZugServ serv;
@@ -177,8 +179,19 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
      */
     public abstract void handleLogin(Connection conn, String name, ZugFields.AuthSource source, String token);
 
+    /**
+     * Called upon receipt of a valid JSON-formatted message from a Connection
+     * @param conn a Connection
+     * @param type the message type (as String)
+     * @param dataNode the message content (in JSON)
+     */
     public abstract void handleMsg(Connection conn, String type, JsonNode dataNode);
 
+    /**
+     * Receives incoming messages from a Connection, handles pongs, and otherwise directs them to handleMsg() if JSON-readable.
+     * @param conn the Connection source
+     * @param msg the message (typically but not necessarily in JSON format)
+     */
     @Override
     public void newMsg(Connection conn, String msg) {
         JsonNode msgNode = ZugUtils.readTree(msg);
@@ -197,6 +210,10 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         }
     }
 
+    /**
+     * Performs basic house-keeping following a disconnection.
+     * @param conn The newly disconnected Connection
+     */
     public void disconnected(Connection conn) {
         for (ZugUser user : getUsersByConn(conn)) {
             log("Disconnected: " + user.getName());
@@ -206,6 +223,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     }
 
     /**
+     * Looks for and returns an Optional String value from a field at the top level of a JSON node.
      * @param node JSON container node
      * @param name name of a text field
      * @return Optional String value of text field
@@ -217,6 +235,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     }
 
     /**
+     * Looks for and returns an Optional integer value from a field at the top level of a JSON node.
      * @param node JSON container node
      * @param name name of an int field
      * @return Optional value of int field
@@ -227,58 +246,64 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         if (n == null) return Optional.empty(); else return Optional.of(n.asInt());
     }
 
+    /**
+     * Looks for and returns an Optional double value from a field at the top level of a JSON node.
+     * @param node JSON container node
+     * @param name name of a double field
+     * @return Optional value of double field
+     */
     public static Optional<Double> getDblNode(JsonNode node, String name) {
         if (node == null) return Optional.empty();
         JsonNode n = node.get(name);
         if (n == null) return Optional.empty(); else return Optional.of(n.asDouble());
     }
 
+    /**
+     * Looks for and returns an Optional boolean value from a field at the top level of a JSON node.
+     * @param node JSON container node
+     * @param name name of a boolean field
+     * @return Optional value of boolean field
+     */
     public static Optional<Boolean> getBoolNode(JsonNode node, String name) {
         if (node == null) return Optional.empty();
         JsonNode n = node.get(name);
         if (n == null) return Optional.empty(); else return Optional.of(n.asBoolean());
     }
 
+    /**
+     * Looks for and returns an Optional JSON value from a field at the top level of a JSON node.
+     * @param node JSON container node
+     * @param name name of a JSON field
+     * @return Optional value of JSON field
+     */
     public static Optional<JsonNode> getJSONNode(JsonNode node, String name) {
         if (node == null) return Optional.empty();
         JsonNode n = node.get(name);
         if (n == null) return Optional.empty(); else return Optional.of(n);
     }
 
-    public static Optional<JsonNode> getNodes(JsonNode n, String... fields) {
-        if (n == null) return Optional.empty();
-        JsonNode node = n.deepCopy();
-        for (String name : fields) {
-            node = node.get(name); if (node == null) return Optional.empty();
-        }
-        return Optional.of(node);
-    }
-
-    public static Optional<String> getStringTree(JsonNode n, String... fields) {
-        JsonNode node = getNodes(n, fields).orElse(null);
-        if (node == null) return Optional.empty(); else return Optional.of(node.asText());
-    }
-
-    public static Optional<Integer> getIntTree(JsonNode n, String... fields) {
-        JsonNode node = getNodes(n, fields).orElse(null);
-        if (node == null) return Optional.empty(); else return Optional.of(node.asInt());
-    }
-
-    public static Optional<Double> getDoubleTree(JsonNode n, String... fields) {
-        JsonNode node = getNodes(n, fields).orElse(null);
-        if (node == null) return Optional.empty(); else return Optional.of(node.asDouble());
-    }
-
-    public static Optional<Boolean> getBoolTree(JsonNode n, String... fields) {
-        JsonNode node = getNodes(n, fields).orElse(null);
-        if (node == null) return Optional.empty(); else return Optional.of(node.asBoolean());
-    }
-
+    /**
+     * Checks if a String equals an enumerated field.
+     * Normally this is a straight case-insensitive String comparison but if
+     * verbosity is false this compares the numeric value of the String with the enumeration's ordinal value.
+     * @param str the String to compare
+     * @param field the enumerated field to compare
+     * @return true if equivalent
+     */
     public boolean equalsType(String str,Enum<?> field) {
         return (VERBOSE ? str.equalsIgnoreCase(field.name()) : str.equals(String.valueOf(field.ordinal())));
     }
 
+    /**
+     * Indicates the verbosity of server's field type comparison. See equalsType() for more details.
+     * @return true if verbose (default)
+     */
     static boolean isVerbose() { return VERBOSE; }
+
+    /**
+     * Sets the verbosity of server's field type comparison. See equalsType() for more details.
+     * @param b true for verbose (default)
+     */
     static void setVerbose(boolean b) { VERBOSE = b; }
 
     public ObjectNode usersToJSON(boolean nameOnly) {

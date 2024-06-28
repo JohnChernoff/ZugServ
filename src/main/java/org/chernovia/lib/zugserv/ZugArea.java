@@ -10,7 +10,7 @@ import java.util.*;
  */
 abstract public class ZugArea extends ZugRoom {
 
-    private Map<Enum<?>,Option> defaults = new HashMap<>();
+    private final Map<Enum<?>,Option> defaults = new HashMap<>();
 
     /**
      * Sets a default Option value.
@@ -144,8 +144,8 @@ abstract public class ZugArea extends ZugRoom {
         return listener;
     }
 
-    public ZugUser getCreator() {
-        return creator;
+    public Optional<ZugUser> getCreator() {
+        return Optional.of(creator);
     }
 
     public void setCreator(ZugUser creator) {
@@ -234,7 +234,7 @@ abstract public class ZugArea extends ZugRoom {
      * @param drop if true, the user is dropped from the Occupant list
      */
     public void banOccupant(ZugUser bannor, Occupant occupant, long t, boolean drop) {
-        if (getCreator().equals(bannor)) {
+        if (bannor.equals(getCreator().orElse(null))) {
             banList.add(new Ban(occupant.getUser(),t,bannor));
             if (drop) dropOccupant(occupant);
             spam(occupant.getUser().getName() + " has been banned");
@@ -324,10 +324,10 @@ abstract public class ZugArea extends ZugRoom {
         return getOptTxt(field.name()).orElse(def);
     }
 
-    private Optional<Integer> getOptInt(String field) { return ZugHandler.getIntTree(options,field,ZugFields.VAL); }
-    private Optional<Double> getOptDbl(String field) { return ZugHandler.getDoubleTree(options,field,ZugFields.VAL); }
-    private Optional<String> getOptTxt(String field) { return ZugHandler.getStringTree(options,field,ZugFields.VAL); }
-    private Optional<Boolean> getOptBool(String field) { return ZugHandler.getBoolTree(options,field,ZugFields.VAL);}
+    private Optional<Integer> getOptInt(String field) { return getIntTree(options,field,ZugFields.VAL); }
+    private Optional<Double> getOptDbl(String field) { return getDoubleTree(options,field,ZugFields.VAL); }
+    private Optional<String> getOptTxt(String field) { return getStringTree(options,field,ZugFields.VAL); }
+    private Optional<Boolean> getOptBool(String field) { return getBoolTree(options,field,ZugFields.VAL);}
 
     /**
      * Sets all options as JSON-formatted data.
@@ -401,20 +401,20 @@ abstract public class ZugArea extends ZugRoom {
         else if (o instanceof Double d) { //ZugManager.log(field + " -> adding double: " + d);
             node.put(ZugFields.VAL,d);
             if (minVal instanceof Double minDbl) node.put(ZugFields.MIN,minDbl);
-            else ZugHandler.getDoubleTree(options,field,ZugFields.MIN).ifPresent(min -> node.put(ZugFields.MIN,min));
+            else getDoubleTree(options,field,ZugFields.MIN).ifPresent(min -> node.put(ZugFields.MIN,min));
             if (maxVal instanceof Double maxDbl) node.put(ZugFields.MAX,maxDbl);
-            else ZugHandler.getDoubleTree(options,field,ZugFields.MAX).ifPresent(max -> node.put(ZugFields.MAX,max));
+            else getDoubleTree(options,field,ZugFields.MAX).ifPresent(max -> node.put(ZugFields.MAX,max));
             if (incVal instanceof Double inc) node.put(ZugFields.INC,inc);
-            else ZugHandler.getDoubleTree(options,field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
+            else getDoubleTree(options,field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
         }
         else if (o instanceof Integer i) { //ZugManager.log(field + " -> adding int: " + i);
             node.put(ZugFields.VAL,i);
             if (minVal instanceof Integer minInt) node.put(ZugFields.MIN,minInt);
-            else ZugHandler.getIntTree(options,field,ZugFields.MIN).ifPresent(min -> node.put(ZugFields.MIN,min));
+            else getIntTree(options,field,ZugFields.MIN).ifPresent(min -> node.put(ZugFields.MIN,min));
             if (maxVal instanceof Integer maxInt) node.put(ZugFields.MAX,maxInt);
-            else ZugHandler.getIntTree(options,field,ZugFields.MAX).ifPresent(max -> node.put(ZugFields.MAX,max));
+            else getIntTree(options,field,ZugFields.MAX).ifPresent(max -> node.put(ZugFields.MAX,max));
             if (incVal instanceof Integer inc) node.put(ZugFields.INC,inc);
-            else ZugHandler.getDoubleTree(options,field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
+            else getDoubleTree(options,field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
         }
         return node;
     }
@@ -479,6 +479,35 @@ abstract public class ZugArea extends ZugRoom {
             node.set(ZugFields.OBSERVERS,arrayNode);
         }
         return node;
+    }
+
+    private static Optional<JsonNode> getNodes(JsonNode n, String... fields) { //TODO: what's going on here?
+        if (n == null) return Optional.empty();
+        JsonNode node = n.deepCopy();
+        for (String name : fields) {
+            node = node.get(name); if (node == null) return Optional.empty();
+        }
+        return Optional.of(node);
+    }
+
+    private static Optional<String> getStringTree(JsonNode n, String... fields) {
+        JsonNode node = getNodes(n, fields).orElse(null);
+        if (node == null) return Optional.empty(); else return Optional.of(node.asText());
+    }
+
+    private static Optional<Integer> getIntTree(JsonNode n, String... fields) {
+        JsonNode node = getNodes(n, fields).orElse(null);
+        if (node == null) return Optional.empty(); else return Optional.of(node.asInt());
+    }
+
+    private static Optional<Double> getDoubleTree(JsonNode n, String... fields) {
+        JsonNode node = getNodes(n, fields).orElse(null);
+        if (node == null) return Optional.empty(); else return Optional.of(node.asDouble());
+    }
+
+    private static Optional<Boolean> getBoolTree(JsonNode n, String... fields) {
+        JsonNode node = getNodes(n, fields).orElse(null);
+        if (node == null) return Optional.empty(); else return Optional.of(node.asBoolean());
     }
 
 }

@@ -2,6 +2,8 @@ package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import java.util.Optional;
+
 /**
  * An Occupant encapsulates a ZugUser within a ZugArea.
  */
@@ -30,13 +32,13 @@ abstract public class Occupant implements JSONifier {
      * Gets the ZugArea the Occupant is currently in.
      * @return the occupied ZugArea
      */
-    public ZugArea getArea() { return area; }
+    public Optional<ZugArea> getArea() { return Optional.of(area); }
 
     /**
      * Gets the ZugRoom (if any) the Occupant is currently in.
      * @return the occupied ZugRoom, if any, null if none
      */
-    public ZugRoom getRoom() { return room; }
+    public Optional<ZugRoom> getRoom() { return Optional.of(room); }
 
     /**
      * Attemps to joins a ZugRoom.
@@ -192,6 +194,14 @@ abstract public class Occupant implements JSONifier {
     }
 
     /**
+     * Serializes the Occupant (typcially via toJSON()) to a Connection.
+     * @param conn the Connection to update
+     */
+    public void update(Connection conn) {
+        if (conn != null) conn.tell(ZugFields.ServMsgType.updateOccupant,toJSON());
+    }
+
+    /**
      * Determines if the Occupant has the name UniqueName as another.
      * @param o the Occupant to compare to
      * @return true if the same, otherwise false
@@ -210,9 +220,9 @@ abstract public class Occupant implements JSONifier {
     public ObjectNode toJSON(boolean userOnly) {
         ObjectNode node = ZugUtils.newJSON();
         node.put("away",away);
-        node.put("banned",getArea().isBanned(getUser()));
+        node.put("banned",area.isBanned(getUser()));
         if (!userOnly) {
-            node.set(ZugFields.AREA,area != null ? area.toJSON() : null);
+            node.set(ZugFields.AREA,area != null ? area.toJSON() : null); //TODO: why is area never null?
             node.set(ZugFields.ROOM,room != null ? room.toJSON() : null);
         }
         node.set(ZugFields.USER,user.toJSON());

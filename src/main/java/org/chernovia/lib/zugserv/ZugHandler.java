@@ -112,12 +112,12 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
 
     public boolean handleLichessLogin(Connection conn, String token) {
         if (token == null || token.isEmpty() || token.equals(ZugFields.UNKNOWN_STRING)) {
-            err(conn, "Bad name/token");
+            err(conn, "Login failure: Bad name/token");
         } else { //log("Logging in with token: " + token.asText());
             ClientAuth client = Client.auth(token);
             AccountAuth aa = client.account();
             if (aa.profile().isPresent()) {
-                handleLogin(conn, aa.profile().get().name(),ZugFields.AuthSource.lichess,token);
+                handleLogin(conn, aa.profile().get().name(),ZugFields.AuthSource.lichess,ZugUtils.newJSON().put(ZugFields.TOKEN,token));
                 return true;
             } else {
                 err(conn, "Login failure: bad token");
@@ -176,8 +176,9 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
      * @param conn An Internet Connection
      * @param name username
      * @param source the authentication source, if any
+     * @param dataNode login data (in JSON)
      */
-    public abstract void handleLogin(Connection conn, String name, ZugFields.AuthSource source, String token);
+    public abstract void handleLogin(Connection conn, String name, ZugFields.AuthSource source, JsonNode dataNode);
 
     /**
      * Called upon receipt of a valid JSON-formatted message from a Connection

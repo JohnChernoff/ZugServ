@@ -29,7 +29,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     /**
-     * WorkerProc encapsulates a SubProc to repeatedly run at a given interval.
+     * WorkerProc encapsulates a ChronJob to repeatedly run at a given interval.
      */
     public static class WorkerProc extends Thread {
         private ChronJob job;
@@ -191,21 +191,9 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         if (user != null) user.action();
         log(Level.FINEST,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
 
-        if (!requirePassword && equalsType(type, ZugFields.ClientMsgType.login)) {
-            handleLogin(conn, generateGuestName(getTxtNode(dataNode,ZugFields.NAME).orElse("guest")),
-                    ZugFields.AuthSource.none,"");
-        } else if (allowGuests && equalsType(type, ZugFields.ClientMsgType.loginGuest)) {
-            getUsers().values().stream()
-                    .filter(u -> u.getSource().equals(ZugFields.AuthSource.none) && u.getConn().getAddress().equals(conn.getAddress()))
-                    .findAny().ifPresentOrElse(prevGuest -> swapConnection(prevGuest,conn),
-                            () -> handleLogin(conn, generateGuestName(getTxtNode(dataNode,ZugFields.NAME).orElse("guest")),
-                                    ZugFields.AuthSource.none,""));
-        } else if (equalsType(type, ZugFields.ClientMsgType.loginLichess)) {
-            if (user == null) {
-                getTxtNode(dataNode,ZugFields.TOKEN).ifPresentOrElse(
-                        token -> handleLichessLogin(conn,token), () -> err(conn,"Empty token"));
-            }
-            else err(conn,"Already logged in");
+        if (equalsType(type, ZugFields.ClientMsgType.login)) {
+            if (user != null) err(conn,"Already logged in");
+            else handleLoginRequest(conn,dataNode);
         } else if (equalsType(type, ZugFields.ClientMsgType.ip)) {
             getTxtNode(dataNode, ZugFields.ADDRESS).ifPresent(addressStr -> {
                         try {
@@ -370,9 +358,34 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         }, () -> err(user1,"User not found: " + name));
     }
 
+    public void handleLoginRequest(Connection conn, JsonNode dataNode) {
+        try {
+            ZugFields.AuthSource source =
+                    ZugFields.AuthSource.valueOf(dataNode.get(ZugFields.LOGIN_TYPE).textValue().toLowerCase());
+            if (source == ZugFields.AuthSource.lichess) {
+                getTxtNode(dataNode,ZugFields.TOKEN).ifPresentOrElse(
+                        token -> handleLichessLogin(conn,token), () -> err(conn,"Empty token"));
+            }
+            else if (source == ZugFields.AuthSource.none) {
+                if (allowGuests) {
+                    getUsers().values().stream()
+                            .filter(u -> u.getSource().equals(ZugFields.AuthSource.none) && u.getConn().getAddress().equals(conn.getAddress()))
+                            .findAny().ifPresentOrElse(prevGuest -> swapConnection(prevGuest,conn),
+                                    () -> handleLogin(conn, generateGuestName(getTxtNode(dataNode,ZugFields.NAME).orElse("guest")),
+                                            ZugFields.AuthSource.none,null));
+                }
+                else err(conn,"Login error: guests not allowed");
+            }
+            else err(conn,"Login error: source not found");
+        }
+        catch (IllegalArgumentException e) {
+            err(conn,"Login error: bad source");
+        }
+    }
+
     @Override
-    public void handleLogin(Connection conn, String name, ZugFields.AuthSource source, String token) {
-        handleCreateUser(conn,name,source,token).ifPresentOrElse(user ->
+    public void handleLogin(Connection conn, String name, ZugFields.AuthSource source, JsonNode dataNode) {
+        handleCreateUser(conn,name,source,dataNode).ifPresentOrElse(user ->
                         addOrGetUser(user).ifPresentOrElse(prevUser -> swapConnection(prevUser,user.getConn()),
                                 () -> handleLoggedIn(user)),
                 () -> err(conn,"Login error"));
@@ -422,10 +435,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param conn the user's Connection
      * @param name the user's alphanumeric name
      * @param source the user's authentication source
-     * @param token the user's authentication token (if any)
+     * @param dataNode extra JSON-formatted user data (if any)
      * @return an (Optional) newly created user (empty upon failure)
      */
-    public abstract Optional<ZugUser> handleCreateUser(Connection conn, String name, ZugFields.AuthSource source, String token);
+    public abstract Optional<ZugUser> handleCreateUser(Connection conn, String name, ZugFields.AuthSource source, JsonNode dataNode);
 
     /**
      * Handles the creation of a new area.

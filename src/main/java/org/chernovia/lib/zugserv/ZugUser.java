@@ -10,7 +10,7 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
     private Connection conn;
     private UniqueName uniqueName;
     private boolean loggedIn;
-    private String loginToken;
+    private String loginToken = "";
 
     /**
      * Unique Name is combination of a ZugUser's alphanumeric name/handle and their authentication source, if any.
@@ -35,10 +35,9 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
      * @param c a Connection
      * @param name an alphanumeric name
      * @param source an authentication source
-     * @param token an (optional) authentication token
      */
-    public ZugUser(Connection c, String name, ZugFields.AuthSource source, String token) {
-        setConn(c); uniqueName = new UniqueName(name,source); loggedIn = true; loginToken = token;
+    public ZugUser(Connection c, String name, ZugFields.AuthSource source) {
+        setConn(c); uniqueName = new UniqueName(name,source); loggedIn = true;
     }
 
     /**

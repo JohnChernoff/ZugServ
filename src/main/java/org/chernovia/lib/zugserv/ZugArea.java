@@ -8,7 +8,7 @@ import java.util.*;
 /**
  * ZugArea is a fuller featured extension of ZugRoom that includes passwords, bans, options, and observers.
  */
-abstract public class ZugArea extends ZugRoom {
+abstract public class ZugArea extends ZugRoom implements Runnable {
 
     private final Map<Enum<?>,Option> defaults = new HashMap<>();
 
@@ -98,6 +98,10 @@ abstract public class ZugArea extends ZugRoom {
     private final List<Ban> banList = new ArrayList<>();
     private ObjectNode options = ZugUtils.newJSON();
     private boolean exists = true;
+    private Enum<?> phase = ZugFields.AreaPhase.initializing;
+    private long phaseStamp = 0;
+    private Thread areaThread;
+    boolean running = false;
 
     /**
      * Constructs a ZugArea with a title, creator, and AreaListener.
@@ -146,6 +150,10 @@ abstract public class ZugArea extends ZugRoom {
 
     public Optional<ZugUser> getCreator() {
         return Optional.of(creator);
+    }
+
+    public boolean isCreator(ZugUser user) {
+        return user.equals(creator);
     }
 
     public void setCreator(ZugUser creator) {
@@ -339,38 +347,22 @@ abstract public class ZugArea extends ZugRoom {
     }
 
     /**
-     * Sets an option with String data that can represent a text, integer, double, or boolean value.
-     * @param user the user responsible for the setting
-     * @param field the Option's descriptor field (as String)
-     * @param value a String representation of the value of the Option
-     * @return true upon success
+     * Sets an Option determined from an enumerated field and Object value.
+     * @param field the enumerated field
+     * @param o the value (either numeric, String, or boolean)
+     * @return true if successful
      */
-    public boolean setOption(ZugUser user, String field, String value) {
-        if (user.equals(creator)) return setOption(field,value); else {
-            err(user,"Permission denied(not creator)");
-            return false;
-        }
-    }
-
-    /**
-     * Sets an option with String data that can represent a text, integer, double, or boolean value.
-     * @param user the user responsible for the setting
-     * @param field the Option's descriptor field (as an Enumeration)
-     * @param value a String representation of the value of the Option
-     * @return true upon success
-     */
-    public boolean setOption(ZugUser user, Enum<?> field, String value) {
-        if (user.equals(creator)) return setOption(field,value); else {
-            err(user,"Permission denied(not creator)");
-            return false;
-        }
-    }
-
-    private boolean setOption(Enum<?> field, Object o) { //options.set(field.name(),optionToJSON(field.name(),o,null,null,null));
+    public boolean setOption(Enum<?> field, Object o) { //options.set(field.name(),optionToJSON(field.name(),o,null,null,null));
         return setOption(field.name(),o);
     }
 
-    private boolean setOption(String field, Object o) {
+    /**
+     * Sets an Option determined from an alphanumeric field and Object value.
+     * @param field an alphanumeric field
+     * @param o the value (either numeric, String, or boolean)
+     * @return true if successful
+     */
+    public boolean setOption(String field, Object o) {
         if (o instanceof Number n) {
             JsonNode previousOption = options.get(field);
             if (previousOption != null) {
@@ -508,6 +500,59 @@ abstract public class ZugArea extends ZugRoom {
     private static Optional<Boolean> getBoolTree(JsonNode n, String... fields) {
         JsonNode node = getNodes(n, fields).orElse(null);
         if (node == null) return Optional.empty(); else return Optional.of(node.asBoolean());
+    }
+
+    public boolean newPhase(Enum<?> p, int seconds) {
+        action();
+        phase = p;
+        phaseStamp = System.currentTimeMillis();
+        spam(ZugFields.ServMsgType.phase,toJSON(true));
+        getListener().areaUpdated(this);
+        boolean timeout = true;
+        if (seconds > 0) {
+            try { Thread.sleep((seconds * 1000L)); } catch (InterruptedException e) { timeout = false; }
+        }
+        return timeout;
+    }
+
+    public Enum<?> getPhase() {
+        return phase;
+    }
+
+    public boolean isPhase(Enum<?> p) {
+        return phase == p;
+    }
+
+    public void interruptPhase() {
+        if (areaThread != null && areaThread.getState() == Thread.State.TIMED_WAITING) areaThread.interrupt();
+    }
+
+    public void setPhaseStamp(long t) { phaseStamp = t; }
+    public long getPhaseStamp() { return phaseStamp; }
+    public Thread getAreaThread() { return areaThread; }
+    public void setAreaThread(Thread areaThread) { this.areaThread = areaThread; }
+    public boolean isRunning() { return running; }
+    public void setRunning(boolean running) { this.running = running; }
+
+    public boolean startArea() {
+        if (areaThread != null) {
+            running = true;
+            areaThread.start();
+        }
+        return running;
+    }
+
+    public boolean stopArea() {
+        if (areaThread != null) {
+            running = false;
+            interruptPhase(); //TODO: join thread?
+            getListener().areaFinished(this);
+        }
+        return running;
+    }
+
+    @Override
+    public void run() {
     }
 
 }

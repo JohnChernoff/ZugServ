@@ -210,10 +210,14 @@ abstract public class Occupant implements JSONifier {
         return user.getUniqueName().equals(o.user.getUniqueName());
     }
 
-    public ObjectNode toJSON() { return toJSON(false); }
-
     /**
      * Serializes the Occupant to JSON.
+     * @return the results of toJSON(false)
+     */
+    public final ObjectNode toJSON() { return toJSON(false); }
+
+    /**
+     * Serializes the Occupant to JSON. Subclasses should probably ovveride this.
      * @param userOnly excludes ZugArea/ZugRoom information
      * @return a JSON serialization of the Occupant
      */

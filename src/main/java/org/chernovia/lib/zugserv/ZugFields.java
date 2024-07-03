@@ -6,7 +6,7 @@ public interface ZugFields {
         joinRoom, joinArea, partArea, createArea, startArea, userList, areaList, updateAreaList, updateArea, updateRoom, updateServ, updateUser, updateOccupant, updateOccupants, updateOptions
     }
     enum ClientMsgType { none, ip, pong, obs, unObs, login, loginGuest, loginLichess, getOptions, setOptions, listAreas,
-        newRoom, joinRoom, newArea, joinArea, startArea, partArea, areaMsg, roomMsg, servMsg, privMsg, updateArea, updateRoom, updateServ, updateUser, updateOccupant, setMute, ban
+        newRoom, joinRoom, newArea, joinArea, startArea, partArea, areaMsg, roomMsg, servMsg, privMsg, updateArea, updateRoom, updateServ, updateUser, updateOccupant, setDeaf, ban
     }
 
     enum AreaChange {created,updated,deleted}
@@ -25,6 +25,7 @@ public interface ZugFields {
             USERS = "users",
             JSON = "json",
             TITLE = "title",
+            PHASE = "phase",
             ROOM = "room",
             AREA = "area",
             AREAS = "areas",
@@ -35,7 +36,7 @@ public interface ZugFields {
             OCCUPANT = "occupant",
             OCCUPANTS = "occupants",
             OBSERVERS = "observers",
-            MUTED = "muted",
+            DEAFENED = "deafened",
             VAL = "val",
             MIN = "min",
             MAX = "max",

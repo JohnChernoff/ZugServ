@@ -189,7 +189,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public void handleMsg(Connection conn, String type, JsonNode dataNode) {
         ZugUser user = getUserByConn(conn).orElse(null);
         if (user != null) user.action();
-        log(Level.FINEST,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
+        log(Level.INFO,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
 
         if (equalsType(type, ZugFields.ClientMsgType.login)) {
             if (user != null) err(conn,"Already logged in");
@@ -251,10 +251,13 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
             getTxtNode(dataNode, ZugFields.TITLE)
                     .ifPresentOrElse(title -> getAreaByTitle(title)
                                     .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                    .ifPresentOrElse(occupant -> { if (canPartArea(occupant, dataNode)) { zugArea.dropOccupant(occupant); zugArea.updateOccupants(); }},
+                                                    .ifPresentOrElse(occupant -> { if (canPartArea(occupant, dataNode)) { zugArea.dropOccupant(occupant); zugArea.updateOccupants(true); }},
                                                             () ->  err(user, ERR_NOT_OCCUPANT)),
                                             () -> err(user, ERR_TITLE_NOT_FOUND)),
                             () -> err(user, ERR_NO_TITLE));
+        } else if (equalsType(type, ZugFields.ClientMsgType.startArea)) {
+            getArea(dataNode).ifPresentOrElse(area -> area.startArea(user,dataNode),() -> err(user,"Area not found"));
+
         } else if (equalsType(type, ZugFields.ClientMsgType.areaMsg)) {
             getTxtNode(dataNode, ZugFields.TITLE)
                     .ifPresentOrElse(title -> getAreaByTitle(title)
@@ -284,8 +287,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                                     .ifPresentOrElse(usr -> user.update(user.getConn()),
                                             () -> err(user.getConn(), ERR_USER_NOT_FOUND)),
                             () -> user.update(user.getConn()));
-        } else if (equalsType(type, ZugFields.ClientMsgType.setMute)) {
-            getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.MUTED).ifPresent(occupant::setDeafened));
+        } else if (equalsType(type, ZugFields.ClientMsgType.setDeaf)) {
+            getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.DEAFENED).ifPresent(occupant::setDeafened));
         } else if (equalsType(type, ZugFields.ClientMsgType.ban)) {
             getArea(dataNode).ifPresent(area -> getOccupant(user, dataNode)
                     .flatMap(occupant -> getUniqueName(dataNode.get(ZugFields.NAME)))
@@ -342,7 +345,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param msg the chat message
      */
     public void handleAreaChat(Occupant occupant, String msg) {
-        occupant.getArea().ifPresent(area -> area.spam(ZugFields.ServMsgType.areaUserMsg,occupantMsgToJSON(occupant,msg)));
+        occupant.getArea().ifPresentOrElse(area -> area.spam(ZugFields.ServMsgType.areaUserMsg,occupantMsgToJSON(occupant,msg)),() -> err(occupant.getUser(),"Area not found"));
     }
 
     /**

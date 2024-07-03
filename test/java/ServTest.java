@@ -64,7 +64,7 @@ class TestOccupant extends Occupant {
     }
 
     @Override
-    public ObjectNode toJSON() {
+    public ObjectNode toJSON(boolean userOnly) {
         return null;
     }
 }

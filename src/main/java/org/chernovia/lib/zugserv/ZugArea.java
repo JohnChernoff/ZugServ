@@ -10,6 +10,8 @@ import java.util.*;
  */
 abstract public class ZugArea extends ZugRoom implements Runnable {
 
+    public enum OperationType {start,stop}
+
     private final Map<Enum<?>,Option> defaults = new HashMap<>();
 
     /**
@@ -463,7 +465,9 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
 
     @Override
     public ObjectNode toJSON(boolean listDataOnly) {
-        ObjectNode node = super.toJSON(listDataOnly).set(ZugFields.CREATOR,creator != null ? creator.getUniqueName().toJSON() : null);
+        ObjectNode node = super.toJSON(listDataOnly)
+                .put(ZugFields.PHASE,getPhase().toString())
+                .set(ZugFields.CREATOR,creator != null ? creator.getUniqueName().toJSON() : null);
         if (!listDataOnly) {
             node.set(ZugFields.OPTIONS,options);
             ArrayNode arrayNode = ZugUtils.newJSONArray();
@@ -506,7 +510,7 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
         action();
         phase = p;
         phaseStamp = System.currentTimeMillis();
-        spam(ZugFields.ServMsgType.phase,toJSON(true));
+        spam(ZugFields.ServMsgType.phase,ZugUtils.newJSON().put(ZugFields.PHASE,phase.name()));
         getListener().areaUpdated(this);
         boolean timeout = true;
         if (seconds > 0) {
@@ -534,11 +538,16 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     public boolean isRunning() { return running; }
     public void setRunning(boolean running) { this.running = running; }
 
-    public boolean startArea() {
-        if (areaThread != null) {
+    public boolean startArea(ZugUser user, JsonNode initData) { //ZugManager.log("Starting: " + getTitle());
+        if (!allowed(user,OperationType.start)) {
+            err(user,"Permission denied");
+        }
+        else if (areaThread == null) {
+            areaThread = new Thread(this);
             running = true;
             areaThread.start();
         }
+        else err(user,"Area already started");
         return running;
     }
 
@@ -549,6 +558,12 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
             getListener().areaFinished(this);
         }
         return running;
+    }
+
+    public boolean allowed(ZugUser user, OperationType t) {
+        return switch (t) {
+            case start, stop -> isCreator(user);
+        };
     }
 
     @Override

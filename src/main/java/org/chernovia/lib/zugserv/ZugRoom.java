@@ -60,7 +60,7 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
     public boolean addOccupant(Occupant occupant) {
         if (occupant.isClone()) return false;
         if (occupants.putIfAbsent(occupant.getUser().getUniqueName(),occupant) == null) {
-            updateOccupants(); return true;
+            updateOccupants(true); return true;
         }
         return false;
     }
@@ -168,7 +168,7 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
      * @param type an enumerated type
      * @param msgNode a JSON-encoded message
      */
-    public void spam(Enum<?> type, ObjectNode msgNode) {
+    public void spam(Enum<?> type, ObjectNode msgNode) { //ZugManager.log("Spamming: " + type + "," + msgNode.toString());
         spamX(type,msgNode, null);
     }
 
@@ -223,8 +223,8 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
     /**
      * Sends a JSON serialization of the room's Occupant list (toJSON()) to each Occupant.
      */
-    public void updateOccupants() { //System.out.println("Updating occupants");
-        spam(ZugFields.ServMsgType.updateOccupants,occupantsToJSON());
+    public void updateOccupants(boolean userOnly) { //System.out.println("Updating occupants");
+        spam(ZugFields.ServMsgType.updateOccupants,occupantsToJSON(userOnly));
     }
 
     /**
@@ -247,26 +247,31 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
                 ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
     }
 
-    public ObjectNode toJSON() { return toJSON(false); }
+    /**
+     * Returns a JSON serialization of the room and its Occupants.
+     * @return the result of toJSON(false)
+     */
+    public final ObjectNode toJSON() { return toJSON(false); }
 
     /**
-     * Returns a JSON serialization of the room and optionally all Occupants.
+     * Returns a JSON serialization of the room and optionally all Occupants. Subclasses may ovveride this.
      * @param listDataOnly if true, this does not include a list of Occupants
      * @return a JSON serialization of the room
      */
     public ObjectNode toJSON(boolean listDataOnly) {
-        if (!listDataOnly) return occupantsToJSON();
+        if (!listDataOnly) return occupantsToJSON(true);
         return ZugUtils.newJSON().put(ZugFields.TITLE,title);
     }
 
     /**
      * Returns JSON-formatted representation of all current Occupants of the room.
+     * @param userOnly if true, this only lists Occupant user information
      * @return the JSON-formatted list
      */
-    public ObjectNode occupantsToJSON() {
+    public ObjectNode occupantsToJSON(boolean userOnly) {
         ObjectNode node = ZugUtils.newJSON();
         ArrayNode arrayNode = ZugUtils.newJSONArray();
-        getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON(true)));
+        getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON(userOnly)));
         node.set(ZugFields.OCCUPANTS,arrayNode);
         node.put(ZugFields.TITLE,title);
         return node;

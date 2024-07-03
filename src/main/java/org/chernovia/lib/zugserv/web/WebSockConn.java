@@ -7,6 +7,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.*;
+import org.java_websocket.exceptions.WebsocketNotConnectedException;
 import org.java_websocket.framing.CloseFrame;
 
 public class WebSockConn extends ConnAdapter {
@@ -47,9 +48,14 @@ public class WebSockConn extends ConnAdapter {
 	public void tell(Enum<?> type, JsonNode data) { //logger.log(Level.INFO,"Sending: " + data);
 		ObjectNode node = mapper.createObjectNode();
 		node.put(ZugFields.TYPE, type.name()); node.set(ZugFields.DATA, data);
-		if (!socket.isClosed()) {
-			socket.send(node.toString());
+		try {
+			if (!socket.isClosed()) {
+				socket.send(node.toString());
+			}
+			else logger.log(Level.WARNING,"Sending to closed socket: " + getAddress() + " ,data: " + data.toString());
 		}
-		else logger.log(Level.WARNING,"Sending to closed socket: " + getAddress() + " ,data: " + data.toString());
+		catch (WebsocketNotConnectedException argh) {
+			logger.log(Level.WARNING,"Sending to unconnected socket: " + getAddress() + " ,data: " + data.toString());
+		}
 	}
 }

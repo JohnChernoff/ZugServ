@@ -24,11 +24,11 @@ public class ServTest implements ConnListener {
         TestUser user = new TestUser(conn,"New user");
         user.tell(ZugFields.ServMsgType.servMsg,"You said: " + msg);
 
-        area = new TestArea("TestArea", user, null); log("Adding: " + user.addArea(area));
+        area = new TestArea("TestArea", user, null);
+        TestOccupant occupant = new TestOccupant(user,area);
+        log("Adding: " + area.addOccupant(occupant));
 
-        TestOccupant occupant = new TestOccupant(user,area); //area.addOrGetOccupant(occupant);
-
-        if (occupant.eq(new TestOccupant(user,area))) occupant.tell(ZugFields.ServMsgType.errMsg,occupant.toJSON().textValue());
+        if (occupant.eq(new TestOccupant(user,area))) occupant.tell(ZugFields.ServMsgType.errMsg,occupant.toJSON(false).textValue());
 
         user.tell(ZugFields.ServMsgType.servMsg,user.toJSON());
         user.tell(ZugFields.ServMsgType.reqLogin);
@@ -53,7 +53,7 @@ public class ServTest implements ConnListener {
 
 class TestUser extends ZugUser {
     public TestUser(Connection c, String n) {
-        super(c, n, ZugFields.AuthSource.none,"");
+        super(c, n, ZugFields.AuthSource.none);
     }
 }
 
@@ -64,7 +64,7 @@ class TestOccupant extends Occupant {
     }
 
     @Override
-    public ObjectNode toJSON(boolean userOnly) {
+    public ObjectNode toJSON(boolean showRoom) {
         return null;
     }
 }

@@ -255,23 +255,23 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
 
     /**
      * Returns a JSON serialization of the room and optionally all Occupants. Subclasses may ovveride this.
-     * @param listDataOnly if true, this does not include a list of Occupants
+     * @param showOccupants if false, this does not include a list of Occupants
      * @return a JSON serialization of the room
      */
-    public ObjectNode toJSON(boolean listDataOnly) {
-        if (!listDataOnly) return occupantsToJSON(true);
+    public ObjectNode toJSON(boolean showOccupants) {
+        if (showOccupants) return occupantsToJSON(false);
         return ZugUtils.newJSON().put(ZugFields.TITLE,title);
     }
 
     /**
      * Returns JSON-formatted representation of all current Occupants of the room.
-     * @param userOnly if true, this only lists Occupant user information
+     * @param showRoom if true, this includes ZugRoom/ZugArea information
      * @return the JSON-formatted list
      */
-    public ObjectNode occupantsToJSON(boolean userOnly) {
+    public ObjectNode occupantsToJSON(boolean showRoom) {
         ObjectNode node = ZugUtils.newJSON();
         ArrayNode arrayNode = ZugUtils.newJSONArray();
-        getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON(userOnly)));
+        getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON(showRoom)));
         node.set(ZugFields.OCCUPANTS,arrayNode);
         node.put(ZugFields.TITLE,title);
         return node;

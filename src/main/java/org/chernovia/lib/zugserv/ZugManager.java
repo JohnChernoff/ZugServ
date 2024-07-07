@@ -189,7 +189,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public void handleMsg(Connection conn, String type, JsonNode dataNode) {
         ZugUser user = getUserByConn(conn).orElse(null);
         if (user != null) user.action();
-        log(Level.INFO,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
+        log(Level.FINE,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
 
         if (equalsType(type, ZugFields.ClientMsgType.login)) {
             if (user != null) err(conn,"Already logged in");
@@ -240,8 +240,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                                                     .ifPresentOrElse(zugArea::rejoin,
                                                             () -> {
                                                                 if (zugArea.numOccupants() < zugArea.getMaxOccupants()) {
-                                                                    handleCreateOccupant(user, zugArea, dataNode);
-                                                                            //.ifPresent(occupant -> occupant.joinArea(zugArea));
+                                                                    handleCreateOccupant(user, zugArea, dataNode)
+                                                                            .ifPresent(occupant -> {
+                                                                                if (!occupant.isClone()) {
+                                                                                    if (zugArea.addOccupant(occupant)) user.tell(ZugFields.ServMsgType.joinArea,zugArea.toJSON(true));
+                                                                                }
+                                                                            });
                                                                 }
                                                                 else err(user,"Game full: " + title);
                                                             }),

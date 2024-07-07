@@ -464,16 +464,20 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     }
 
     @Override
-    public ObjectNode toJSON(boolean listDataOnly) {
-        ObjectNode node = super.toJSON(listDataOnly)
-                .put(ZugFields.PHASE,getPhase().toString())
+    public ObjectNode toJSON(boolean showOccupants) {
+        return toJSON(showOccupants,false,false);
+    }
+
+    public ObjectNode toJSON(boolean showOccupants, boolean showObservers, boolean showOptions) {
+        ObjectNode node = super.toJSON(showOccupants)
+                .put(ZugFields.PHASE,getPhase().name())
                 .set(ZugFields.CREATOR,creator != null ? creator.getUniqueName().toJSON() : null);
-        if (!listDataOnly) {
-            node.set(ZugFields.OPTIONS,options);
+        if (showObservers) {
             ArrayNode arrayNode = ZugUtils.newJSONArray();
             observers.forEach(obs -> arrayNode.add(obs.getID()));
             node.set(ZugFields.OBSERVERS,arrayNode);
         }
+        if (showOptions) node.set(ZugFields.OPTIONS,options);
         return node;
     }
 
@@ -506,17 +510,24 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
         if (node == null) return Optional.empty(); else return Optional.of(node.asBoolean());
     }
 
-    public boolean newPhase(Enum<?> p, int seconds) {
+    public void setPhase(Enum<?> p) {
         action();
         phase = p;
+    }
+
+    public boolean newPhase(Enum<?> p, int seconds) {
+        setPhase(p);
         phaseStamp = System.currentTimeMillis();
-        spam(ZugFields.ServMsgType.phase,ZugUtils.newJSON().put(ZugFields.PHASE,phase.name()));
-        getListener().areaUpdated(this);
+        spam(ZugFields.ServMsgType.phase,phaseToJSON()); //getListener().areaUpdated(this);
         boolean timeout = true;
         if (seconds > 0) {
             try { Thread.sleep((seconds * 1000L)); } catch (InterruptedException e) { timeout = false; }
         }
         return timeout;
+    }
+
+    public ObjectNode phaseToJSON() {
+        return ZugUtils.newJSON().put(ZugFields.PHASE,phase.name());
     }
 
     public Enum<?> getPhase() {

@@ -139,9 +139,7 @@ abstract public class Occupant implements JSONifier {
         area = a;
         if (area != null) {
             if (area.getOccupant(u).isPresent()) isClone = true;
-            else if (area.addOccupant(this)) {
-                getUser().tell(ZugFields.ServMsgType.joinArea,area.toJSON());
-            }
+            //else if (area.addOccupant(this)) { getUser().tell(ZugFields.ServMsgType.joinArea,area.toJSON()); }
         }
         if (!isClone && r != null) {
             joinRoom(r);
@@ -212,21 +210,21 @@ abstract public class Occupant implements JSONifier {
 
     /**
      * Serializes the Occupant to JSON.
-     * @return the results of toJSON(false)
+     * @return the results of toJSON(true)
      */
     public final ObjectNode toJSON() { return toJSON(false); }
 
     /**
      * Serializes the Occupant to JSON. Subclasses should probably ovveride this.
-     * @param userOnly excludes ZugArea/ZugRoom information
+     * @param showRoom includes ZugArea/ZugRoom information
      * @return a JSON serialization of the Occupant
      */
-    public ObjectNode toJSON(boolean userOnly) {
+    public ObjectNode toJSON(boolean showRoom) {
         ObjectNode node = ZugUtils.newJSON();
         node.put("away",away);
         node.put("banned",area.isBanned(getUser()));
-        if (!userOnly) {
-            node.set(ZugFields.AREA,area != null ? area.toJSON() : null); //TODO: why is area never null?
+        if (showRoom) {
+            node.set(ZugFields.AREA,area != null ? area.toJSON() : null); //TODO: how is area never null?
             node.set(ZugFields.ROOM,room != null ? room.toJSON() : null);
         }
         node.set(ZugFields.USER,user.toJSON());

@@ -557,9 +557,10 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
             areaThread = new Thread(this);
             running = true;
             areaThread.start();
+            return true;
         }
         else err(user,"Area already started");
-        return running;
+        return false;
     }
 
     public boolean stopArea() {
@@ -567,8 +568,9 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
             running = false;
             interruptPhase(); //TODO: join thread?
             getListener().areaFinished(this);
+            return true;
         }
-        return running;
+        return false;
     }
 
     public boolean allowed(ZugUser user, OperationType t) {

@@ -243,7 +243,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                                                                     handleCreateOccupant(user, zugArea, dataNode)
                                                                             .ifPresent(occupant -> {
                                                                                 if (!occupant.isClone()) {
-                                                                                    if (zugArea.addOccupant(occupant)) user.tell(ZugFields.ServMsgType.joinArea,zugArea.toJSON(true));
+                                                                                    if (zugArea.addOccupant(occupant)) {
+                                                                                        user.tell(ZugFields.ServMsgType.joinArea,zugArea.toJSON(true));
+                                                                                        areaUpdated(zugArea);
+                                                                                    }
                                                                                 }
                                                                             });
                                                                 }
@@ -255,13 +258,18 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
             getTxtNode(dataNode, ZugFields.TITLE)
                     .ifPresentOrElse(title -> getAreaByTitle(title)
                                     .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                    .ifPresentOrElse(occupant -> { if (canPartArea(occupant, dataNode)) { zugArea.dropOccupant(occupant); zugArea.updateOccupants(true); }},
-                                                            () ->  err(user, ERR_NOT_OCCUPANT)),
+                                                    .ifPresentOrElse(occupant -> { if (canPartArea(occupant, dataNode)) {
+                                                        if (zugArea.dropOccupant(occupant)) {
+                                                            user.tell(ZugFields.ServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.TITLE,zugArea.getTitle()));
+                                                            areaUpdated(zugArea);
+                                                        }
+                                                    }}, () ->  err(user, ERR_NOT_OCCUPANT)),
                                             () -> err(user, ERR_TITLE_NOT_FOUND)),
                             () -> err(user, ERR_NO_TITLE));
         } else if (equalsType(type, ZugFields.ClientMsgType.startArea)) {
-            getArea(dataNode).ifPresentOrElse(area -> area.startArea(user,dataNode),() -> err(user,"Area not found"));
-
+            getArea(dataNode).ifPresentOrElse(area -> {
+                        if (area.startArea(user,dataNode)) areaUpdated(area);
+                    }, () -> err(user,"Area not found"));
         } else if (equalsType(type, ZugFields.ClientMsgType.areaMsg)) {
             getTxtNode(dataNode, ZugFields.TITLE)
                     .ifPresentOrElse(title -> getAreaByTitle(title)

@@ -78,7 +78,7 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
      * @param occupant the departing Occupant
      * @return The departed Occupant, if successful
      */
-    public Optional<Occupant> dropOccupant(Occupant occupant) { //occupant.setArea(null);
+    public boolean dropOccupant(Occupant occupant) { //occupant.setArea(null);
         return dropOccupant(occupant.getUser());
     }
 
@@ -87,8 +87,11 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
      * @param user the ZugUser associated with the departing Occupant
      * @return The departed Occupant, if successful
      */
-    public Optional<Occupant> dropOccupant(ZugUser user) {
-        return Optional.ofNullable(occupants.remove(user.getUniqueName()));
+    public boolean dropOccupant(ZugUser user) {
+        if (occupants.remove(user.getUniqueName()) != null) {
+            updateOccupants(true); return true;
+        }
+        return false;
     }
 
     public boolean isPrivate() {
@@ -210,14 +213,14 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
      * @param user a ZugUser (who may or may not be an Occupant of the room)
      */
     public void update(ZugUser user) {
-        user.tell(ZugFields.ServMsgType.updateArea,toJSON());
+        user.tell(ZugFields.ServMsgType.updateArea,toJSON(true));
     }
 
     /**
      * Sends a JSON serialization of the room (toJSON()) to each Occupant.
      */
     public void updateAll() {
-        spam(ZugFields.ServMsgType.updateArea,toJSON());
+        spam(ZugFields.ServMsgType.updateArea,toJSON(true));
     }
 
     /**

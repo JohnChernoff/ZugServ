@@ -32,7 +32,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * WorkerProc encapsulates a ChronJob to repeatedly run at a given interval.
      */
     public static class WorkerProc extends Thread {
-        private ChronJob job;
+        private final ChronJob job;
         private long interval;
         private boolean running = false;
         public long getInterval() { return interval; }
@@ -171,7 +171,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public String generateGuestName(String name) {
         final StringBuilder userName = new StringBuilder(name);
-        int i = 0; int l = name.length()+1;
+        int i = 0; //int l = name.length()+1;
         while (users.values().stream().anyMatch(user -> user.getName().equalsIgnoreCase(userName.toString()))) {
             userName.replace(0,userName.length(),name + (++i));
 
@@ -412,7 +412,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param newConn the newly logged in user
      */
     public void swapConnection(ZugUser prevUser, Connection newConn) {
-        newConn.tell(ZugFields.ServMsgType.alertMsg,"Already logged in, swapping connections");
+        newConn.tell(ZugFields.ServMsgType.servMsg,"Already logged in, swapping connections");
         prevUser.setConn(newConn);
         handleLoggedIn(prevUser);
     }
@@ -481,7 +481,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public boolean canPartArea(Occupant occupant, JsonNode dataNode) {
         return true;
-    };
+    }
 
     /**
      * Handle any message not yet handled by the ZugManager.

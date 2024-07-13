@@ -471,6 +471,7 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     public ObjectNode toJSON(boolean showOccupants, boolean showObservers, boolean showOptions) {
         ObjectNode node = super.toJSON(showOccupants)
                 .put(ZugFields.PHASE,getPhase().name())
+                .put(ZugFields.EXISTS,exists)
                 .set(ZugFields.CREATOR,creator != null ? creator.getUniqueName().toJSON() : null);
         if (showObservers) {
             ArrayNode arrayNode = ZugUtils.newJSONArray();

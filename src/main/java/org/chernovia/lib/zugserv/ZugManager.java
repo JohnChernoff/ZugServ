@@ -498,8 +498,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param change the enumerated type of change (e.g., ZugFields.AreaChange.created, etc.)
      */
     public void handleAreaListUpdate(ZugArea area, ZugFields.AreaChange change) {
-        spam(ZugFields.ServMsgType.updateAreaList,ZugUtils.newJSON()
-                .put(ZugFields.AREA_CHANGE,change.name()).set(ZugFields.AREA,area.toJSON(true)));
+        if (area.exists()) {
+            spam(ZugFields.ServMsgType.updateAreaList,ZugUtils.newJSON()
+                    .put(ZugFields.AREA_CHANGE,change.name()).set(ZugFields.AREA,area.toJSON(true)));
+        }
     }
 
     private void handleAreaCreated(ZugArea area) {
@@ -522,9 +524,9 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param area the completed Area
      */
     public void areaFinished(ZugArea area) {
+        handleAreaListUpdate(area, ZugFields.AreaChange.deleted);
         area.setExistence(false);
         removeArea(area);
-        handleAreaListUpdate(area, ZugFields.AreaChange.deleted);
     }
 
     /**

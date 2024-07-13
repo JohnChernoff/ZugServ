@@ -44,5 +44,6 @@ public interface ZugFields {
             CHAT_COLOR = "chat_color",
             OPTIONS = "options",
             LOGIN_TYPE = "login_type",
-            AREA_CHANGE = "area_change";
+            AREA_CHANGE = "area_change",
+            EXISTS = "exists";
 }

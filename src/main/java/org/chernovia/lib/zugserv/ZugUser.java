@@ -14,10 +14,30 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
 
     /**
      * Unique Name is combination of a ZugUser's alphanumeric name/handle and their authentication source, if any.
-     * @param name a username
-     * @param source the authentication type (such as ZugFields.AuthSource.lichess)
      */
-    public record UniqueName(String name, ZugFields.AuthSource source) {
+    public static class UniqueName {
+        public String name;
+        public ZugFields.AuthSource source;
+
+        /**
+         * Creates a UniqueName.
+         *  @param n a username
+         *  @param src the authentication type (such as ZugFields.AuthSource.lichess)
+         */
+        public UniqueName(String n, ZugFields.AuthSource src) {
+            name = n; source = src;
+        }
+
+        public UniqueName(JsonNode dataNode) {
+            name = ZugManager.getTxtNode(dataNode,ZugFields.NAME).orElse("");
+            try {
+                source = ZugFields.AuthSource.valueOf(ZugManager.getTxtNode(dataNode,ZugFields.SOURCE).orElse(ZugFields.AuthSource.none.name()));
+            }
+            catch (IllegalArgumentException oops) {
+                source = ZugFields.AuthSource.none;
+            }
+        }
+
         @Override
         public String toString() {
             return name + (source == ZugFields.AuthSource.none ? "" : ("@" + source.name()));
@@ -110,7 +130,7 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
      * @return false if unauthenticated
      */
     public boolean isGuest() {
-        return getUniqueName().source().equals(ZugFields.AuthSource.none);
+        return getUniqueName().source.equals(ZugFields.AuthSource.none);
     }
 
     /**

@@ -231,7 +231,7 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     public void banOccupant(ZugUser bannor, ZugUser.UniqueName uniqueName, long t, boolean drop) {
         Occupant occupant = getOccupant(uniqueName).orElse(null);
         if (occupant == null) {
-            err(bannor, "Not found: " + uniqueName.name());
+            err(bannor, "Not found: " + uniqueName.name);
         }
         else banOccupant(bannor,occupant,t,drop);
     }

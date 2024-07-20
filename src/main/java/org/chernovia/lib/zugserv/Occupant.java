@@ -210,7 +210,7 @@ abstract public class Occupant implements JSONifier {
 
     /**
      * Serializes the Occupant to JSON.
-     * @return the results of toJSON(true)
+     * @return the results of toJSON(false)
      */
     public final ObjectNode toJSON() { return toJSON(false); }
 

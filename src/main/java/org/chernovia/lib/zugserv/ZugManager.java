@@ -383,7 +383,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
             }
             else if (source == ZugFields.AuthSource.none) {
                 if (allowGuests) {
-                    getUsers().values().stream()
+                    getUsers().values().stream() //check for guests with same IP address
                             .filter(u -> u.getSource().equals(ZugFields.AuthSource.none) && u.getConn().getAddress().equals(conn.getAddress()))
                             .findAny().ifPresentOrElse(prevGuest -> swapConnection(prevGuest,conn),
                                     () -> handleLogin(conn, generateGuestName(getTxtNode(dataNode,ZugFields.NAME).orElse("guest")),
@@ -400,10 +400,14 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     @Override
     public void handleLogin(Connection conn, String name, ZugFields.AuthSource source, JsonNode dataNode) {
-        handleCreateUser(conn,name,source,dataNode).ifPresentOrElse(user ->
-                        addOrGetUser(user).ifPresentOrElse(prevUser -> swapConnection(prevUser,user.getConn()),
-                                () -> handleLoggedIn(user)),
-                () -> err(conn,"Login error"));
+        log("Handling Login: " + name + "," + source);
+        getUserByUniqueName(new ZugUser.UniqueName(name,source))
+                .ifPresentOrElse(prevUser -> swapConnection(prevUser,conn),
+                        () -> handleCreateUser(conn,name,source,dataNode)
+                                .ifPresentOrElse(newUser -> addOrGetUser(newUser)
+                                                .ifPresentOrElse(prevUser -> swapConnection(prevUser,newUser.getConn()),
+                                () -> handleLoggedIn(newUser)),
+                () -> err(conn,"Login error")));
     }
 
     /**

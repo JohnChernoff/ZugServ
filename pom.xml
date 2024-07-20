@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.johnchernoff</groupId>
   <artifactId>zugserv</artifactId>
-  <version>0.9.8k</version>
+  <version>0.9.9</version>
   <name>ZugServ</name>
   <description>Java WebServer Framework</description>
 
@@ -37,7 +37,7 @@
 	<dependency>
 	    <groupId>com.fasterxml.jackson.core</groupId>
 	    <artifactId>jackson-databind</artifactId>
-	    <version>2.12.2</version>
+	    <version>2.13.4</version>
 	</dependency>
 
 	<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-annotations -->
@@ -59,18 +59,12 @@
 		  <version>0.1.4</version>
 	  </dependency>
 
-	  <dependency>
-		  <groupId>mysql</groupId>
-		  <artifactId>mysql-connector-java</artifactId>
-		  <version>8.0.32</version>
-	  </dependency>
-
-      <!--
+      <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->
       <dependency>
-          <groupId>net.datafaker</groupId>
-          <artifactId>datafaker</artifactId>
-          <version>2.0.2</version>
-      </dependency> -->
+          <groupId>mysql</groupId>
+          <artifactId>mysql-connector-java</artifactId>
+          <version>8.0.33</version>
+      </dependency>
 
 
   </dependencies>
@@ -138,6 +132,34 @@
                         <phase>verify</phase>
                         <goals>
                             <goal>sign</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>2.2.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>2.9.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
                         </goals>
                     </execution>
                 </executions>

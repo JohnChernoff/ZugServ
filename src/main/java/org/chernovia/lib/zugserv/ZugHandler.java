@@ -19,7 +19,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
 
     private static boolean VERBOSE = true; //for enum names vs ordinal
     static final Logger logger = Logger.getLogger("ZugServLog");
-    ConcurrentHashMap<ZugUser.UniqueName,ZugUser> users = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String,ZugUser> users = new ConcurrentHashMap<>();
     ConcurrentHashMap<String,ZugArea> areas = new ConcurrentHashMap<>();
     ZugServ serv;
 
@@ -41,12 +41,12 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     }
     public static boolean getVerbosity() { return VERBOSE; }
 
-    public ConcurrentHashMap<ZugUser.UniqueName,ZugUser> getUsers() {
+    public ConcurrentHashMap<String,ZugUser> getUsers() {
         return users;
     }
 
     public Optional<ZugUser> addOrGetUser(ZugUser user) {
-        return Optional.ofNullable(users.putIfAbsent(user.getUniqueName(), user));
+        return Optional.ofNullable(users.putIfAbsent(user.getUniqueName().toString(), user));
     }
 
     public Optional<ZugUser> removeUser(ZugUser user) {
@@ -106,7 +106,8 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     }
 
     public Optional<ZugUser> getUserByUniqueName(ZugUser.UniqueName name) {
-        ZugUser user = users.get(name);
+        //log("Looking for user: " + name); for (String key : users.keySet()) log(key.toString());
+        ZugUser user = users.get(name.toString()); //log("Found: " + user);
         return user == null ? Optional.empty() : Optional.of(user);
     }
 

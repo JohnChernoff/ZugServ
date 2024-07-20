@@ -39,6 +39,11 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
         }
 
         @Override
+        public boolean equals(Object o) {
+            return (o instanceof UniqueName uniqueName && uniqueName.source.equals(source) && uniqueName.name.equals(name));
+        }
+
+        @Override
         public String toString() {
             return name + (source == ZugFields.AuthSource.none ? "" : ("@" + source.name()));
         }

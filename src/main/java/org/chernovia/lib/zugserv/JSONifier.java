@@ -8,8 +8,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 @FunctionalInterface
 public interface JSONifier {
     /**
-     *
-     * @return create a (partial or complete) JSON representation of the Class
+     * Creates a JSON representation of the Class.
+     * @return a (partial or complete) JSON representation of the Class
      */
     ObjectNode toJSON();
 }

@@ -46,6 +46,10 @@ public interface ZugServ {
 	 */
 	void stopSrv();
 
+	/**
+	 * Indicates if the server is currently running.
+	 * @return true if running
+	 */
 	boolean isRunning();
 
 	/**
@@ -54,10 +58,14 @@ public interface ZugServ {
 	 */
 	void setPause(boolean paused);
 
+	/**
+	 * Indicates if the server is paused.
+	 * @return true if paused
+	 */
 	boolean isPaused();
 
 	/**
-	 *
+	 * Gets the server type.
 	 * @return the server transport type
 	 */
 	ServType getType();

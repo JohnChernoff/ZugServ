@@ -17,9 +17,10 @@ public class ZugUtils {
         return JSON_MAPPER.createObjectNode();
     }
 
+    public static JsonNode nullNode() { return JSON_MAPPER.nullNode(); }
+
     public static ArrayNode newJSONArray() {
         return JSON_MAPPER.createArrayNode();
-
     }
 
     public static JsonNode readTree(String content) {

@@ -155,7 +155,7 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     }
 
     public boolean isCreator(ZugUser user) {
-        return user.equals(creator);
+        return Objects.equals(user,creator);
     }
 
     public void setCreator(ZugUser creator) {

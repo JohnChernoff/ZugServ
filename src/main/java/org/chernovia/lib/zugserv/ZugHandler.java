@@ -173,7 +173,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     }
 
     /**
-     * Called upon completion of a successful login.
+     * Completes the login process.
      * @param conn An Internet Connection
      * @param name username
      * @param source the authentication source, if any

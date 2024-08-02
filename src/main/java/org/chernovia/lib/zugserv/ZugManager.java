@@ -252,7 +252,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                                                                 }
                                                                 else err(user,"Game full: " + title);
                                                             }),
-                                            () -> err(user, ERR_TITLE_NOT_FOUND)),
+                                            () -> err(user, ERR_TITLE_NOT_FOUND + ": " + title)),
                             () -> err(user, ERR_NO_TITLE));
         } else if (equalsType(type, ZugFields.ClientMsgType.partArea)) {
             getTxtNode(dataNode, ZugFields.TITLE)
@@ -421,7 +421,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         handleLoggedIn(prevUser);
     }
 
-    private void handleLoggedIn(ZugUser user) {
+
+    /**
+     * Called upon completion of a successful login.
+     * @param user The newly created (or connection-swapped) ZugUser
+     */
+    public void handleLoggedIn(ZugUser user) {
         user.setLoggedIn(true);
         user.tell(ZugFields.ServMsgType.logOK,user.toJSON());
         user.tell(ZugFields.ServMsgType.areaList,areasToJSON(true));

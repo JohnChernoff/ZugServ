@@ -550,6 +550,12 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     public boolean isRunning() { return running; }
     public void setRunning(boolean running) { this.running = running; }
 
+    /**
+     * Starts an area.  Note this does not send a ZugFields.ServMsgType.startArea message to the client.
+     * @param user The user (typicially the creator of the area) starting the area
+     * @param initData initialization data (in JSON format)
+     * @return true upon success
+     */
     public boolean startArea(ZugUser user, JsonNode initData) { //ZugManager.log("Starting: " + getTitle());
         if (!allowed(user,OperationType.start)) {
             err(user,"Permission denied");
@@ -557,6 +563,7 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
         else if (areaThread == null) {
             areaThread = new Thread(this);
             running = true;
+            //spam(ZugFields.ServMsgType.startArea,toJSON(true));
             areaThread.start();
             return true;
         }

@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.*;
 
 /**
- * ZugArea is a fuller featured extension of ZugRoom that includes passwords, bans, options, and observers.
+ * ZugArea is a fuller featured extension of ZugRoom that includes passwords, bans, options, phases, and observers.
  */
 abstract public class ZugArea extends ZugRoom implements Runnable {
 
@@ -102,6 +102,7 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     private boolean exists = true;
     private Enum<?> phase = ZugFields.AreaPhase.initializing;
     private long phaseStamp = 0;
+    private long phaseTime = 0;
     private Thread areaThread;
     boolean running = false;
 
@@ -434,54 +435,6 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
         spam(ZugFields.ServMsgType.updateOptions,ZugUtils.newJSON().set(ZugFields.OPTIONS,options));
     }
 
-    @Override
-    public boolean addOccupant(Occupant occupant) {
-        if (super.addOccupant(occupant)) observers.remove(occupant.getUser().getConn()); else return false;
-        return true;
-    }
-
-    @Override
-    public void spamX(Enum<?> t, String msg, Occupant... ignoreList) {
-        super.spamX(t,msg,ignoreList);
-        for (Connection conn : observers) {
-            if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
-        }
-    }
-
-    @Override
-    public void spamX(Enum<?> t, ObjectNode msgNode, Occupant... ignoreList) {
-        super.spamX(t,msgNode,ignoreList);
-        for (Connection conn : observers) {
-            if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(t,msgNode.put(ZugFields.TITLE,getTitle()));
-        }
-    }
-
-    @Override
-    public void msg(ZugUser user, String msg) {
-        user.tell(ZugFields.ServMsgType.areaMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
-    }
-
-    @Override
-    public ObjectNode toJSON(boolean showOccupants) {
-        return toJSON(showOccupants,false,false);
-    }
-
-    public ObjectNode toJSON(boolean showOccupants, boolean showObservers, boolean showOptions) {
-        ObjectNode node = super.toJSON(showOccupants)
-                .put(ZugFields.PHASE,getPhase().name())
-                .put(ZugFields.EXISTS,exists)
-                .set(ZugFields.CREATOR,creator != null ? creator.getUniqueName().toJSON() : null);
-        if (showObservers) {
-            ArrayNode arrayNode = ZugUtils.newJSONArray();
-            observers.forEach(obs -> arrayNode.add(obs.getID()));
-            node.set(ZugFields.OBSERVERS,arrayNode);
-        }
-        if (showOptions) node.set(ZugFields.OPTIONS,options);
-        return node;
-    }
-
     private static Optional<JsonNode> getNodes(JsonNode n, String... fields) { //TODO: what's going on here?
         if (n == null) return Optional.empty();
         JsonNode node = n.deepCopy();
@@ -518,17 +471,25 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
 
     public boolean newPhase(Enum<?> p, int seconds) {
         setPhase(p);
+        phaseTime = seconds * 1000L;
         phaseStamp = System.currentTimeMillis();
         spam(ZugFields.ServMsgType.phase,phaseToJSON()); //getListener().areaUpdated(this);
         boolean timeout = true;
         if (seconds > 0) {
-            try { Thread.sleep((seconds * 1000L)); } catch (InterruptedException e) { timeout = false; }
+            try { Thread.sleep(phaseTime); } catch (InterruptedException e) { timeout = false; }
         }
         return timeout;
     }
 
+    long getPhaseTimeRemaining() {
+        return phaseTime - (System.currentTimeMillis() - getPhaseStamp());
+    }
+
     public ObjectNode phaseToJSON() {
-        return ZugUtils.newJSON().put(ZugFields.PHASE,phase.name());
+        return ZugUtils.newJSON()
+                .put(ZugFields.PHASE,phase.name())
+                .put(ZugFields.PHASE_STAMP,getPhaseStamp())
+                .put(ZugFields.PHASE_TIME_REMAINING,getPhaseTimeRemaining());
     }
 
     public Enum<?> getPhase() {
@@ -590,5 +551,56 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     @Override
     public void run() {
     }
+
+
+    @Override
+    public boolean addOccupant(Occupant occupant) {
+        if (super.addOccupant(occupant)) observers.remove(occupant.getUser().getConn()); else return false;
+        return true;
+    }
+
+    @Override
+    public void spamX(Enum<?> t, String msg, Occupant... ignoreList) {
+        super.spamX(t,msg,ignoreList);
+        for (Connection conn : observers) {
+            if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
+            else conn.tell(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
+        }
+    }
+
+    @Override
+    public void spamX(Enum<?> t, ObjectNode msgNode, Occupant... ignoreList) {
+        super.spamX(t,msgNode,ignoreList);
+        for (Connection conn : observers) {
+            if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
+            else conn.tell(t,msgNode.put(ZugFields.TITLE,getTitle()));
+        }
+    }
+
+    @Override
+    public void msg(ZugUser user, String msg) {
+        user.tell(ZugFields.ServMsgType.areaMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
+    }
+
+    @Override
+    public ObjectNode toJSON(boolean showOccupants) {
+        return toJSON(showOccupants,false,false);
+    }
+
+    public ObjectNode toJSON(boolean showOccupants, boolean showObservers, boolean showOptions) {
+        ObjectNode node = super.toJSON(showOccupants)
+                .put(ZugFields.PHASE,getPhase().name())
+                .put(ZugFields.PHASE_TIME_REMAINING,getPhaseTimeRemaining())
+                .put(ZugFields.EXISTS,exists)
+                .set(ZugFields.CREATOR,creator != null ? creator.getUniqueName().toJSON() : null);
+        if (showObservers) {
+            ArrayNode arrayNode = ZugUtils.newJSONArray();
+            observers.forEach(obs -> arrayNode.add(obs.getID()));
+            node.set(ZugFields.OBSERVERS,arrayNode);
+        }
+        if (showOptions) node.set(ZugFields.OPTIONS,options);
+        return node;
+    }
+
 
 }

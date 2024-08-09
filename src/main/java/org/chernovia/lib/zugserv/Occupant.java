@@ -171,10 +171,7 @@ abstract public class Occupant implements JSONifier {
      * @param msg an alphanumeric message
      */
     public void tell(Enum<?> type, String msg) {
-        ObjectNode node = msg.isBlank() ? ZugUtils.newJSON() : ZugUtils.newJSON().put(ZugFields.MSG,msg);
-        if (area != null) node.put(ZugFields.TITLE,area.getTitle());
-        if (room != null) node.put(ZugFields.ROOM,room.getTitle());
-        getUser().tell(type,node);
+        tell(type,msg.isBlank() ? ZugUtils.newJSON() : ZugUtils.newJSON().put(ZugFields.MSG,msg));
     }
 
     /**
@@ -184,7 +181,18 @@ abstract public class Occupant implements JSONifier {
      * @param node a JSON-formatted message
      */
     public void tell(Enum<?> type, ObjectNode node) {
-        if (!isDeafened()) getUser().tell(type,(ZugUtils.joinNodes(
+        tell(type,node,false);
+    }
+
+    /**
+     * Sends a JSON-formatted message with the indicated type.
+     * The message will automatically include the ZugArea and ZugRoom titles.
+     * @param type the enumerated message type
+     * @param node a JSON-formatted message
+     * @param ignoreDeafness it true, message is sent regardless of isDeafened()
+     */
+    public void tell(Enum<?> type, ObjectNode node,boolean ignoreDeafness) {
+        if (!isDeafened() || ignoreDeafness) getUser().tell(type,(ZugUtils.joinNodes(
                 node,
                 area != null ? ZugUtils.newJSON().put(ZugFields.TITLE,area.getTitle()) : null,
                 room != null ? ZugUtils.newJSON().put(ZugFields.ROOM,room.getTitle()) : null

@@ -194,17 +194,29 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
 
     /**
      * Sends a JSON-encoded message and enumerated type to all unexcluded Occupants to the room.
+     * (Currently calls spamX(type,msgNode,false,exclude))
      * @param type an enumerated type
      * @param msgNode a JSON-encoded message
      * @param exclude a list of excluded Occupants
      */
     public void spamX(Enum<?> type, ObjectNode msgNode, Occupant... exclude) {
+        spamX(type,msgNode,false,exclude);
+    }
+
+    /**
+     * Sends a JSON-encoded message and enumerated type to all unexcluded Occupants to the room.
+     * @param type an enumerated type
+     * @param msgNode a JSON-encoded message
+     * @param ignoreDeafness if true, ignores isDeafened()
+     * @param exclude a list of excluded Occupants
+     */
+    public void spamX(Enum<?> type, ObjectNode msgNode, boolean ignoreDeafness, Occupant... exclude) {
         occupants.values().forEach(occupant -> {
             if (exclude != null) { //System.out.println("Checking ignore list");
                 if (Arrays.stream(exclude).noneMatch(o -> o.equals(occupant))) {
-                    occupant.tell(type, msgNode);
+                    occupant.tell(type, msgNode,ignoreDeafness);
                 }
-            } else if (!occupant.isAway()) occupant.tell(type, msgNode);
+            } else if (!occupant.isAway()) occupant.tell(type, msgNode,ignoreDeafness);
         });
     }
 

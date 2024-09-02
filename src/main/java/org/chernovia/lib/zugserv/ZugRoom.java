@@ -18,7 +18,7 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
 
     private boolean isPrivate = false;
 
-    private final ConcurrentHashMap<ZugUser.UniqueName,Occupant> occupants = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String,Occupant> occupants = new ConcurrentHashMap<>();
 
     /**
      * Indicates if a given Connection exists as an occupant of the room.
@@ -59,7 +59,7 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
      */
     public boolean addOccupant(Occupant occupant) {
         if (occupant.isClone()) return false;
-        if (occupants.putIfAbsent(occupant.getUser().getUniqueName(),occupant) == null) {
+        if (occupants.putIfAbsent(occupant.getUser().getUniqueName().toString(),occupant) == null) {
             updateOccupants(true); return true;
         }
         return false;
@@ -88,7 +88,7 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
      * @return The departed Occupant, if successful
      */
     public boolean dropOccupant(ZugUser user) {
-        if (occupants.remove(user.getUniqueName()) != null) {
+        if (occupants.remove(user.getUniqueName().toString()) != null) {
             updateOccupants(true); return true;
         }
         return false;
@@ -130,7 +130,7 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
         return getOccupant(user.getUniqueName());
     }
     public Optional<Occupant> getOccupant(ZugUser.UniqueName name) {
-        return Optional.ofNullable(occupants.get(name));
+        return Optional.ofNullable(occupants.get(name.toString()));
     }
 
     public String getTitle() {

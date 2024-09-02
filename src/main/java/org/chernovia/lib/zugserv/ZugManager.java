@@ -84,7 +84,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                 && areas.values().stream().noneMatch(area -> area.getOccupant(user).isPresent())).forEach(user -> {
             log("Removing (idle): " + user.getUniqueName());
             user.getConn().close("User Disconnection/Idle");
-            users.remove(user.getUniqueName());
+            users.remove(user.getUniqueName().toString());
         });
     }
 

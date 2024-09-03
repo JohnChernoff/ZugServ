@@ -4,7 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import java.util.Optional;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
 
 /**
@@ -102,13 +103,26 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     private boolean requirePassword = true;
     private boolean allowGuests = true;
+    private final List<Class<? extends Enum<?>>> commandList = new ArrayList<>();
+    private final int crowdThreshold = 100;
+    private static AtomicLong idCounter = new AtomicLong();
+    public static String createID() {
+        return String.valueOf(idCounter.getAndIncrement());
+    }
+
+    @FunctionalInterface
+    public interface CommandHandler {
+        void handleCommand(ZugUser user,JsonNode data);
+    }
+
+    private final Map<Enum<?>,CommandHandler> funcMap = new HashMap<>();
 
     /**
      * Creates a ZugManager of a given type.
      * @param type a ZugServ type (for example, ZugServ.ServType.TWITCH)
      */
     public ZugManager(ZugServ.ServType type) {
-        super(type,0);
+        this(type,0);
     }
 
     /**
@@ -118,65 +132,33 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public ZugManager(ZugServ.ServType type, int port) {
         super(type,port);
+        addMessageList(ZugFields.ClientMsgType.class);
+        addHandler(ZugFields.ClientMsgType.newArea,this::handleCreateArea);
+        addHandler(ZugFields.ClientMsgType.joinArea,this::handleJoinArea);
+        addHandler(ZugFields.ClientMsgType.partArea,this::handlePartArea);
+        addHandler(ZugFields.ClientMsgType.startArea,this::handleStartArea);
+
+        addHandler(ZugFields.ClientMsgType.servMsg,this::handleServerMessage);
+        addHandler(ZugFields.ClientMsgType.privMsg,this::handlePrivateMessage);
+        addHandler(ZugFields.ClientMsgType.areaMsg,this::handleAreaMsg);
+
+        addHandler(ZugFields.ClientMsgType.updateServ,this::handleUpdateServ);
+        addHandler(ZugFields.ClientMsgType.updateArea,this::handleUpdateArea);
+        addHandler(ZugFields.ClientMsgType.updateOccupant,this::handleUpdateOccupant);
+        addHandler(ZugFields.ClientMsgType.updateUser,this::handleUpdateUser);
+
+        addHandler(ZugFields.ClientMsgType.setDeaf,this::handleDeafen);
+        addHandler(ZugFields.ClientMsgType.ban,this::handleBan);
+        addHandler(ZugFields.ClientMsgType.getOptions,this::handleUpdateOptions);
+        addHandler(ZugFields.ClientMsgType.setOptions,this::handleSetOptions);
     }
 
-    public boolean requiresPassword() {
-        return requirePassword;
+    public void addMessageList(Class<? extends Enum<?>> e) {
+        commandList.add(e);
     }
 
-    public void setRequirePassword(boolean bool) {
-        requirePassword = bool;
-    }
-
-    public boolean allowingGuests() {
-        return allowGuests;
-    }
-
-    public void setAllowGuests(boolean bool) {
-        allowGuests = bool;
-    }
-
-    /**
-     * Called when a Connection is first established. Default behavior is to then request a login to the server.
-     * @param conn The newly created Connection
-     */
-    @Override
-    public void connected(Connection conn) {
-        tell(conn, ZugFields.ServMsgType.reqLogin,ZugUtils.newJSON().put(ZugFields.ID,conn.getID()));
-    }
-
-    @Override
-    public void err(Connection conn, String msg) {
-        tell(conn, ZugFields.ServMsgType.errMsg, msg);
-    }
-
-    @Override
-    public void msg(Connection conn, String msg) {
-        tell(conn, ZugFields.ServMsgType.servMsg, msg);
-    }
-
-    /**
-     * Looks for and returns a ZugArea with the title (ZugFields.TITLE) specified from the top level of a JsonNode.
-     * @param dataNode the JSON-formatted data
-     * @return an (Optional) ZugArea
-     */
-    public Optional<ZugArea> getArea(JsonNode dataNode) {
-        return getTxtNode(dataNode, ZugFields.TITLE).flatMap(this::getAreaByTitle);
-    }
-
-    /**
-     * Generates a guest user name with an available numeric suffix.
-     * @param name user name (defaults to "guest")
-     * @return the appended user name (e.g., guest15, etc.)
-     */
-    public String generateGuestName(String name) {
-        final StringBuilder userName = new StringBuilder(name);
-        int i = 0; //int l = name.length()+1;
-        while (users.values().stream().anyMatch(user -> user.getName().equalsIgnoreCase(userName.toString()))) {
-            userName.replace(0,userName.length(),name + (++i));
-
-        }
-        return userName.toString();
+    public void addHandler(Enum<?> e, CommandHandler handler) {
+        funcMap.put(e,handler);
     }
 
     /**
@@ -214,122 +196,177 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         }
     }
 
-    /**
-     * Called by handleMsg for not yet handled messages from a logged in user.
-     * @param user the user sending a message
-     * @param type the enumerated message type
-     * @param dataNode the JSON-formatted message data
-     */
-    public void handleUserMsg(ZugUser user, String type, JsonNode dataNode) {
-        if (equalsType(type, ZugFields.ClientMsgType.servMsg)) {
-            handleUserServChat(user,getTxtNode(dataNode,ZugFields.MSG).orElse(""));
-        } else if (equalsType(type, ZugFields.ClientMsgType.privMsg)) { //log("Private Message: " + dataNode);
-            getUniqueName(dataNode).ifPresentOrElse(uName -> handlePrivateMsg(user,uName,
-                            getTxtNode(dataNode,ZugFields.MSG).orElse("")),
-                    () -> err(user,"Missing user name"));
-        } else if (equalsType(type, ZugFields.ClientMsgType.newArea)) {
-            getTxtNode(dataNode, ZugFields.TITLE)
-                    .ifPresentOrElse(title -> getAreaByTitle(title)
-                                    .ifPresentOrElse(zugArea -> err(user, "Already exists: " + title),
-                                            () -> handleCreateArea(user, title, dataNode).ifPresent(this::handleAreaCreated)),
-                            () -> err(user, ERR_NO_TITLE));
-        } else if (equalsType(type, ZugFields.ClientMsgType.joinArea)) {
-            getTxtNode(dataNode, ZugFields.TITLE)
-                    .ifPresentOrElse(title -> getAreaByTitle(title)
-                                    .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                    .ifPresentOrElse(zugArea::rejoin,
-                                                            () -> {
-                                                                if (zugArea.numOccupants() < zugArea.getMaxOccupants()) {
-                                                                    handleCreateOccupant(user, zugArea, dataNode)
-                                                                            .ifPresent(occupant -> {
-                                                                                if (!occupant.isClone()) {
-                                                                                    if (zugArea.addOccupant(occupant)) {
-                                                                                        user.tell(ZugFields.ServMsgType.joinArea,zugArea.toJSON(true));
-                                                                                        areaUpdated(zugArea);
-                                                                                    }
-                                                                                }
-                                                                            });
-                                                                }
-                                                                else err(user,"Game full: " + title);
-                                                            }),
-                                            () -> err(user, ERR_TITLE_NOT_FOUND + ": " + title)),
-                            () -> err(user, ERR_NO_TITLE));
-        } else if (equalsType(type, ZugFields.ClientMsgType.partArea)) {
-            getTxtNode(dataNode, ZugFields.TITLE)
-                    .ifPresentOrElse(title -> getAreaByTitle(title)
-                                    .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                    .ifPresentOrElse(occupant -> { if (canPartArea(occupant, dataNode)) {
-                                                        if (zugArea.dropOccupant(occupant)) {
-                                                            user.tell(ZugFields.ServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.TITLE,zugArea.getTitle()));
-                                                            areaUpdated(zugArea);
-                                                        }
-                                                    }}, () ->  err(user, ERR_NOT_OCCUPANT)),
-                                            () -> err(user, ERR_TITLE_NOT_FOUND)),
-                            () -> err(user, ERR_NO_TITLE));
-        } else if (equalsType(type, ZugFields.ClientMsgType.startArea)) {
-            getArea(dataNode).ifPresentOrElse(area -> {
-                        if (area.startArea(user,dataNode)) areaUpdated(area);
-                    }, () -> err(user,"Area not found"));
-        } else if (equalsType(type, ZugFields.ClientMsgType.areaMsg)) {
-            getTxtNode(dataNode, ZugFields.TITLE)
-                    .ifPresentOrElse(title -> getAreaByTitle(title)
-                                    .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                    .ifPresentOrElse(occupant -> handleAreaChat(occupant,getTxtNode(dataNode,ZugFields.MSG).orElse("")),
-                                                            () ->  err(user, ERR_NOT_OCCUPANT)),
-                                            () -> err(user, ERR_TITLE_NOT_FOUND)),
-                            () -> err(user, ERR_NO_TITLE));
-        } else if (equalsType(type, ZugFields.ClientMsgType.updateServ)) {
-            updateServ(user.getConn());
-        } else if (equalsType(type, ZugFields.ClientMsgType.updateArea)) {
-            getArea(dataNode).ifPresent(area -> {
-                        if (!area.isPrivate()) area.update(user);
-                        else getOccupant(user,dataNode).ifPresent(occupant -> area.update(occupant.getUser()));
+    private void handleUserMsg(ZugUser user, String type, JsonNode dataNode) {
+        List<CommandHandler> handleList = new ArrayList<>();
+        commandList.forEach(cmdSet -> {
+            try {
+                Arrays.stream(cmdSet.getEnumConstants()).filter(eCon -> eCon.name().equalsIgnoreCase(type)).forEach(e -> {
+                    CommandHandler handler = funcMap.get(e);
+                    if (handler != null) {
+                        handler.handleCommand(user,dataNode);
+                        handleList.add(handler);
                     }
-            );
-        } else if (equalsType(type, ZugFields.ClientMsgType.updateOccupant)) {
-            String areaTitle = getTxtNode(dataNode,ZugFields.TITLE).orElse("");
-            getAreaByTitle(areaTitle)
-                    .ifPresentOrElse(area -> area.getOccupant(user)
-                                    .ifPresentOrElse(occupant -> occupant.update(user.getConn()),
-                                               () -> err(user.getConn(), ERR_OCCUPANT_NOT_FOUND)),
-                            () -> err(user.getConn(), ERR_AREA_NOT_FOUND));
-        } else if (equalsType(type, ZugFields.ClientMsgType.updateUser)) {
-            getTxtNode(dataNode, ZugFields.NAME)
-                    .ifPresentOrElse(name -> getUserByName(name,getTxtNode(dataNode, ZugFields.SOURCE).orElse(null))
-                                    .ifPresentOrElse(usr -> user.update(user.getConn()),
-                                            () -> err(user.getConn(), ERR_USER_NOT_FOUND)),
-                            () -> user.update(user.getConn()));
-        } else if (equalsType(type, ZugFields.ClientMsgType.setDeaf)) {
-            getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.DEAFENED).ifPresent(occupant::setDeafened));
-        } else if (equalsType(type, ZugFields.ClientMsgType.ban)) {
-            getArea(dataNode).ifPresent(area -> getOccupant(user, dataNode)
-                    .flatMap(occupant -> getUniqueName(dataNode.get(ZugFields.NAME)))
-                    .ifPresent(name -> area.banOccupant(user, name, 15 * 60 * 1000,true)));
-        } else if (equalsType(type, ZugFields.ClientMsgType.getOptions)) {
-            getArea(dataNode).ifPresent(area -> area.updateOptions(user));
-        } else if (equalsType(type, ZugFields.ClientMsgType.setOptions)) {
-            getArea(dataNode).ifPresent(area -> getJSONNode(dataNode,ZugFields.OPTIONS).ifPresent(options -> area.setOptions(user,options)));
+                });
+            }
+            catch (IllegalArgumentException ignore) { //err(user,"No such command type: " + type);
+            }
+        });
+        if (handleList.isEmpty()) {
+            handleUnsupportedMsg(user.getConn(),type,dataNode,user);
         }
-        else handleUnsupportedMsg(user.getConn(),type,dataNode,user);
     }
 
-    /**
-     * Sends server information to a Connection.
-     * @param conn the Connection to update
-     */
+    /* *** */
 
-    public void updateServ(Connection conn) {
-        tell(conn, ZugFields.ServMsgType.updateServ,toJSON());
+    private void handleServerMessage(ZugUser user, JsonNode dataNode) {
+        String msg = getTxtNode(dataNode,ZugFields.MSG).orElse("");
+        spam(ZugFields.ServMsgType.servUserMsg,userMsgToJSON(user,msg));
     }
 
-    //public void updateAreas(boolean titleOnly) { spam(ZugFields.ServMsgType.updateAreas,areasToJSON(titleOnly)); }
+    private void handlePrivateMessage(ZugUser user, JsonNode dataNode) {
+        getUniqueName(dataNode).ifPresentOrElse(uName -> handlePrivateMsg(user,uName,
+                        getTxtNode(dataNode,ZugFields.MSG).orElse("")),
+                () -> err(user,"Missing user name"));
+    }
+
+    private void handleCreateArea(ZugUser user, JsonNode dataNode) {
+        getTxtNode(dataNode, ZugFields.TITLE)
+                .ifPresentOrElse(title -> getAreaByTitle(title)
+                                .ifPresentOrElse(zugArea -> err(user, "Already exists: " + title),
+                                        () -> handleCreateArea(user, title, dataNode).ifPresent(this::handleAreaCreated)),
+                        () -> {
+                            if (isCrowded()) {
+                                handleCreateArea(user, createID(), dataNode).ifPresent(this::handleAreaCreated);
+                            } else err(user, ERR_NO_TITLE);
+                        }
+                );
+    }
+
+    private void handleJoinArea(ZugUser user, JsonNode dataNode) {
+        getTxtNode(dataNode, ZugFields.TITLE)
+                .ifPresentOrElse(title -> getAreaByTitle(title)
+                                .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
+                                                .ifPresentOrElse(zugArea::rejoin,
+                                                        () -> {
+                                                            if (zugArea.numOccupants() < zugArea.getMaxOccupants()) {
+                                                                handleCreateOccupant(user, zugArea, dataNode)
+                                                                        .ifPresent(occupant -> {
+                                                                            if (!occupant.isClone()) {
+                                                                                if (zugArea.addOccupant(occupant)) {
+                                                                                    user.tell(ZugFields.ServMsgType.joinArea,zugArea.toJSON(true));
+                                                                                    areaUpdated(zugArea);
+                                                                                }
+                                                                            }
+                                                                        });
+                                                            }
+                                                            else err(user,"Game full: " + title);
+                                                        }),
+                                        () -> err(user, ERR_TITLE_NOT_FOUND + ": " + title)),
+                        () -> err(user, ERR_NO_TITLE));
+    }
+
+    private void handlePartArea(ZugUser user, JsonNode dataNode) {
+        getTxtNode(dataNode, ZugFields.TITLE)
+                .ifPresentOrElse(title -> getAreaByTitle(title)
+                                .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
+                                                .ifPresentOrElse(occupant -> { if (canPartArea(occupant, dataNode)) {
+                                                    if (zugArea.dropOccupant(occupant)) {
+                                                        user.tell(ZugFields.ServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.TITLE,zugArea.getTitle()));
+                                                        areaUpdated(zugArea);
+                                                    }
+                                                }}, () ->  err(user, ERR_NOT_OCCUPANT)),
+                                        () -> err(user, ERR_TITLE_NOT_FOUND)),
+                        () -> err(user, ERR_NO_TITLE));
+    }
+
+    private void handleStartArea(ZugUser user, JsonNode dataNode) {
+        getArea(dataNode).ifPresentOrElse(area -> {
+            if (area.startArea(user,dataNode)) areaUpdated(area);
+        }, () -> err(user,"Area not found"));
+    }
+
+    private void handleAreaMsg(ZugUser user, JsonNode dataNode) {
+        getTxtNode(dataNode, ZugFields.TITLE)
+                .ifPresentOrElse(title -> getAreaByTitle(title)
+                                .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
+                                                .ifPresentOrElse(occupant -> handleAreaChat(occupant,getTxtNode(dataNode,ZugFields.MSG).orElse("")),
+                                                        () ->  err(user, ERR_NOT_OCCUPANT)),
+                                        () -> err(user, ERR_TITLE_NOT_FOUND)),
+                        () -> err(user, ERR_NO_TITLE));
+    }
+
+    private void handleUpdateServ(ZugUser user, JsonNode dataNode) {
+        updateServ(user.getConn());
+    }
+
+    private void handleUpdateArea(ZugUser user, JsonNode dataNode) {
+        getArea(dataNode).ifPresent(area -> {
+                    if (!area.isPrivate()) area.update(user);
+                    else getOccupant(user,dataNode).ifPresent(occupant -> area.update(occupant.getUser()));
+                }
+        );
+    }
+
+    private void handleUpdateOccupant(ZugUser user, JsonNode dataNode) {
+        String areaTitle = getTxtNode(dataNode,ZugFields.TITLE).orElse("");
+        getAreaByTitle(areaTitle)
+                .ifPresentOrElse(area -> area.getOccupant(user)
+                                .ifPresentOrElse(occupant -> occupant.update(user.getConn()),
+                                        () -> err(user.getConn(), ERR_OCCUPANT_NOT_FOUND)),
+                        () -> err(user.getConn(), ERR_AREA_NOT_FOUND));
+    }
+
+    private void handleUpdateUser(ZugUser user, JsonNode dataNode) {
+        getTxtNode(dataNode, ZugFields.NAME)
+                .ifPresentOrElse(name -> getUserByName(name,getTxtNode(dataNode, ZugFields.SOURCE).orElse(null))
+                                .ifPresentOrElse(usr -> user.update(user.getConn()),
+                                        () -> err(user.getConn(), ERR_USER_NOT_FOUND)),
+                        () -> user.update(user.getConn()));
+    }
+
+
+    private void handleDeafen(ZugUser user, JsonNode dataNode) {
+        getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.DEAFENED).ifPresent(occupant::setDeafened));
+    }
+
+
+    private void handleBan(ZugUser user, JsonNode dataNode) {
+        getArea(dataNode).ifPresent(area -> getOccupant(user, dataNode)
+                .flatMap(occupant -> getUniqueName(dataNode.get(ZugFields.NAME)))
+                .ifPresent(name -> area.banOccupant(user, name, 15 * 60 * 1000,true)));
+    }
+
+    private void handleUpdateOptions(ZugUser user, JsonNode dataNode) {
+        getArea(dataNode).ifPresent(area -> area.updateOptions(user));
+    }
+
+    private void handleSetOptions(ZugUser user, JsonNode dataNode) {
+        getArea(dataNode).ifPresent(area -> getJSONNode(dataNode,ZugFields.OPTIONS).ifPresent(options -> area.setOptions(user,options)));
+    }
+
+    /* *** */
 
     private ObjectNode userMsgToJSON(ZugUser user, String msg) {
         return ZugUtils.newJSON().put(ZugFields.MSG,msg).set(ZugFields.USER,user.toJSON());
     }
 
     private ObjectNode occupantMsgToJSON(Occupant occupant, String msg) {
-        return ZugUtils.newJSON().put(ZugFields.MSG,msg).set(ZugFields.OCCUPANT, occupant.toJSON());
+        return ZugUtils.newJSON().put(ZugFields.MSG,msg).set(ZugFields.OCCUPANT,occupant.toJSON());
+    }
+
+    private void handleAreaCreated(ZugArea area) {
+        addOrGetArea(area);
+        areaCreated(area);
+    }
+
+    /* *** */
+
+    /**
+     * Sends server information to a Connection.
+     * @param conn the Connection to update
+     */
+    public void updateServ(Connection conn) {
+        tell(conn, ZugFields.ServMsgType.updateServ,toJSON());
     }
 
     /**
@@ -343,21 +380,14 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     /**
-     * Handles a chat message from a user to the general server.
-     * @param user the user
-     * @param msg the chat message
-     */
-    public void handleUserServChat(ZugUser user, String msg) {
-        spam(ZugFields.ServMsgType.servUserMsg,userMsgToJSON(user,msg));
-    }
-
-    /**
      * Handles a chat message from an Occupant to its inhabited area.
      * @param occupant the Occupant
      * @param msg the chat message
      */
     public void handleAreaChat(Occupant occupant, String msg) {
-        occupant.getArea().ifPresentOrElse(area -> area.spam(ZugFields.ServMsgType.areaUserMsg,occupantMsgToJSON(occupant,msg)),() -> err(occupant.getUser(),"Area not found"));
+        occupant.getArea().ifPresentOrElse(area ->
+                        area.spam(ZugFields.ServMsgType.areaUserMsg,occupantMsgToJSON(occupant,msg)),
+                () -> err(occupant.getUser(),"Area not found"));
     }
 
     /**
@@ -373,6 +403,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         }, () -> err(user1,"User not found: " + name));
     }
 
+
+    /**
+     * Handles the beginning of a login request.
+     * @param conn the connection that will, upon a successful login, become associated with a ZugUser
+     * @param dataNode login data
+     */
     public void handleLoginRequest(Connection conn, JsonNode dataNode) {
         try {
             ZugFields.AuthSource source =
@@ -507,15 +543,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param change the enumerated type of change (e.g., ZugFields.AreaChange.created, etc.)
      */
     public void handleAreaListUpdate(ZugArea area, ZugFields.AreaChange change) {
-        if (area.exists()) {
+        if (!isCrowded() && area.exists()) {
             spam(ZugFields.ServMsgType.updateAreaList,ZugUtils.newJSON()
                     .put(ZugFields.AREA_CHANGE,change.name()).set(ZugFields.AREA,area.toJSON(true)));
         }
-    }
-
-    private void handleAreaCreated(ZugArea area) {
-        addOrGetArea(area);
-        areaCreated(area);
     }
 
     /**
@@ -544,6 +575,74 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public void areaUpdated(ZugArea area) {
         handleAreaListUpdate(area, ZugFields.AreaChange.updated);
+    }
+
+    public boolean requiresPassword() {
+        return requirePassword;
+    }
+
+    public void setRequirePassword(boolean bool) {
+        requirePassword = bool;
+    }
+
+    public boolean allowingGuests() {
+        return allowGuests;
+    }
+
+    public void setAllowGuests(boolean bool) {
+        allowGuests = bool;
+    }
+
+    public boolean isCrowded() {
+        return users.size() < crowdThreshold;
+    }
+
+    /**
+     * Called when a Connection is first established. Default behavior is to then request a login to the server.
+     * @param conn The newly created Connection
+     */
+    @Override
+    public void connected(Connection conn) {
+        tell(conn, ZugFields.ServMsgType.reqLogin,ZugUtils.newJSON().put(ZugFields.ID,conn.getID()));
+    }
+
+    @Override
+    public void err(Connection conn, String msg) {
+        tell(conn, ZugFields.ServMsgType.errMsg, msg);
+    }
+
+    @Override
+    public void msg(Connection conn, String msg) {
+        tell(conn, ZugFields.ServMsgType.servMsg, msg);
+    }
+
+    @Override
+    public ObjectNode toJSON() {
+        return  isCrowded() ? super.toJSON().put("crowded",false) : ZugUtils.newJSON().put("crowded",true);
+    }
+
+    /**
+     * Looks for and returns a ZugArea with the title (ZugFields.TITLE) specified from the top level of a JsonNode.
+     * @param dataNode the JSON-formatted data
+     * @return an (Optional) ZugArea
+     */
+    public Optional<ZugArea> getArea(JsonNode dataNode) {
+        return getTxtNode(dataNode, ZugFields.TITLE).flatMap(this::getAreaByTitle);
+    }
+
+    /**
+     * Generates a guest user name with an available numeric suffix.
+     * @param name user name (defaults to "guest")
+     * @return the appended user name (e.g., guest15, etc.)
+     */
+    public String generateGuestName(String name) {
+        final StringBuilder userName = new StringBuilder(name);
+        int i = 0; //int l = name.length()+1;
+        while (users.values().stream().anyMatch(user -> user.getName().equalsIgnoreCase(userName.toString()))) {
+            userName.replace(0,userName.length(),name + (++i));
+
+        }
+        return userName.toString();
     }
 
 }

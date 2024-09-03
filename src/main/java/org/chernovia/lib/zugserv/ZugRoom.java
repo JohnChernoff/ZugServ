@@ -129,6 +129,7 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
     public Optional<Occupant> getOccupant(ZugUser user) {
         return getOccupant(user.getUniqueName());
     }
+
     public Optional<Occupant> getOccupant(ZugUser.UniqueName name) {
         return Optional.ofNullable(occupants.get(name.toString()));
     }

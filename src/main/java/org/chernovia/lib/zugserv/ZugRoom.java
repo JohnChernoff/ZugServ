@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * A ZugRoom represents an area that can contain and rudimentarily manage an arbitrarily defined number of Occupants.
  */
-abstract public class ZugRoom extends Timeoutable implements JSONifier {
+abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>, JSONifier {
 
     private String title;
 
@@ -291,6 +291,11 @@ abstract public class ZugRoom extends Timeoutable implements JSONifier {
         node.set(ZugFields.OCCUPANTS,arrayNode);
         node.put(ZugFields.TITLE,title);
         return node;
+    }
+
+    @Override
+    public int compareTo(ZugRoom a) {
+        return this.getOccupants().size() - a.getOccupants().size();
     }
 
 }

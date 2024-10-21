@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.johnchernoff</groupId>
   <artifactId>zugserv</artifactId>
-  <version>0.9.9c</version>
+  <version>0.9.9e</version>
   <name>ZugServ</name>
   <description>Java WebServer Framework</description>
 
@@ -24,7 +24,8 @@
         <developerConnection>scm:git:ssh://github.com/JohnChernoff/ZugServ.git</developerConnection>
         <url>https://github.com/JohnChernoff/ZugServ/tree/master</url>
     </scm>
-  
+
+
   <dependencies>
       	<!-- https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-core -->
 	<dependency>
@@ -66,6 +67,12 @@
           <version>8.0.33</version>
       </dependency>
 
+      <dependency>
+          <groupId>net.datafaker</groupId>
+          <artifactId>datafaker</artifactId>
+          <version>2.4.0</version>
+      </dependency>
+
 
   </dependencies>
 
@@ -92,20 +99,6 @@
                 <nexusUrl>https://s01.oss.sonatype.org/</nexusUrl>
                 <autoReleaseAfterClose>true</autoReleaseAfterClose>
             </configuration>
-        </plugin>
-
-        <plugin>
-            <groupId>org.apache.maven.plugins</groupId>
-            <artifactId>maven-source-plugin</artifactId>
-            <version>2.2.1</version>
-            <executions>
-                <execution>
-                    <id>attach-sources</id>
-                    <goals>
-                        <goal>jar-no-fork</goal>
-                    </goals>
-                </execution>
-            </executions>
         </plugin>
 
         <plugin>
@@ -146,20 +139,6 @@
                         <id>attach-sources</id>
                         <goals>
                             <goal>jar-no-fork</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>2.9.1</version>
-                <executions>
-                    <execution>
-                        <id>attach-javadocs</id>
-                        <goals>
-                            <goal>jar</goal>
                         </goals>
                     </execution>
                 </executions>

@@ -89,7 +89,8 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      */
     public boolean dropOccupant(ZugUser user) {
         if (occupants.remove(user.getUniqueName().toString()) != null) {
-            updateOccupants(true); return true;
+            updateOccupants(true);
+            return true;
         }
         return false;
     }
@@ -222,7 +223,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     }
 
     /**
-     * Sends a JSON serialization of the room (toJSON()) to a specific ZugUser.
+     * Sends a JSON serialization of the room to a specific ZugUser.  Defaults to toJson(true) but can be extended for greater detail.
      * @param user a ZugUser (who may or may not be an Occupant of the room)
      */
     public void update(ZugUser user) {
@@ -230,7 +231,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     }
 
     /**
-     * Sends a JSON serialization of the room (toJSON()) to each Occupant.
+     * Sends a JSON serialization of the room (toJSON()) to each Occupant. Defaults to toJson(true) but can be extended for greater detail.
      */
     public void updateAll() {
         spam(ZugFields.ServMsgType.updateArea,toJSON(true));
@@ -264,7 +265,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     }
 
     /**
-     * Returns a JSON serialization of the room and its Occupants.
+     * Returns a JSON serialization of the room (but not its Occupants).
      * @return the result of toJSON(false)
      */
     public final ObjectNode toJSON() { return toJSON(false); }

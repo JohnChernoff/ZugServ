@@ -509,6 +509,9 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     public Thread getAreaThread() { return areaThread; }
     public void setAreaThread(Thread areaThread) { this.areaThread = areaThread; }
     public boolean isRunning() { return running; }
+    public boolean isOpen() {
+        return areaThread == null;
+    }
     public void setRunning(boolean running) { this.running = running; }
 
     /**
@@ -554,13 +557,13 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
 
 
     @Override
-    public boolean addOccupant(Occupant occupant) {
+    final public boolean addOccupant(Occupant occupant) {
         if (super.addOccupant(occupant)) observers.remove(occupant.getUser().getConn()); else return false;
         return true;
     }
 
     @Override
-    public void spamX(Enum<?> t, String msg, Occupant... ignoreList) {
+    final public void spamX(Enum<?> t, String msg, Occupant... ignoreList) {
         super.spamX(t,msg,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
@@ -569,7 +572,7 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     }
 
     @Override
-    public void spamX(Enum<?> t, ObjectNode msgNode, Occupant... ignoreList) {
+    final public void spamX(Enum<?> t, ObjectNode msgNode, Occupant... ignoreList) {
         super.spamX(t,msgNode,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
@@ -578,16 +581,16 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     }
 
     @Override
-    public void msg(ZugUser user, String msg) {
+    final public void msg(ZugUser user, String msg) {
         user.tell(ZugFields.ServMsgType.areaMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
     }
 
     @Override
-    public ObjectNode toJSON(boolean showOccupants) {
+    final public ObjectNode toJSON(boolean showOccupants) {
         return toJSON(showOccupants,false,false);
     }
 
-    public ObjectNode toJSON(boolean showOccupants, boolean showObservers, boolean showOptions) {
+    final public ObjectNode toJSON(boolean showOccupants, boolean showObservers, boolean showOptions) {
         ObjectNode node = super.toJSON(showOccupants)
                 .put(ZugFields.PHASE,getPhase().name())
                 .put(ZugFields.PHASE_TIME_REMAINING,getPhaseTimeRemaining())

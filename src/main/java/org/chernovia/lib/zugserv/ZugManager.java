@@ -103,6 +103,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     private boolean requirePassword = true;
     private boolean allowGuests = true;
+    private boolean swapGuestConnection = false;
+    private boolean fancyGuestNames = true;
     private final List<Class<? extends Enum<?>>> commandList = new ArrayList<>();
     private final int crowdThreshold = 100;
     private static AtomicLong idCounter = new AtomicLong();
@@ -233,12 +235,9 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         getTxtNode(dataNode, ZugFields.TITLE)
                 .ifPresentOrElse(title -> getAreaByTitle(title)
                                 .ifPresentOrElse(zugArea -> err(user, "Already exists: " + title),
-                                        () -> handleCreateArea(user, title, dataNode).ifPresent(area -> handleAreaCreated(area,true))), //TODO: user dataNode for autojoin
-                        () -> {
-                            if (isCrowded()) {
-                                handleCreateArea(user, createID(), dataNode).ifPresent(area -> handleAreaCreated(area,true));
-                            } else err(user, ERR_NO_TITLE);
-                        }
+                                        () -> handleCreateArea(user, title.isBlank() ? createID() : title, dataNode)
+                                                .ifPresent(area -> handleAreaCreated(area,true))), //TODO: user dataNode for autojoin
+                        () -> handleCreateArea(user, createID(), dataNode).ifPresent(area -> handleAreaCreated(area,true))
                 );
     }
 
@@ -251,7 +250,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public void handleJoinRandomArea(ZugUser user, JsonNode dataNode) { //default is to join the area with the most users
-        areas.values().stream().sorted().findFirst()
+        areas.values().stream().filter(ZugArea::isOpen).sorted().findFirst()
                 .ifPresentOrElse(area -> handleCreateOccupant(user, area, dataNode)
                                 .ifPresent(occupant -> joinArea(area,occupant))
                         , () -> handleCreateArea(user,dataNode));
@@ -430,13 +429,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                         token -> handleLichessLogin(conn,token), () -> err(conn,"Empty token"));
             }
             else if (source == ZugFields.AuthSource.none) {
-                if (allowGuests) {
-                    getUsers().values().stream() //check for guests with same IP address
-                            .filter(u -> u.getSource().equals(ZugFields.AuthSource.none) && u.getConn().getAddress().equals(conn.getAddress()))
-                            .findAny().ifPresentOrElse(prevGuest -> swapConnection(prevGuest,conn),
-                                    () -> handleLogin(conn, generateGuestName(getTxtNode(dataNode,ZugFields.NAME).orElse("guest")),
-                                            ZugFields.AuthSource.none,null));
-                }
+                if (allowGuests) handleGuestLogin(conn,dataNode);
                 else err(conn,"Login error: guests not allowed");
             }
             else err(conn,"Login error: source not found");
@@ -444,6 +437,24 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         catch (IllegalArgumentException e) {
             err(conn,"Login error: bad source");
         }
+    }
+
+    private void handleGuestLogin(Connection conn, JsonNode dataNode) {
+        Optional<ZugUser> prevGuest = getUsers().values().stream() //check for guests with same IP address
+                .filter(u ->
+                        u.getSource().equals(ZugFields.AuthSource.none) &&
+                                u.getConn().getAddress().equals(conn.getAddress())).findAny();
+        if (prevGuest.isPresent()) {
+            if (swapGuestConnection) {
+                swapConnection(prevGuest.get(),conn);
+                return;
+            }
+            else {
+                removeUser(prevGuest.get());
+            }
+        }
+        handleLogin(conn, generateGuestName(getTxtNode(dataNode,ZugFields.NAME)
+                .orElse(ZugFields.GUEST)), ZugFields.AuthSource.none,null);
     }
 
     @Override
@@ -465,8 +476,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public void handleLoggedIn(ZugUser user) {
         user.setLoggedIn(true);
         user.tell(ZugFields.ServMsgType.logOK,user.toJSON());
-        user.tell(ZugFields.ServMsgType.areaList,areasToJSON(true));
-        //spam(ZugFields.ServMsgType.userList,usersToJSON(true));
+        user.tell(ZugFields.ServMsgType.areaList,areasToJSON(true,isCrowded() ? user : null));
     }
 
     /**
@@ -605,7 +615,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public boolean isCrowded() {
-        return users.size() < crowdThreshold;
+        return users.values().size() > crowdThreshold;
     }
 
     /**
@@ -629,7 +639,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     @Override
     public ObjectNode toJSON() {
-        return  isCrowded() ? super.toJSON().put("crowded",false) : ZugUtils.newJSON().put("crowded",true);
+        return isCrowded() ? ZugUtils.newJSON().put("crowded",true) : super.toJSON().put("crowded",false);
     }
 
     /**
@@ -647,6 +657,11 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @return the appended user name (e.g., guest15, etc.)
      */
     public String generateGuestName(String name) {
+        if (fancyGuestNames && name.equals(ZugFields.GUEST)) {
+            //JavaFaker f = new Faker();
+            //new Faker();
+
+        }
         final StringBuilder userName = new StringBuilder(name);
         int i = 0; //int l = name.length()+1;
         while (users.values().stream().anyMatch(user -> user.getName().equalsIgnoreCase(userName.toString()))) {

@@ -35,11 +35,6 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     public static void setLoggingLevel(Level level) {
         logger.setLevel(level); log("Logging Level: " + level);
     }
-    public static void setVerbosity(boolean v) {
-        VERBOSE = v; log("Verbosity: " + VERBOSE);
-
-    }
-    public static boolean getVerbosity() { return VERBOSE; }
 
     public ConcurrentHashMap<String,ZugUser> getUsers() {
         return users;
@@ -195,7 +190,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
      * @param msg the message (typically but not necessarily in JSON format)
      */
     @Override
-    public void newMsg(Connection conn, String msg) {
+    public void newMsg(Connection conn, String msg) { //log("New Conn Message: " + msg);
         JsonNode msgNode = ZugUtils.readTree(msg);
         if (msgNode == null) {
             log(Level.WARNING,"Bad JSON message: " + msg); return;
@@ -308,20 +303,22 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
      */
     static void setVerbose(boolean b) { VERBOSE = b; }
 
-    public ObjectNode usersToJSON(boolean nameOnly) {
+    final public ObjectNode usersToJSON(boolean nameOnly) {
         ArrayNode arrayNode = ZugUtils.newJSONArray();
         users.values().forEach(user -> arrayNode.add(nameOnly ? user.getUniqueName().toJSON() : user.toJSON()));
         return ZugUtils.newJSON().set(ZugFields.USERS,arrayNode);
     }
 
-    public ObjectNode areasToJSON(boolean listDataOnly) {
+    final public ObjectNode areasToJSON(boolean showOccupants, ZugUser user) {
         ArrayNode arrayNode = ZugUtils.newJSONArray();
-        areas.values().forEach(area -> arrayNode.add(area.toJSON(listDataOnly)));
+        areas.values().forEach(area -> {
+            if (user == null || area.getOccupant(user).isPresent()) arrayNode.add(area.toJSON(showOccupants));
+        });
         return ZugUtils.newJSON().set(ZugFields.AREAS,arrayNode);
     }
 
     public ObjectNode toJSON() {
-        return ZugUtils.joinNodes(usersToJSON(true),areasToJSON(true));
+        return ZugUtils.joinNodes(usersToJSON(true),areasToJSON(true,null));
     }
 
 }

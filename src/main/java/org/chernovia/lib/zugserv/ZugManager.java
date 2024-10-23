@@ -7,6 +7,7 @@ import java.net.UnknownHostException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
+import net.datafaker.*;
 
 /**
  * ZugManager extends ZugHandler to handle a variety of common server functions and user interactions.
@@ -658,9 +659,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public String generateGuestName(String name) {
         if (fancyGuestNames && name.equals(ZugFields.GUEST)) {
-            //JavaFaker f = new Faker();
-            //new Faker();
-
+            name = new Faker().artist().name().replace(" ","") + new Faker().animal().name();
         }
         final StringBuilder userName = new StringBuilder(name);
         int i = 0; //int l = name.length()+1;

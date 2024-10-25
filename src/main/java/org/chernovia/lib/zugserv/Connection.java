@@ -82,7 +82,7 @@ public interface Connection {
 
 	/**
 	 * Closes a Connection.
-	 * @param reason An arbitrarily verbode string explanation of why the Connection is to be closed
+	 * @param reason An arbitrarily verbose string explanation of why the Connection is to be closed
 	 */
 	void close(String reason);
 

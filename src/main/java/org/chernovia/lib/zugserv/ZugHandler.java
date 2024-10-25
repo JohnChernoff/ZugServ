@@ -21,6 +21,8 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     static final Logger logger = Logger.getLogger("ZugServLog");
     ConcurrentHashMap<String,ZugUser> users = new ConcurrentHashMap<>();
     ConcurrentHashMap<String,ZugArea> areas = new ConcurrentHashMap<>();
+    private boolean preserveDisconnectedUsers = true;
+
     ZugServ serv;
 
     public ZugHandler(ZugServ.ServType type) { this(type,0); }
@@ -104,6 +106,14 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         //log("Looking for user: " + name); for (String key : users.keySet()) log(key.toString());
         ZugUser user = users.get(name.toString()); //log("Found: " + user);
         return user == null ? Optional.empty() : Optional.of(user);
+    }
+
+    public boolean isPreservingDisconnectedUsers() {
+        return preserveDisconnectedUsers;
+    }
+    
+    public void setPreserveDisconnectedUsers(boolean preserveDisconnectedUsers) {
+        this.preserveDisconnectedUsers = preserveDisconnectedUsers;
     }
 
     public boolean handleLichessLogin(Connection conn, String token) {
@@ -215,6 +225,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         for (ZugUser user : getUsersByConn(conn)) {
             log("Disconnected: " + user.getName());
             user.setLoggedIn(false);
+            if (!isPreservingDisconnectedUsers()) removeUser(user);
         }
         for (ZugArea area : getAreas()) area.removeObserver(conn);
     }

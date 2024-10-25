@@ -450,9 +450,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                 swapConnection(prevGuest.get(),conn);
                 return;
             }
-            else {
-                removeUser(prevGuest.get());
-            }
+            //else { removeUser(prevGuest.get()); }
         }
         handleLogin(conn, generateGuestName(getTxtNode(dataNode,ZugFields.NAME)
                 .orElse(ZugFields.GUEST)), ZugFields.AuthSource.none,null);

@@ -70,17 +70,17 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         this.serv = serv;
     }
 
-    // return users.values.filter(user => user.conn.isSameOrigin(conn)).toVector()
-    public List<ZugArea> getAreasByUser(ZugUser user) {
-        final List<ZugArea> areaList = new Vector<>();
-        for (ZugArea area : areas.values()) {
-            if (area.getOccupant(user).isPresent()) areaList.add(area);
-        }
-        return areaList;
-    }
-
     public Optional<ZugArea> getAreaByTitle(String title) {
         return Optional.ofNullable(areas.get(title));
+    }
+
+    /**
+     * Gets all areas a user is currently an occupant of.
+     * @param user A ZugUser
+     * @return list of ZugAreas
+     */
+    public List<ZugArea> getAreasByUser(ZugUser user) {
+        return getAreas().stream().filter(area -> area.getOccupant(user).isPresent()).toList();
     }
 
     public List<ZugUser> getUsersByConn(Connection conn) {
@@ -225,7 +225,11 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         for (ZugUser user : getUsersByConn(conn)) {
             log("Disconnected: " + user.getName());
             user.setLoggedIn(false);
-            if (!isPreservingDisconnectedUsers()) removeUser(user);
+            List<ZugArea> areas = getAreasByUser(user);
+            if (!isPreservingDisconnectedUsers() || areas.isEmpty()) {
+                areas.forEach(area -> area.dropOccupant(user));
+                removeUser(user);
+            }
         }
         for (ZugArea area : getAreas()) area.removeObserver(conn);
     }

@@ -82,8 +82,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
             area.spam(ZugFields.ServMsgType.servMsg,"Closing " + area.getTitle() + " (reason: timeout)");
             areaFinished(area);
         });
-        users.values().stream().filter(user -> user.timedOut()
-                && areas.values().stream().noneMatch(area -> area.getOccupant(user).isPresent())).forEach(user -> {
+        users.values().stream().filter(user -> user.timedOut() && getAreasByUser(user).isEmpty()).forEach(user -> {
             log("Removing (idle): " + user.getUniqueName());
             user.getConn().close("User Disconnection/Idle");
             users.remove(user.getUniqueName().toString());
@@ -105,9 +104,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     private boolean requirePassword = true;
     private boolean allowGuests = true;
     private boolean swapGuestConnection = false;
+
     private boolean fancyGuestNames = true;
     private final List<Class<? extends Enum<?>>> commandList = new ArrayList<>();
-    private final int crowdThreshold = 100;
+    private int crowdThreshold = 100;
     private static AtomicLong idCounter = new AtomicLong();
     public static String createID() {
         return String.valueOf(idCounter.getAndIncrement());
@@ -154,6 +154,34 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         addHandler(ZugFields.ClientMsgType.ban,this::handleBan);
         addHandler(ZugFields.ClientMsgType.getOptions,this::handleUpdateOptions);
         addHandler(ZugFields.ClientMsgType.setOptions,this::handleSetOptions);
+    }
+
+    public boolean requiringPassword() {
+        return requirePassword;
+    }
+
+    public boolean swappingGuestConnection() {
+        return swapGuestConnection;
+    }
+
+    public void setSwapGuestConnection(boolean swapGuestConnection) {
+        this.swapGuestConnection = swapGuestConnection;
+    }
+
+    public boolean usingFancyGuestNames() {
+        return fancyGuestNames;
+    }
+
+    public void setFancyGuestNames(boolean fancyGuestNames) {
+        this.fancyGuestNames = fancyGuestNames;
+    }
+
+    public int getCrowdThreshold() {
+        return crowdThreshold;
+    }
+
+    public void setCrowdThreshold(int n) {
+        crowdThreshold = n;
     }
 
     public void addMessageList(Class<? extends Enum<?>> e) {

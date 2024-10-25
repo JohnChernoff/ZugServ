@@ -60,6 +60,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     public boolean addOccupant(Occupant occupant) {
         if (occupant.isClone()) return false;
         if (occupants.putIfAbsent(occupant.getUser().getUniqueName().toString(),occupant) == null) {
+            action();
             updateOccupants(true); return true;
         }
         return false;

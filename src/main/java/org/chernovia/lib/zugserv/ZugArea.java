@@ -123,8 +123,8 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
      * @param c the creator
      * @param l an AreaListener
      */
-    public ZugArea(String t, String p, ZugUser c, AreaListener l) {
-        setTitle(t); password = p; creator = c; listener = l; //l.areaCreated(this);
+    public ZugArea(String t, String p, ZugUser c, AreaListener l) { //l.areaCreated(this);
+        setTitle(t); password = p; creator = c; listener = l; action();
     }
 
     /**
@@ -189,8 +189,8 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
      * @param conn the observing Connection
      * @return false if Connection is null or already represents an Occupant
      */
-    public boolean addObserver(Connection conn) {
-        if (conn == null || isOccupant(conn,false)) return false; //(isOccupant(conn,true))
+    public boolean addObserver(Connection conn) {  //(isOccupant(conn,true))
+        if (conn == null || isOccupant(conn,false)) return false; else action();
         conn.tell(ZugFields.ServMsgType.obs,ZugUtils.newJSON().put(ZugFields.TITLE,getTitle()));
         return observers.add(conn);
     }

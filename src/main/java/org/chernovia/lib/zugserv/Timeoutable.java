@@ -4,7 +4,7 @@ import java.time.Instant;
 
 /**
  * This Class contains methods for determining if an Object has "timed out", i.e.,
- * exceeded its alotted time since its last "action".
+ * exceeded its alotted time since its last "action" (measured in seconds).
  */
 public abstract class Timeoutable {
     private int idleTimeout = Integer.MAX_VALUE;

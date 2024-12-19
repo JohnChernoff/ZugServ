@@ -116,20 +116,18 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         this.preserveDisconnectedUsers = preserveDisconnectedUsers;
     }
 
-    public boolean handleLichessLogin(Connection conn, String token) {
+    public void handleLichessLogin(Connection conn, String token) {
         if (token == null || token.isEmpty() || token.equals(ZugFields.UNKNOWN_STRING)) {
             err(conn, "Login failure: Bad name/token");
         } else { //log("Logging in with token: " + token.asText());
             ClientAuth client = Client.auth(token);
             AccountAuth aa = client.account();
             if (aa.profile().isPresent()) {
-                handleLogin(conn, aa.profile().get().name(),ZugFields.AuthSource.lichess,ZugUtils.newJSON().put(ZugFields.TOKEN,token));
-                return true;
+                handleLogin(conn, new ZugUser.UniqueName(aa.profile().get().name(),ZugFields.AuthSource.lichess),ZugUtils.newJSON().put(ZugFields.TOKEN,token));
             } else {
                 err(conn, "Login failure: bad token");
             }
         }
-        return false;
     }
 
     public void spam(String msg) {
@@ -180,11 +178,10 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     /**
      * Completes the login process.
      * @param conn An Internet Connection
-     * @param name username
-     * @param source the authentication source, if any
+     * @param uName a UniqueName
      * @param dataNode login data (in JSON)
      */
-    public abstract void handleLogin(Connection conn, String name, ZugFields.AuthSource source, JsonNode dataNode);
+    public abstract void handleLogin(Connection conn, ZugUser.UniqueName uName, JsonNode dataNode);
 
     /**
      * Called upon receipt of a valid JSON-formatted message from a Connection

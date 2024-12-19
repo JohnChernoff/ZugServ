@@ -458,7 +458,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                         token -> handleLichessLogin(conn,token), () -> err(conn,"Empty token"));
             }
             else if (source == ZugFields.AuthSource.none) {
-                if (allowGuests) handleGuestLogin(conn,dataNode);
+                if (allowGuests) handleLogin(
+                        conn,
+                        generateGuestName(getTxtNode(dataNode,ZugFields.NAME).orElse(ZugFields.GUEST)),
+                        dataNode);
                 else err(conn,"Login error: guests not allowed");
             }
             else err(conn,"Login error: source not found");
@@ -468,33 +471,19 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         }
     }
 
-    private void handleGuestLogin(Connection conn, JsonNode dataNode) {
-        Optional<ZugUser> prevGuest = getUsers().values().stream() //check for guests with same IP address
-                .filter(u ->
-                        u.getSource().equals(ZugFields.AuthSource.none) &&
-                                u.getConn().getAddress().equals(conn.getAddress())).findAny();
-        if (prevGuest.isPresent()) {
-            if (swapGuestConnection) {
-                swapConnection(prevGuest.get(),conn);
-                return;
-            }
-            //else { removeUser(prevGuest.get()); }
-        }
-        handleLogin(conn, generateGuestName(getTxtNode(dataNode,ZugFields.NAME)
-                .orElse(ZugFields.GUEST)), ZugFields.AuthSource.none,null);
+    @Override
+    public void handleLogin(Connection conn, ZugUser.UniqueName uName, JsonNode dataNode) {
+        log("Handling Login: " + uName);
+        getUsers().values().stream()
+                .filter(user -> user.sameUser(uName,conn)).findFirst()
+                .ifPresentOrElse(prevUser -> swapConnection(prevUser,conn),
+                () -> handleCreateUser(conn,uName,dataNode)
+                        .ifPresentOrElse(newUser -> addOrGetUser(newUser)
+                                        .ifPresentOrElse(wtf -> err(conn,"Error: duplicate user!"),
+                                                () -> handleLoggedIn(newUser)),
+                        () -> err(conn,"Login error")));
     }
 
-    @Override
-    public void handleLogin(Connection conn, String name, ZugFields.AuthSource source, JsonNode dataNode) {
-        log("Handling Login: " + name + "," + source);
-        getUserByUniqueName(new ZugUser.UniqueName(name,source))
-                .ifPresentOrElse(prevUser -> swapConnection(prevUser,conn),
-                        () -> handleCreateUser(conn,name,source,dataNode)
-                                .ifPresentOrElse(newUser -> addOrGetUser(newUser)
-                                                .ifPresentOrElse(prevUser -> swapConnection(prevUser,newUser.getConn()),
-                                () -> handleLoggedIn(newUser)),
-                () -> err(conn,"Login error")));
-    }
 
     /**
      * Called upon completion of a successful login.
@@ -541,12 +530,11 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     /**
      * Handles the creation (generally the login procedure) of a new user.
      * @param conn the user's Connection
-     * @param name the user's alphanumeric name
-     * @param source the user's authentication source
+     * @param uName the user's UniqueName
      * @param dataNode extra JSON-formatted user data (if any)
      * @return an (Optional) newly created user (empty upon failure)
      */
-    public abstract Optional<ZugUser> handleCreateUser(Connection conn, String name, ZugFields.AuthSource source, JsonNode dataNode);
+    public abstract Optional<ZugUser> handleCreateUser(Connection conn, ZugUser.UniqueName uName, JsonNode dataNode);
 
     /**
      * Handles the creation of a new area.
@@ -679,11 +667,11 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     /**
-     * Generates a guest user name with an available numeric suffix.
-     * @param name user name (defaults to "guest")
-     * @return the appended user name (e.g., guest15, etc.)
+     * Generates a guest user name.
+     * @param name user name
+     * @return the guest's UniqueName
      */
-    public String generateGuestName(String name) {
+    public ZugUser.UniqueName generateGuestName(String name) {
         if (fancyGuestNames && name.equals(ZugFields.GUEST)) {
             name = new Faker().artist().name().replace(" ","") + new Faker().animal().name();
         }
@@ -693,7 +681,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
             userName.replace(0,userName.length(),name + (++i));
 
         }
-        return userName.toString();
+        return new ZugUser.UniqueName(userName.toString(), ZugFields.AuthSource.none);
     }
 
 }

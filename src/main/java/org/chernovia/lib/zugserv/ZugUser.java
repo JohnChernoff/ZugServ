@@ -58,11 +58,10 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
     /**
      * Creates a ZugUser with a Connection, name, authentication source, and (possibly null) authentication token.
      * @param c a Connection
-     * @param name an alphanumeric name
-     * @param source an authentication source
+     * @param uName a UniqueName
      */
-    public ZugUser(Connection c, String name, ZugFields.AuthSource source) {
-        setConn(c); uniqueName = new UniqueName(name,source); loggedIn = true;
+    public ZugUser(Connection c, UniqueName uName) {
+        setConn(c); uniqueName = uName; loggedIn = true;
     }
 
     /**
@@ -184,6 +183,14 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
      */
     public void update(Connection conn) {
         if (conn != null) conn.tell(ZugFields.ServMsgType.updateUser,toJSON());
+    }
+
+    public boolean sameAddress(Connection conn) {
+        return !conn.getAddress().isLoopbackAddress() && conn.getAddress().equals(getConn().getAddress());
+    }
+
+    public boolean sameUser(ZugUser.UniqueName name, Connection conn) {
+        return name.source.equals(ZugFields.AuthSource.none) ? sameAddress(conn) : name.equals(getUniqueName());
     }
 
     public ObjectNode toJSON() {

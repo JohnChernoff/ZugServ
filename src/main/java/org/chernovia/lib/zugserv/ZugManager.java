@@ -104,14 +104,14 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     private boolean requirePassword = true;
     private boolean allowGuests = true;
     private boolean swapGuestConnection = false;
-
     private boolean fancyGuestNames = true;
     private final List<Class<? extends Enum<?>>> commandList = new ArrayList<>();
     private int crowdThreshold = 100;
-    private static AtomicLong idCounter = new AtomicLong();
+    private static final AtomicLong idCounter = new AtomicLong();
     public static String createID() {
         return String.valueOf(idCounter.getAndIncrement());
     }
+    public static String areaName = "Area";
 
     @FunctionalInterface
     public interface CommandHandler {
@@ -266,7 +266,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                                 .ifPresentOrElse(zugArea -> err(user, "Already exists: " + title),
                                         () -> handleCreateArea(user, title.isBlank() ? createID() : title, dataNode)
                                                 .ifPresent(area -> handleAreaCreated(area,true))), //TODO: user dataNode for autojoin
-                        () -> handleCreateArea(user, createID(), dataNode).ifPresent(area -> handleAreaCreated(area,true))
+                        () -> handleCreateArea(user, areaName + createID(), dataNode).ifPresent(area -> handleAreaCreated(area,true))
                 );
     }
 

@@ -224,18 +224,26 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     }
 
     /**
-     * Sends a JSON serialization of the room to a specific ZugUser.  Defaults to toJson(true) but can be extended for greater detail.
+     * Sends a JSON serialization of the room (updateToJSON()) to a specific ZugUser.
      * @param user a ZugUser (who may or may not be an Occupant of the room)
      */
-    public void update(ZugUser user) {
-        user.tell(ZugFields.ServMsgType.updateArea,toJSON(true));
+    final public void update(ZugUser user) {
+        user.tell(ZugFields.ServMsgType.updateArea,updateToJSON());
     }
 
     /**
-     * Sends a JSON serialization of the room (toJSON()) to each Occupant. Defaults to toJson(true) but can be extended for greater detail.
+     * Sends a JSON serialization of the room (updateToJSON()) to each Occupant.
      */
-    public void updateAll() {
-        spam(ZugFields.ServMsgType.updateArea,toJSON(true));
+    final public void updateAll() {
+        spam(ZugFields.ServMsgType.updateArea,updateToJSON());
+    }
+
+    /**
+     * Sends a JSON serialization to a client/user. Can (and probably should) be overriden.
+     * @return the (JSON formatted) data
+     */
+    public ObjectNode updateToJSON() {
+        return toJSON(true);
     }
 
     /**

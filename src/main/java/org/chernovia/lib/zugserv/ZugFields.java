@@ -48,5 +48,6 @@ public interface ZugFields {
             PHASE_STAMP = "phase_stamp",
             PHASE_TIME_REMAINING = "phase_time_remaining",
             EXISTS = "exists",
+            RUNNING = "running",
             GUEST = "guest";
 }

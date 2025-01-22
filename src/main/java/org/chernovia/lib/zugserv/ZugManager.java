@@ -65,8 +65,6 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                 job.begin();
             }
         }
-
-
     }
 
     /**
@@ -118,7 +116,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         void handleCommand(ZugUser user,JsonNode data);
     }
 
-    private final Map<Enum<?>,CommandHandler> funcMap = new HashMap<>();
+    private final Map<Enum<?>,CommandHandler> handMap = new HashMap<>();
 
     /**
      * Creates a ZugManager of a given type.
@@ -189,11 +187,11 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public void addHandler(Enum<?> e, CommandHandler handler) {
-        funcMap.put(e,handler);
+        handMap.put(e,handler);
     }
 
     /**
-     * Handles a great variety of common user actions. If none apply, redirects to handleUnsupportedMsg().
+     * Handles a variety of common user actions. If none apply, redirects to handleUnsupportedMsg().
      * @param conn a Connection
      * @param type the message type (as String)
      * @param dataNode the message content (in JSON)
@@ -232,7 +230,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         commandList.forEach(cmdSet -> {
             try {
                 Arrays.stream(cmdSet.getEnumConstants()).filter(eCon -> eCon.name().equalsIgnoreCase(type)).forEach(e -> {
-                    CommandHandler handler = funcMap.get(e);
+                    CommandHandler handler = handMap.get(e);
                     if (handler != null) {
                         handler.handleCommand(user,dataNode);
                         handleList.add(handler);
@@ -289,7 +287,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         getTxtNode(dataNode, ZugFields.TITLE)
                 .ifPresentOrElse(title -> getAreaByTitle(title)
                                 .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                .ifPresentOrElse(occupant -> { if (canPartArea(occupant, dataNode)) {
+                                                .ifPresentOrElse(occupant -> { if (canPartArea(zugArea,occupant, dataNode)) {
                                                     if (zugArea.dropOccupant(occupant)) {
                                                         user.tell(ZugFields.ServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.TITLE,zugArea.getTitle()));
                                                         areaUpdated(zugArea);
@@ -556,11 +554,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     /**
      * Indicates if an Occupant may leave an area. Defaults to true.
+     * @param area the occupied area
      * @param occupant the departing Occupant
      * @param dataNode JSON-formatted "departing" data (if any)
      * @return true if permitted
      */
-    public boolean canPartArea(Occupant occupant, JsonNode dataNode) {
+    public boolean canPartArea(ZugArea area, Occupant occupant, JsonNode dataNode) {
         return true;
     }
 

@@ -5,6 +5,8 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.*;
 
+import static org.chernovia.lib.zugserv.ZugHandler.log;
+
 /**
  * ZugArea is a fuller featured extension of ZugRoom that includes passwords, bans, options, phases, and observers.
  */
@@ -464,16 +466,27 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
         if (node == null) return Optional.empty(); else return Optional.of(node.asBoolean());
     }
 
-    public void setPhase(Enum<?> p) {
+    /**
+     * Sets the current phase.
+     * @param p current phase
+     * @param quietly suppress client notification
+     */
+    public void setPhase(Enum<?> p, boolean quietly) {
         action();
         phase = p;
+        if (!quietly) spam(ZugFields.ServMsgType.phase,phaseToJSON()); //getListener().areaUpdated(this);
     }
 
+    /**
+     * Sets a new phase and sleeps for the specified number of seconds or until interrupted.
+     * @param p phase to set
+     * @param seconds seconds to sleep
+     * @return seconds slept
+     */
     public boolean newPhase(Enum<?> p, int seconds) {
-        setPhase(p);
+        setPhase(p,false);
         phaseTime = seconds * 1000L;
         phaseStamp = System.currentTimeMillis();
-        spam(ZugFields.ServMsgType.phase,phaseToJSON()); //getListener().areaUpdated(this);
         boolean timeout = true;
         if (seconds > 0) {
             try { Thread.sleep(phaseTime); } catch (InterruptedException e) { timeout = false; }
@@ -512,6 +525,20 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     public boolean isOpen() {
         return areaThread == null;
     }
+
+    public boolean isDeserted() {
+        return getActiveOccupants().isEmpty();
+    }
+
+    @Override
+    public boolean dropOccupant(ZugUser user) {
+        if (super.dropOccupant(user)) { //log("Dropping: " + user.getUniqueName().toString());
+            if (isDeserted()) stopArea(true);
+            return true;
+        }
+        return false;
+    }
+
     public void setRunning(boolean running) { this.running = running; }
 
     /**
@@ -535,14 +562,12 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
         return false;
     }
 
-    public boolean stopArea() {
+    public void stopArea(boolean finish) {
         if (areaThread != null) {
             running = false;
             interruptPhase(); //TODO: join thread?
-            getListener().areaFinished(this);
-            return true;
         }
-        return false;
+        if (finish) getListener().areaFinished(this);
     }
 
     public boolean allowed(ZugUser user, OperationType t) {
@@ -595,6 +620,7 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
                 .put(ZugFields.PHASE,getPhase().name())
                 .put(ZugFields.PHASE_TIME_REMAINING,getPhaseTimeRemaining())
                 .put(ZugFields.EXISTS,exists)
+                .put(ZugFields.RUNNING,running)
                 .set(ZugFields.CREATOR,creator != null ? creator.getUniqueName().toJSON() : null);
         if (showObservers) {
             ArrayNode arrayNode = ZugUtils.newJSONArray();

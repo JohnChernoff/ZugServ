@@ -95,6 +95,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     final private AreaListener listener;
     private boolean purgeDeserted = true;
+    private boolean purgeAway = true;
     private String password;
     private ZugUser creator;
     private final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
@@ -180,17 +181,17 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     @Override
     public void handleAway(Occupant occupant) {
-        if (isDeserted() && isPurgingDeserted()) stopArea(true);
+        if (isDeserted(purgeAway) && purgeDeserted) stopArea(true);
     }
 
     @Override
     public void handleRoomJoin(Occupant occupant, ZugRoom prevRoom, ZugRoom newRoom) {}
 
-    public boolean isPurgingDeserted() {
-        return purgeDeserted;
+    public void setPurgeAway(boolean purgeAway) {
+        this.purgeAway = purgeAway;
     }
 
-    public void setPurgingDeserted(boolean purgeDeserted) {
+    public void setPurgeDeserted(boolean purgeDeserted) {
         this.purgeDeserted = purgeDeserted;
     }
 
@@ -543,14 +544,14 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         return areaThread == null;
     }
 
-    public boolean isDeserted() {
-        return getActiveOccupants().isEmpty();
+    public boolean isDeserted(boolean countAway) {
+        return getActiveOccupants(countAway).isEmpty();
     }
 
     @Override
     public boolean dropOccupant(ZugUser user) {
         if (super.dropOccupant(user)) { //log("Dropping: " + user.getUniqueName().toString());
-            if (isDeserted()) stopArea(true);
+            if (isDeserted(purgeAway)) stopArea(true);
             return true;
         }
         return false;

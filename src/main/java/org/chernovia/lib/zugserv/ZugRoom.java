@@ -129,10 +129,14 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
 
     /**
      * Returns a collection of currently logged in Occupants
+     *
+     * @param countAway counts away users as inactive
      * @return a collection of Occupants
      */
-    public Collection<Occupant> getActiveOccupants() {
-        return getOccupants().stream().filter(occupant -> occupant.getUser().isLoggedIn()).toList();
+    public Collection<Occupant> getActiveOccupants(boolean countAway) {
+        return getOccupants().stream().filter(occupant ->
+                countAway ? !occupant.isAway() :  occupant.getUser().isLoggedIn()).toList();
+
     }
 
     public Optional<Occupant> getOccupant(ZugUser user) {
@@ -292,7 +296,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      */
     public ObjectNode toJSON(boolean showOccupants) {
         if (showOccupants) return occupantsToJSON(false);
-        return ZugUtils.newJSON().put(ZugFields.TITLE,title);
+        return ZugUtils.newJSON().put(ZugFields.TITLE,title).put(ZugFields.NAME,getName());
     }
 
     /**

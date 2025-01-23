@@ -12,13 +12,20 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>, JSONifier {
 
-    private String title;
+    private final String name;
+
+    private final String title;
 
     private int maxOccupants = 99;
 
     private boolean isPrivate = false;
 
     private final ConcurrentHashMap<String,Occupant> occupants = new ConcurrentHashMap<>();
+
+    public ZugRoom(String title) {
+        this.title = title;
+        name = setName();
+    }
 
     /**
      * Indicates if a given Connection exists as an occupant of the room.
@@ -140,9 +147,8 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         return title;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
-    }
+    abstract public String setName();
+    public String getName() { return name; }
 
     /**
      * Sends a String message to all Occupants of the room.

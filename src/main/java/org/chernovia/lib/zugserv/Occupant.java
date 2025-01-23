@@ -99,7 +99,10 @@ abstract public class Occupant implements JSONifier {
      * Sets the away/idle status of an Occupant.
      * @param b true for away
      */
-    public void setAway(boolean b) { away = b; }
+    public void setAway(boolean b) {
+        away = b;
+        if (away) getArea().ifPresent(area -> area.handleAway(this));
+    }
 
     /**
      * Indicates if an Occupant can receive tells.

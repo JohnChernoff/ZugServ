@@ -287,12 +287,18 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         getTxtNode(dataNode, ZugFields.TITLE)
                 .ifPresentOrElse(title -> getAreaByTitle(title)
                                 .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                .ifPresentOrElse(occupant -> { if (canPartArea(zugArea,occupant, dataNode)) {
-                                                    if (zugArea.dropOccupant(occupant)) {
-                                                        user.tell(ZugFields.ServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.TITLE,zugArea.getTitle()));
-                                                        areaUpdated(zugArea);
+                                                .ifPresentOrElse(occupant -> {
+                                                    if (canPartArea(zugArea,occupant, dataNode)) {
+                                                        if (zugArea.dropOccupant(occupant)) {
+                                                            user.tell(ZugFields.ServMsgType.partArea,ZugUtils.newJSON()
+                                                                    .put(ZugFields.TITLE,zugArea.getTitle()));
+                                                            areaUpdated(zugArea);
+                                                        }
                                                     }
-                                                }}, () ->  err(user, ERR_NOT_OCCUPANT)),
+                                                    else {
+                                                        occupant.setAway(true);
+                                                    }
+                                                }, () ->  err(user, ERR_NOT_OCCUPANT)),
                                         () -> err(user, ERR_TITLE_NOT_FOUND)),
                         () -> err(user, ERR_NO_TITLE));
     }

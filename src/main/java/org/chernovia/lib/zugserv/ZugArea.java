@@ -5,12 +5,10 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.*;
 
-import static org.chernovia.lib.zugserv.ZugHandler.log;
-
 /**
  * ZugArea is a fuller featured extension of ZugRoom that includes passwords, bans, options, phases, and observers.
  */
-abstract public class ZugArea extends ZugRoom implements Runnable {
+abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnable {
 
     public enum OperationType {start,stop}
 
@@ -96,6 +94,7 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
     }
 
     final private AreaListener listener;
+    private boolean purgeDeserted = true;
     private String password;
     private ZugUser creator;
     private final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
@@ -126,7 +125,9 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
      * @param l an AreaListener
      */
     public ZugArea(String t, String p, ZugUser c, AreaListener l) { //l.areaCreated(this);
-        setTitle(t); password = p; creator = c; listener = l; action();
+        super(t);
+        password = p; creator = c; listener = l;
+        action();
     }
 
     /**
@@ -175,6 +176,22 @@ abstract public class ZugArea extends ZugRoom implements Runnable {
 
     public boolean okPass(String pwd) {
         return (password.equals(ZugFields.UNKNOWN_STRING) || pwd.equals(password));
+    }
+
+    @Override
+    public void handleAway(Occupant occupant) {
+        if (isDeserted() && isPurgingDeserted()) stopArea(true);
+    }
+
+    @Override
+    public void handleRoomJoin(Occupant occupant, ZugRoom prevRoom, ZugRoom newRoom) {}
+
+    public boolean isPurgingDeserted() {
+        return purgeDeserted;
+    }
+
+    public void setPurgingDeserted(boolean purgeDeserted) {
+        this.purgeDeserted = purgeDeserted;
     }
 
     /**

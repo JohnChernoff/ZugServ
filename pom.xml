@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.johnchernoff</groupId>
   <artifactId>zugserv</artifactId>
-  <version>0.9.9i</version>
+  <version>0.9.9j</version>
   <name>ZugServ</name>
   <description>Java WebServer Framework</description>
 
@@ -57,7 +57,7 @@
 	  <dependency>
 		  <groupId>io.github.tors42</groupId>
 		  <artifactId>chariot</artifactId>
-		  <version>0.1.4</version>
+		  <version>0.1.9</version>
 	  </dependency>
 
       <!-- https://mvnrepository.com/artifact/mysql/mysql-connector-java -->

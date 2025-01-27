@@ -2,7 +2,8 @@ package org.chernovia.lib.zugserv;
 
 import chariot.Client;
 import chariot.ClientAuth;
-import chariot.api.AccountAuth;
+//import chariot.api.AccountAuth;
+import chariot.api.AccountApiAuth;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -116,16 +117,17 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         this.preserveDisconnectedUsers = preserveDisconnectedUsers;
     }
 
-    public void handleLichessLogin(Connection conn, String token) {
+    public void handleLichessLogin(Connection conn, String token) { //log("Handling lichess login");
         if (token == null || token.isEmpty() || token.equals(ZugFields.UNKNOWN_STRING)) {
-            err(conn, "Login failure: Bad name/token");
-        } else { //log("Logging in with token: " + token.asText());
+            log("Login failure: Bad name/token"); err(conn, "Login failure: Bad name/token");
+        } else { //log("Logging in with token: " + token);
             ClientAuth client = Client.auth(token);
-            AccountAuth aa = client.account();
+            AccountApiAuth aa = client.account(); //log("Created account: " + aa);
             if (aa.profile().isPresent()) {
+                log("Logging in lichess user: " + aa.profile().get().name());
                 handleLogin(conn, new ZugUser.UniqueName(aa.profile().get().name(),ZugFields.AuthSource.lichess),ZugUtils.newJSON().put(ZugFields.TOKEN,token));
             } else {
-                err(conn, "Login failure: bad token");
+                log("Login failure: bad token"); err(conn, "Login failure: bad token");
             }
         }
     }

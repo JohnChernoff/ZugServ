@@ -200,8 +200,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public void handleMsg(Connection conn, String type, JsonNode dataNode) {
         ZugUser user = getUserByConn(conn).orElse(null);
         if (user != null) user.action();
-        log(Level.FINE,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
-
+        log(Level.INFO,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
         if (equalsType(type, ZugFields.ClientMsgType.login)) {
             if (user != null) err(conn,"Already logged in");
             else handleLoginRequest(conn,dataNode);
@@ -476,8 +475,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     @Override
-    public void handleLogin(Connection conn, ZugUser.UniqueName uName, JsonNode dataNode) {
-        log("Handling Login: " + uName);
+    public void handleLogin(Connection conn, ZugUser.UniqueName uName, JsonNode dataNode) { //log("Handling Login: " + uName);
         getUsers().values().stream()
                 .filter(user -> user.sameUser(uName,conn)).findFirst()
                 .ifPresentOrElse(prevUser -> swapConnection(prevUser,conn),
@@ -494,6 +492,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param user The newly created (or connection-swapped) ZugUser
      */
     public void handleLoggedIn(ZugUser user) {
+        log("logged in: " + user);
         user.setLoggedIn(true);
         user.tell(ZugFields.ServMsgType.logOK,user.toJSON());
         user.tell(ZugFields.ServMsgType.areaList,areasToJSON(true,isCrowded() ? user : null));

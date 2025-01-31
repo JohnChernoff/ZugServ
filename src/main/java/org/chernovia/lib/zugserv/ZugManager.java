@@ -109,7 +109,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public static String createID() {
         return String.valueOf(idCounter.getAndIncrement());
     }
-    public static String areaName = "Area";
+    //public static String areaName = "Area";
 
     @FunctionalInterface
     public interface CommandHandler {
@@ -200,7 +200,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public void handleMsg(Connection conn, String type, JsonNode dataNode) {
         ZugUser user = getUserByConn(conn).orElse(null);
         if (user != null) user.action();
-        log(Level.INFO,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
+        log(Level.FINE,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
         if (equalsType(type, ZugFields.ClientMsgType.login)) {
             if (user != null) err(conn,"Already logged in");
             else handleLoginRequest(conn,dataNode);
@@ -261,10 +261,15 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         getTxtNode(dataNode, ZugFields.TITLE)
                 .ifPresentOrElse(title -> getAreaByTitle(title)
                                 .ifPresentOrElse(zugArea -> err(user, "Already exists: " + title),
-                                        () -> handleCreateArea(user, title.isBlank() ? createID() : title, dataNode)
+                                        () -> handleCreateArea(user, title.isBlank() ? generateAreaName() : title, dataNode)
                                                 .ifPresent(area -> handleAreaCreated(area,true))), //TODO: user dataNode for autojoin
-                        () -> handleCreateArea(user, areaName + createID(), dataNode).ifPresent(area -> handleAreaCreated(area,true))
+                        () -> handleCreateArea(user, generateAreaName(), dataNode).ifPresent(area -> handleAreaCreated(area,true))
                 );
+    }
+
+    public String generateAreaName() {
+        String name = new Faker().chess().opening().replace(" ","").replace("'","");
+        if (getAreaByTitle(name).isPresent()) return name + createID(); else return name;
     }
 
     public void handleJoinArea(ZugUser user, JsonNode dataNode) {
@@ -492,7 +497,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param user The newly created (or connection-swapped) ZugUser
      */
     public void handleLoggedIn(ZugUser user) {
-        log("logged in: " + user);
+        log("logged in: " + user.getUniqueName());
         user.setLoggedIn(true);
         user.tell(ZugFields.ServMsgType.logOK,user.toJSON());
         user.tell(ZugFields.ServMsgType.areaList,areasToJSON(true,isCrowded() ? user : null));

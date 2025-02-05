@@ -3,6 +3,8 @@ package org.chernovia.lib.zugserv;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.protobuf.MapEntry;
+
 import java.util.*;
 
 /**
@@ -21,13 +23,6 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      */
     public void setDefault(Enum<?> field, Option option) {
         defaults.put(field,option);
-    }
-
-    /**
-     * Initializes the area's options to their default values.
-     */
-    public void initDefaults() {
-        for (Enum<?> field : defaults.keySet()) options.set(field.name(),defaults.get(field).toJSON());
     }
 
     /**
@@ -273,6 +268,14 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         else {
             err(bannor,"Only this area's creator can ban");
         }
+    }
+
+    @SafeVarargs
+    public final void initOptions(Map.Entry<Enum<?>,Option>... entries) {
+        for (Map.Entry<Enum<?>, Option> entry : entries) {
+            setDefault(entry.getKey(),entry.getValue());
+        }
+        for (Enum<?> field : defaults.keySet()) options.set(field.name(),defaults.get(field).toJSON());
     }
 
     /**

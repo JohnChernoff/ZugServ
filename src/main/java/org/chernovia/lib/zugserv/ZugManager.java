@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.time.MonthDay;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.logging.Level;
@@ -105,6 +106,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     private boolean fancyGuestNames = true;
     private final List<Class<? extends Enum<?>>> commandList = new ArrayList<>();
     private int crowdThreshold = 100;
+    private Map<MonthDay,Set<String>> trafficMap = new HashMap<>();
     private static final AtomicLong idCounter = new AtomicLong();
     public static String createID() {
         return String.valueOf(idCounter.getAndIncrement());
@@ -352,7 +354,6 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                         () -> user.update(user.getConn()));
     }
 
-
     public void handleDeafen(ZugUser user, JsonNode dataNode) {
         getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.DEAFENED).ifPresent(occupant::setDeafened));
     }
@@ -501,6 +502,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         user.setLoggedIn(true);
         user.tell(ZugFields.ServMsgType.logOK,user.toJSON());
         user.tell(ZugFields.ServMsgType.areaList,areasToJSON(true,isCrowded() ? user : null));
+        MonthDay monthDay = MonthDay.now();
+        trafficMap.putIfAbsent(monthDay,new HashSet<>());
+        if (!user.isGuest()) trafficMap.get(monthDay).add(user.getUniqueName().toString());
+
     }
 
     /**
@@ -663,7 +668,14 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     @Override
     public ObjectNode toJSON() {
-        return isCrowded() ? ZugUtils.newJSON().put("crowded",true) : super.toJSON().put("crowded",false);
+        Set<String> dailyUsers = trafficMap.get(MonthDay.now());
+        return  ZugUtils.newJSON()
+                .put(ZugFields.CROWDED,isCrowded())
+                .put(ZugFields.ALLOW_GUESTS,allowGuests)
+                .put(ZugFields.USERS, getUsers().size())
+                .put(ZugFields.LOGGED_IN,getUsers().values().stream().filter(ZugUser::isLoggedIn).count())
+                .put(ZugFields.DAILY_USERS,dailyUsers != null ? dailyUsers.size() : 0);
+
     }
 
     /**

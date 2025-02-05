@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.johnchernoff</groupId>
   <artifactId>zugserv</artifactId>
-  <version>0.9.9j</version>
+  <version>0.9.9k2</version>
   <name>ZugServ</name>
   <description>Java WebServer Framework</description>
 

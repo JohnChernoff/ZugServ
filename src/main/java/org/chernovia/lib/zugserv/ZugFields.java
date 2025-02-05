@@ -49,5 +49,11 @@ public interface ZugFields {
             PHASE_TIME_REMAINING = "phase_time_remaining",
             EXISTS = "exists",
             RUNNING = "running",
-            GUEST = "guest";
+            GUEST = "guest",
+            GUESTS = "guests",
+            ALLOW_GUESTS = "allow_guests",
+            CROWDED = "crowded",
+            ACTIVE = "active",
+            DAILY_USERS = "daily_users",
+            UNIQUE_USERS = "unique_users";
 }

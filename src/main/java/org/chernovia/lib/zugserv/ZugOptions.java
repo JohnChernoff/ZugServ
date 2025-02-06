@@ -1,6 +1,7 @@
 package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
 import java.util.*;
@@ -17,23 +18,23 @@ public class ZugOptions {
 
         /**
          * Creates a new String Option.
-         * @param t the String text
+         * @param txt the String text
          * @param desc the field description
          */
-        public Option(String t, String desc) {
-            text = t; boolVal = false; description = desc;
+        public Option(String txt, String desc) {
+            text = txt; boolVal = false; description = desc;
             intVal = intMin = intMax = intInc = Integer.MIN_VALUE;
             dblVal = dblMin = dblMax = dblInc = Double.MIN_VALUE;
         }
 
         /**
          * Creates a new String Option.
-         * @param t the String text
+         * @param txt the String text
          * @param desc the field description
          * @param e enumerated values
          */
-        public Option(String t, String desc, String... e) {
-            this(t,desc);
+        public Option(String txt, String desc, String... e) {
+            this(txt,desc);
             enums.addAll(Arrays.asList(e));
         }
 
@@ -113,7 +114,10 @@ public class ZugOptions {
                 if (incVal instanceof Integer inc) node.put(ZugFields.INC,inc);
                 else getDoubleTree(field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
             }
-            return node;
+            ArrayNode arrayNode = ZugUtils.newJSONArray();
+            enums.forEach(arrayNode::add);
+            node.set(ZugFields.OPT_ENUM,arrayNode);
+            return node.put(ZugFields.OPT_DESC,description);
         }
 
         /**
@@ -166,10 +170,10 @@ public class ZugOptions {
 
     @SafeVarargs
     public final void init(Map.Entry<Enum<?>,Option>... entries) {
-        for (Enum<?> field : defaults.keySet()) options.set(field.name(),defaults.get(field).toJSON());
         for (Map.Entry<Enum<?>, Option> entry : entries) {
             setDefault(entry.getKey(),entry.getValue());
         }
+        for (Enum<?> field : defaults.keySet()) options.set(field.name(),defaults.get(field).toJSON());
     }
 
     /**
@@ -293,6 +297,63 @@ public class ZugOptions {
      */
     void handleNoDefault(Enum<?> field) {
         new Error("No Default: " + field.name()).printStackTrace();
+    }
+
+    /**
+     * Creates a new String Option entry.
+     * @param e the Option enumeration
+     * @param txt the String text
+     * @param desc the field description
+     */
+    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String desc) {
+        return Map.entry(e,new Option(txt,desc));
+    }
+
+    /**
+     * Creates a new String Option entry as part of a list of enumated values.
+     * @param e the Option enumeration
+     * @param txt the String text
+     * @param desc the field description
+     * @param e enumerated values
+     */
+    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String desc, String... elist) {
+        return Map.entry(e,new Option(txt,desc,elist));
+    }
+
+    /**
+     * Creates a new boolean Option entry.
+     * @param e the Option enumeration
+     * @param bool the boolean
+     * @param desc the field description
+     */
+    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, boolean bool, String desc) {
+        return Map.entry(e,new Option(bool,desc));
+    }
+
+    /**
+     * Creates a new integer Option entry.
+     * @param i the integer value
+     * @param e the Option enumeration
+     * @param min the minimum integer value
+     * @param max the maximum integer value
+     * @param inc the granularity allowed between the minimum and maximum values (e.g., 2 with min/max values of 0/10 would allow for 0,2,4,6,8,10)
+     * @param desc the field description
+     */
+    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, int i, int min, int max, int inc, String desc) {
+        return Map.entry(e,new Option(i,min,max,inc,desc));
+    }
+
+    /**
+     * Creates a new double Option entry.
+     * @param d the double value
+     * @param e the Option enumeration
+     * @param min the minimum double value
+     * @param max the maximum double value
+     * @param inc the granularity allowed between the minimum and maximum values (e.g., .5 with min/max values of 0/2.5 would allow for 0,.5,1,1.5,2,2.5)
+     * @param desc the field description
+     */
+    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, double d, double min, double max, double inc, String desc) {
+        return Map.entry(e,new Option(d,min,max,inc,desc));
     }
 
 }

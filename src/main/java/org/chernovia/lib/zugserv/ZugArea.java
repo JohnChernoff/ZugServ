@@ -26,7 +26,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     private long phaseTime = 0;
     private Thread areaThread;
     boolean running = false;
-    ZugOptions zugOptions = new ZugOptions();
+    private final ZugOptions zugOptions = new ZugOptions();
 
     /**
      * Constructs a ZugArea with a title, creator, and AreaListener.
@@ -185,6 +185,10 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         else {
             err(bannor,"Only this area's creator can ban");
         }
+    }
+
+    public ZugOptions getOptMgr() {
+        return zugOptions;
     }
 
     /**

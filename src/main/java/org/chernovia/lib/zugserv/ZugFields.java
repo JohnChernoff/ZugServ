@@ -43,6 +43,8 @@ public interface ZugFields {
             INC = "inc",
             CHAT_COLOR = "chat_color",
             OPTIONS = "options",
+            OPT_DESC = "opt_desc",
+            OPT_ENUM = "opt_enum",
             LOGIN_TYPE = "login_type",
             AREA_CHANGE = "area_change",
             PHASE_STAMP = "phase_stamp",

@@ -3,7 +3,6 @@ package org.chernovia.lib.zugserv;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-
 import java.util.*;
 
 public class ZugOptions {
@@ -31,11 +30,11 @@ public class ZugOptions {
          * Creates a new String Option.
          * @param txt the String text
          * @param desc the field description
-         * @param e enumerated values
+         * @param eList enumerated values
          */
-        public Option(String txt, String desc, String... e) {
+        public Option(String txt, String desc, List<String> eList) {
             this(txt,desc);
-            enums.addAll(Arrays.asList(e));
+            enums.addAll(eList);
         }
 
         /**
@@ -314,9 +313,9 @@ public class ZugOptions {
      * @param e the Option enumeration
      * @param txt the String text
      * @param desc the field description
-     * @param e enumerated values
+     * @param elist enumerated values
      */
-    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String desc, String... elist) {
+    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String desc, List<String> elist) {
         return Map.entry(e,new Option(txt,desc,elist));
     }
 

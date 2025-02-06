@@ -14,6 +14,7 @@ abstract public class Occupant implements JSONifier {
     private ZugRoom room = null;
     private boolean isClone = false;
     private boolean deafened = false;
+    private boolean isBot = false;
     private boolean away = false;
 
     /**
@@ -121,28 +122,29 @@ abstract public class Occupant implements JSONifier {
     }
 
     /**
-     * Creates an Occupant and attempts to join an Area.
+     * Creates a roomless non-bot Occupant - note that whatever creates this is responsible for adding it to its assigned Area.
      * Upon success, sends a notification to the user and an update to the ZugArea.
      * @param u the ZugUser associated with this Occupant
      * @param a the ZugArea to occupy
      */
     public Occupant(ZugUser u, ZugArea a) {
-        this(u,a,null);
+        this(u,a,null,false);
     }
 
     /**
-     * Creates an Occupant and attempts to join an Area.
+     * Creates an Occupant - note that whatever creates this is responsible for adding it to its assigned Area.
      * Upon success, sends a notification to the user and an update to the ZugArea and/or ZugRoom.
      * @param u the ZugUser associated with this Occupant
      * @param a the ZugArea to occupy
      * @param r the ZugRoom to join
+     * @param bot true if occupant is a "bot"
      */
-    public Occupant(ZugUser u, ZugArea a, ZugRoom r) {
+    public Occupant(ZugUser u, ZugArea a, ZugRoom r, boolean bot) {
+        isBot = bot;
         setUser(u);
         area = a;
         if (area != null) {
             if (area.getOccupant(u).isPresent()) isClone = true;
-            //else if (area.addOccupant(this)) { getUser().tell(ZugFields.ServMsgType.joinArea,area.toJSON()); }
         }
         if (!isClone && r != null) {
             joinRoom(r);
@@ -242,4 +244,11 @@ abstract public class Occupant implements JSONifier {
         return node;
     }
 
+    public boolean isBot() {
+        return isBot;
+    }
+
+    public void setBot(boolean bot) {
+        isBot = bot;
+    }
 }

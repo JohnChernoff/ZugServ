@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.protobuf.MapEntry;
+import net.datafaker.Faker;
 
 import java.util.*;
 
@@ -650,6 +651,13 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         }
         if (showOptions) node.set(ZugFields.OPTIONS,options);
         return node;
+    }
+
+    public String generateBotName() {
+        String colorName = new Faker().color().name().split(" ")[0];
+        if (colorName.length() > 1) {
+            return colorName.substring(0,1).toUpperCase() + colorName.substring(1) + new Faker().appliance().equipment().split(" ")[0];
+        } else return "wtf:" + colorName;
     }
 
 

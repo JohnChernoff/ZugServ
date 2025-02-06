@@ -135,8 +135,8 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      */
     public Collection<Occupant> getActiveOccupants(boolean countAway) {
         return getOccupants().stream().filter(occupant ->
-                countAway ? !occupant.isAway() :  occupant.getUser().isLoggedIn()).toList();
-
+                (countAway ? !occupant.isAway() :  occupant.getUser().isLoggedIn()) &&
+                !occupant.isBot()).toList();
     }
 
     public Optional<Occupant> getOccupant(ZugUser user) {

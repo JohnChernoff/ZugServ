@@ -59,5 +59,6 @@ public interface ZugFields {
             CROWDED = "crowded",
             ACTIVE = "active",
             DAILY_USERS = "daily_users",
-            UNIQUE_USERS = "unique_users";
+            UNIQUE_USERS = "unique_users",
+            AUTO_JOIN = "auto_join";
 }

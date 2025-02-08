@@ -264,8 +264,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                 .ifPresentOrElse(title -> getAreaByTitle(title)
                                 .ifPresentOrElse(zugArea -> err(user, "Already exists: " + title),
                                         () -> handleCreateArea(user, title.isBlank() ? generateAreaName() : title, dataNode)
-                                                .ifPresent(area -> handleAreaCreated(area,true))), //TODO: user dataNode for autojoin
-                        () -> handleCreateArea(user, generateAreaName(), dataNode).ifPresent(area -> handleAreaCreated(area,true))
+                                                .ifPresent(area -> handleAreaCreated(area,dataNode))),
+                        () -> handleCreateArea(user, generateAreaName(), dataNode).ifPresent(area -> handleAreaCreated(area,dataNode))
                 );
     }
 
@@ -277,7 +277,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public void handleJoinArea(ZugUser user, JsonNode dataNode) {
         getTxtNode(dataNode, ZugFields.TITLE)
                 .ifPresentOrElse(title -> getAreaByTitle(title)
-                                .ifPresentOrElse(zugArea -> joinArea(zugArea,user,title,dataNode),
+                                .ifPresentOrElse(zugArea -> createOccupant(zugArea,user,title,dataNode),
                                         () -> err(user, ERR_TITLE_NOT_FOUND + ": " + title)),
                         () -> handleJoinRandomArea(user,dataNode));
     }
@@ -385,14 +385,16 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         return ZugUtils.newJSON().put(ZugFields.MSG,msg).set(ZugFields.OCCUPANT,occupant.toJSON());
     }
 
-    private void handleAreaCreated(ZugArea area, boolean join) {
+    private void handleAreaCreated(ZugArea area, JsonNode dataNode) {
         addOrGetArea(area);
-        if (join) area.getCreator().ifPresent(creator -> joinArea(area,creator,area.getTitle()));
+        Optional<Boolean> join = getBoolNode(dataNode, ZugFields.AUTO_JOIN);
+        if (join.isEmpty() || join.get()) {
+            area.getCreator().ifPresent(creator -> createOccupant(area,creator,area.getTitle(),dataNode));
+        }
         areaCreated(area);
     }
 
-    private void joinArea(ZugArea area, ZugUser user, String title) { joinArea(area,user,title,ZugUtils.newJSON()); }
-    private void joinArea(ZugArea area, ZugUser user, String title, JsonNode dataNode) {
+    private void createOccupant(ZugArea area, ZugUser user, String title, JsonNode dataNode) {
         area.getOccupant(user).ifPresentOrElse(area::rejoin, () -> {
             if (area.numOccupants() < area.getMaxOccupants()) { //TODO: handle errors
                 handleCreateOccupant(user, area, dataNode).ifPresent(occupant -> joinArea(area,occupant));
@@ -402,13 +404,19 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     private void joinArea(ZugArea area, Occupant occupant) {
-        if (area.addOccupant(occupant)) {
-            //occupant.getUser().tell(ZugFields.ServMsgType.joinRoom,area.toJSON());
+        if (area.addOccupant(occupant)) { //occupant.getUser().tell(ZugFields.ServMsgType.joinRoom,area.toJSON());
             occupant.tell(ZugFields.ServMsgType.joinArea,area.toJSON(true),area);
             areaUpdated(area);
-
+            areaJoined(area,occupant);
         }
     }
+
+    /**
+     * Called upon successfully joining an area.
+     * @param area a ZugArea
+     * @param occupant an Occupant
+     */
+    public void areaJoined(ZugArea area, Occupant occupant) {}
 
     /* *** */
 

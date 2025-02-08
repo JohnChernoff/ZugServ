@@ -6,8 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.*;
 
 public class ZugOptions {
-    public class Option  {
-
+    public class Option implements JSONifier  {
         public String description, label;
         public final String text;
         public final boolean boolVal;
@@ -81,15 +80,16 @@ public class ZugOptions {
             dblVal = d; dblMin = min; dblMax = max; dblInc = inc;
         }
 
-        //@Override
-        public ObjectNode toJSON(String name) {
+        @Override
+        public ObjectNode toJSON() {
             ObjectNode node;
             if (text != null) node = toJSON(text,null,null,null);
             else if (intVal != Integer.MIN_VALUE) node =  toJSON(intVal,intMin,intMax,intInc);
             else if (dblVal != Double.MIN_VALUE) node =  toJSON(dblVal,dblMin,dblMax,dblInc);
             else node =  toJSON(boolVal,null,null,null);
-            return node.put(ZugFields.OPT_NAME, name);
+            return node; //.put(ZugFields.OPT_NAME, name);
         }
+
 
         private ObjectNode toJSON(Object o, Number minVal, Number maxVal, Number incVal) {
             return toJSON(null,o,minVal,maxVal,incVal);
@@ -179,7 +179,7 @@ public class ZugOptions {
         for (Map.Entry<Enum<?>, Option> entry : entries) {
             setDefault(entry.getKey(),entry.getValue());
         }
-        for (Enum<?> field : defaults.keySet()) options.set(field.name(),defaults.get(field).toJSON(field.name()));
+        for (Enum<?> field : defaults.keySet()) options.set(field.name(),defaults.get(field).toJSON());
     }
 
     /**

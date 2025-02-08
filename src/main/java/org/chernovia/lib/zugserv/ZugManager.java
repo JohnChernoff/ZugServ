@@ -370,7 +370,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public void handleSetOptions(ZugUser user, JsonNode dataNode) {
-        getArea(dataNode).ifPresent(area -> getJSONNode(dataNode,ZugFields.OPTIONS).ifPresent(options -> area.setOptions(user,options)));
+        getArea(dataNode).ifPresent(area -> getJSONNode(dataNode,ZugFields.OPTIONS)
+                .ifPresent(options -> area.setOptions(user,options)));
     }
 
     /* *** */

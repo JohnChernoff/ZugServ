@@ -6,6 +6,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import net.datafaker.Faker;
 import java.util.*;
 
+import static org.chernovia.lib.zugserv.ZugHandler.log;
+
 /**
  * ZugArea is a fuller featured extension of ZugRoom that includes passwords, bans, options, phases, and observers.
  */
@@ -196,8 +198,11 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * @param user the user attempting to set the options
      * @param node the JSON-formatted data
      */
-    public void setOptions(ZugUser user, JsonNode node) {
-        if (user.equals(creator)) zugOptions.options = (ObjectNode)node; else err(user,"Permission denied(not creator)");
+    public void setOptions(ZugUser user, JsonNode node) { //log("Setting Options: " + node.toString());
+        if (user.equals(creator)) try {
+            zugOptions.options = (ObjectNode) node;
+        } catch (Exception e) { err(user,"Error setting options: " + e.getMessage() + ", json: " + node); }
+        else err(user, "Permission denied(not creator)");
     }
 
     /**

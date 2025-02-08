@@ -6,9 +6,9 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.*;
 
 public class ZugOptions {
-    public class Option implements JSONifier {
+    public class Option  {
 
-        public String description;
+        public String description, label;
         public final String text;
         public final boolean boolVal;
         public final int intVal, intMin, intMax, intInc;
@@ -18,10 +18,11 @@ public class ZugOptions {
         /**
          * Creates a new String Option.
          * @param txt the String text
+         * @param lbl the field label
          * @param desc the field description
          */
-        public Option(String txt, String desc) {
-            text = txt; boolVal = false; description = desc;
+        public Option(String txt, String lbl, String desc) {
+            text = txt; boolVal = false;  label = lbl; description = desc;
             intVal = intMin = intMax = intInc = Integer.MIN_VALUE;
             dblVal = dblMin = dblMax = dblInc = Double.MIN_VALUE;
         }
@@ -29,21 +30,23 @@ public class ZugOptions {
         /**
          * Creates a new String Option.
          * @param txt the String text
+         * @param lbl the field label
          * @param desc the field description
          * @param eList enumerated values
          */
-        public Option(String txt, String desc, List<String> eList) {
-            this(txt,desc);
+        public Option(String txt, String lbl, String desc, List<String> eList) {
+            this(txt,lbl,desc);
             enums.addAll(eList);
         }
 
         /**
          * Creates a new boolean Option.
          * @param bool the boolean
+         * @param lbl the field label
          * @param desc the field description
          */
-        public Option(boolean bool, String desc) {
-            text = null; boolVal = bool; description = desc;
+        public Option(boolean bool, String lbl, String desc) {
+            text = null; boolVal = bool;  label = lbl; description = desc;
             intVal = intMin = intMax = intInc = Integer.MIN_VALUE;
             dblVal = dblMin = dblMax = dblInc = Double.MIN_VALUE;
         }
@@ -54,10 +57,11 @@ public class ZugOptions {
          * @param min the minimum integer value
          * @param max the maximum integer value
          * @param inc the granularity allowed between the minimum and maximum values (e.g., 2 with min/max values of 0/10 would allow for 0,2,4,6,8,10)
+         * @param lbl the field label
          * @param desc the field description
          */
-        public Option(int i, int min, int max, int inc, String desc) {
-            text = null; boolVal = false; description = desc;
+        public Option(int i, int min, int max, int inc, String lbl, String desc) {
+            text = null; boolVal = false; label = lbl; description = desc;
             intVal = i; intMin = min; intMax = max; intInc = inc;
             dblVal = dblMin = dblMax = dblInc = Double.MIN_VALUE;
         }
@@ -68,55 +72,58 @@ public class ZugOptions {
          * @param min the minimum double value
          * @param max the maximum double value
          * @param inc the granularity allowed between the minimum and maximum values (e.g., .5 with min/max values of 0/2.5 would allow for 0,.5,1,1.5,2,2.5)
+         * @param lbl the field label
          * @param desc the field description
          */
-        public Option(double d, double min, double max, double inc, String desc) {
-            text = null; boolVal = false; description = desc;
+        public Option(double d, double min, double max, double inc, String lbl, String desc) {
+            text = null; boolVal = false;  label = lbl; description = desc;
             intVal = intMin = intMax = intInc = Integer.MIN_VALUE;
             dblVal = d; dblMin = min; dblMax = max; dblInc = inc;
         }
 
-        @Override
-        public ObjectNode toJSON() {
-            if (text != null) return toJSON(text,null,null,null);
-            else if (intVal != Integer.MIN_VALUE) return toJSON(intVal,intMin,intMax,intInc);
-            else if (dblVal != Double.MIN_VALUE) return toJSON(dblVal,dblMin,dblMax,dblInc);
-            else return toJSON(boolVal,null,null,null);
+        //@Override
+        public ObjectNode toJSON(String name) {
+            ObjectNode node;
+            if (text != null) node = toJSON(text,null,null,null);
+            else if (intVal != Integer.MIN_VALUE) node =  toJSON(intVal,intMin,intMax,intInc);
+            else if (dblVal != Double.MIN_VALUE) node =  toJSON(dblVal,dblMin,dblMax,dblInc);
+            else node =  toJSON(boolVal,null,null,null);
+            return node.put(ZugFields.OPT_NAME, name);
         }
 
-        public ObjectNode toJSON(Object o, Number minVal, Number maxVal, Number incVal) {
+        private ObjectNode toJSON(Object o, Number minVal, Number maxVal, Number incVal) {
             return toJSON(null,o,minVal,maxVal,incVal);
         }
-        public ObjectNode toJSON(String field, Object o, Number minVal, Number maxVal, Number incVal) {
+        private ObjectNode toJSON(String field, Object o, Number minVal, Number maxVal, Number incVal) {
             ObjectNode node = ZugUtils.newJSON();
             if (o instanceof String str) {
-                node.put(ZugFields.VAL,str);
+                node.put(ZugFields.OPT_VAL,str);
             }
             else if (o instanceof Boolean bool) {
-                node.put(ZugFields.VAL,bool);
+                node.put(ZugFields.OPT_VAL,bool);
             }
             else if (o instanceof Double d) { //ZugManager.log(field + " -> adding double: " + d);
-                node.put(ZugFields.VAL,d);
-                if (minVal instanceof Double minDbl) node.put(ZugFields.MIN,minDbl);
-                else getDoubleTree(field,ZugFields.MIN).ifPresent(min -> node.put(ZugFields.MIN,min));
-                if (maxVal instanceof Double maxDbl) node.put(ZugFields.MAX,maxDbl);
-                else getDoubleTree(field,ZugFields.MAX).ifPresent(max -> node.put(ZugFields.MAX,max));
-                if (incVal instanceof Double inc) node.put(ZugFields.INC,inc);
-                else getDoubleTree(field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
+                node.put(ZugFields.OPT_VAL,d);
+                if (minVal instanceof Double minDbl) node.put(ZugFields.OPT_MIN,minDbl);
+                else getDoubleTree(field,ZugFields.OPT_MIN).ifPresent(min -> node.put(ZugFields.OPT_MIN,min));
+                if (maxVal instanceof Double maxDbl) node.put(ZugFields.OPT_MAX,maxDbl);
+                else getDoubleTree(field,ZugFields.OPT_MAX).ifPresent(max -> node.put(ZugFields.OPT_MAX,max));
+                if (incVal instanceof Double inc) node.put(ZugFields.OPT_INC,inc);
+                else getDoubleTree(field,ZugFields.OPT_INC).ifPresent(inc -> node.put(ZugFields.OPT_INC,inc));
             }
             else if (o instanceof Integer i) { //ZugManager.log(field + " -> adding int: " + i);
-                node.put(ZugFields.VAL,i);
-                if (minVal instanceof Integer minInt) node.put(ZugFields.MIN,minInt);
-                else getIntTree(field,ZugFields.MIN).ifPresent(min -> node.put(ZugFields.MIN,min));
-                if (maxVal instanceof Integer maxInt) node.put(ZugFields.MAX,maxInt);
-                else getIntTree(field,ZugFields.MAX).ifPresent(max -> node.put(ZugFields.MAX,max));
-                if (incVal instanceof Integer inc) node.put(ZugFields.INC,inc);
-                else getDoubleTree(field,ZugFields.INC).ifPresent(inc -> node.put(ZugFields.INC,inc));
+                node.put(ZugFields.OPT_VAL,i);
+                if (minVal instanceof Integer minInt) node.put(ZugFields.OPT_MIN,minInt);
+                else getIntTree(field,ZugFields.OPT_MIN).ifPresent(min -> node.put(ZugFields.OPT_MIN,min));
+                if (maxVal instanceof Integer maxInt) node.put(ZugFields.OPT_MAX,maxInt);
+                else getIntTree(field,ZugFields.OPT_MAX).ifPresent(max -> node.put(ZugFields.OPT_MAX,max));
+                if (incVal instanceof Integer inc) node.put(ZugFields.OPT_INC,inc);
+                else getDoubleTree(field,ZugFields.OPT_INC).ifPresent(inc -> node.put(ZugFields.OPT_INC,inc));
             }
             ArrayNode arrayNode = ZugUtils.newJSONArray();
             enums.forEach(arrayNode::add);
             node.set(ZugFields.OPT_ENUM,arrayNode);
-            return node.put(ZugFields.OPT_DESC,description);
+            return node.put(ZugFields.OPT_DESC,description).put(ZugFields.OPT_LABEL,label);
         }
 
         /**
@@ -139,10 +146,10 @@ public class ZugOptions {
             if (o instanceof Number n) {
                 JsonNode previousOption = options.get(field);
                 if (previousOption != null) {
-                    JsonNode previousValue = previousOption.get(ZugFields.VAL);
+                    JsonNode previousValue = previousOption.get(ZugFields.OPT_VAL);
                     if (previousValue.isNumber()) {
-                        JsonNode minNode = previousOption.get(ZugFields.MIN);
-                        JsonNode maxNode = previousOption.get(ZugFields.MAX);
+                        JsonNode minNode = previousOption.get(ZugFields.OPT_MIN);
+                        JsonNode maxNode = previousOption.get(ZugFields.OPT_MAX);
                         if (minNode != null && n.doubleValue() < minNode.asDouble()) return false;
                         else if (maxNode != null && n.doubleValue() > maxNode.asDouble()) return false;
                     }
@@ -172,7 +179,7 @@ public class ZugOptions {
         for (Map.Entry<Enum<?>, Option> entry : entries) {
             setDefault(entry.getKey(),entry.getValue());
         }
-        for (Enum<?> field : defaults.keySet()) options.set(field.name(),defaults.get(field).toJSON());
+        for (Enum<?> field : defaults.keySet()) options.set(field.name(),defaults.get(field).toJSON(field.name()));
     }
 
     /**
@@ -256,10 +263,10 @@ public class ZugOptions {
     }
 
     //private convenience conversions
-    private Optional<Integer> getOptInt(String field) { return getIntTree(field,ZugFields.VAL); }
-    private Optional<Double> getOptDbl(String field) { return getDoubleTree(field,ZugFields.VAL); }
-    private Optional<String> getOptTxt(String field) { return getStringTree(field,ZugFields.VAL); }
-    private Optional<Boolean> getOptBool(String field) { return getBoolTree(field,ZugFields.VAL);}
+    private Optional<Integer> getOptInt(String field) { return getIntTree(field,ZugFields.OPT_VAL); }
+    private Optional<Double> getOptDbl(String field) { return getDoubleTree(field,ZugFields.OPT_VAL); }
+    private Optional<String> getOptTxt(String field) { return getStringTree(field,ZugFields.OPT_VAL); }
+    private Optional<Boolean> getOptBool(String field) { return getBoolTree(field,ZugFields.OPT_VAL);}
 
     private Optional<JsonNode> getNodes(String... fields) {
         if (options == null) return Optional.empty();
@@ -304,8 +311,8 @@ public class ZugOptions {
      * @param txt the String text
      * @param desc the field description
      */
-    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String desc) {
-        return Map.entry(e,new Option(txt,desc));
+    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String label,String desc) {
+        return Map.entry(e,new Option(txt,label,desc));
     }
 
     /**
@@ -315,8 +322,8 @@ public class ZugOptions {
      * @param desc the field description
      * @param elist enumerated values
      */
-    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String desc, List<String> elist) {
-        return Map.entry(e,new Option(txt,desc,elist));
+    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String label, String desc, List<String> elist) {
+        return Map.entry(e,new Option(txt,label,desc,elist));
     }
 
     /**
@@ -325,8 +332,8 @@ public class ZugOptions {
      * @param bool the boolean
      * @param desc the field description
      */
-    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, boolean bool, String desc) {
-        return Map.entry(e,new Option(bool,desc));
+    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, boolean bool, String label, String desc) {
+        return Map.entry(e,new Option(bool,label,desc));
     }
 
     /**
@@ -338,8 +345,8 @@ public class ZugOptions {
      * @param inc the granularity allowed between the minimum and maximum values (e.g., 2 with min/max values of 0/10 would allow for 0,2,4,6,8,10)
      * @param desc the field description
      */
-    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, int i, int min, int max, int inc, String desc) {
-        return Map.entry(e,new Option(i,min,max,inc,desc));
+    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, int i, int min, int max, int inc, String label, String desc) {
+        return Map.entry(e,new Option(i,min,max,inc,label,desc));
     }
 
     /**
@@ -351,8 +358,8 @@ public class ZugOptions {
      * @param inc the granularity allowed between the minimum and maximum values (e.g., .5 with min/max values of 0/2.5 would allow for 0,.5,1,1.5,2,2.5)
      * @param desc the field description
      */
-    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, double d, double min, double max, double inc, String desc) {
-        return Map.entry(e,new Option(d,min,max,inc,desc));
+    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, double d, double min, double max, double inc, String label, String desc) {
+        return Map.entry(e,new Option(d,min,max,inc,label,desc));
     }
 
 }

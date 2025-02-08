@@ -302,7 +302,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                                                         }
                                                     }
                                                     else {
-                                                        occupant.setAway(true);
+                                                        occupant.setAway(true,zugArea);
                                                     }
                                                 }, () ->  err(user, ERR_NOT_OCCUPANT)),
                                         () -> err(user, ERR_TITLE_NOT_FOUND)),
@@ -319,7 +319,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         getTxtNode(dataNode, ZugFields.TITLE)
                 .ifPresentOrElse(title -> getAreaByTitle(title)
                                 .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                .ifPresentOrElse(occupant -> sendAreaChat(occupant,getTxtNode(dataNode,ZugFields.MSG).orElse("")),
+                                                .ifPresentOrElse(occupant ->
+                                                                sendAreaChat(occupant,getTxtNode(dataNode,ZugFields.MSG).orElse(""),zugArea),
                                                         () ->  err(user, ERR_NOT_OCCUPANT)),
                                         () -> err(user, ERR_TITLE_NOT_FOUND)),
                         () -> err(user, ERR_NO_TITLE));
@@ -401,11 +402,11 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     private void joinArea(ZugArea area, Occupant occupant) {
-        if (!occupant.isClone()) {
-            if (area.addOccupant(occupant)) {
-                occupant.tell(ZugFields.ServMsgType.joinArea,area.toJSON(true));
-                areaUpdated(area);
-            }
+        if (area.addOccupant(occupant)) {
+            //occupant.getUser().tell(ZugFields.ServMsgType.joinRoom,area.toJSON());
+            occupant.tell(ZugFields.ServMsgType.joinArea,area.toJSON(true),area);
+            areaUpdated(area);
+
         }
     }
 
@@ -434,10 +435,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param occupant the Occupant
      * @param msg the chat message
      */
-    public void sendAreaChat(Occupant occupant, String msg) {
-        occupant.getArea().ifPresentOrElse(area ->
-                        area.spam(ZugFields.ServMsgType.areaUserMsg,occupantMsgToJSON(occupant,msg)),
-                () -> err(occupant.getUser(),"Area not found"));
+    public void sendAreaChat(Occupant occupant, String msg, ZugArea area) {
+        area.spam(ZugFields.ServMsgType.areaUserMsg,occupantMsgToJSON(occupant,msg));
     }
 
     /**

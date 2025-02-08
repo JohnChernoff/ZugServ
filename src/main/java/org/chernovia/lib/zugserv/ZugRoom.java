@@ -65,7 +65,6 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @return true upon success
      */
     public boolean addOccupant(Occupant occupant) {
-        if (occupant.isClone()) return false;
         if (occupants.putIfAbsent(occupant.getUser().getUniqueName().toString(),occupant) == null) {
             action();
             updateOccupants(true); return true;
@@ -198,10 +197,10 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         for (Occupant occupant : occupants.values()) {
             if (exclude != null) {
                 if (Arrays.stream(exclude).noneMatch(o -> o.equals(occupant))) {
-                    occupant.tell(type,msg);
+                    occupant.tell(type,msg,this);
                 }
             }
-            else if (!occupant.isAway()) occupant.tell(type,msg);
+            else if (!occupant.isAway()) occupant.tell(type,msg,this);
         }
     }
 
@@ -227,9 +226,9 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         occupants.values().forEach(occupant -> {
             if (exclude != null) { //System.out.println("Checking ignore list");
                 if (Arrays.stream(exclude).noneMatch(o -> o.equals(occupant))) {
-                    occupant.tell(type, msgNode,ignoreDeafness);
+                    occupant.tell(type, msgNode,ignoreDeafness,this);
                 }
-            } else if (!occupant.isAway()) occupant.tell(type, msgNode,ignoreDeafness);
+            } else if (!occupant.isAway()) occupant.tell(type, msgNode,ignoreDeafness,this);
         });
     }
 
@@ -259,8 +258,8 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     /**
      * Sends a JSON serialization of the room's Occupant list (toJSON()) to each Occupant.
      */
-    public void updateOccupants(boolean userOnly) { //System.out.println("Updating occupants");
-        spam(ZugFields.ServMsgType.updateOccupants,occupantsToJSON(userOnly));
+    public void updateOccupants(boolean showRoom) { //System.out.println("Updating occupants");
+        spam(ZugFields.ServMsgType.updateOccupants,occupantsToJSON(showRoom));
     }
 
     /**
@@ -307,7 +306,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     public ObjectNode occupantsToJSON(boolean showRoom) {
         ObjectNode node = ZugUtils.newJSON();
         ArrayNode arrayNode = ZugUtils.newJSONArray();
-        getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON(showRoom)));
+        getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON(showRoom ? this : null)));
         node.set(ZugFields.OCCUPANTS,arrayNode);
         node.put(ZugFields.TITLE,title);
         return node;

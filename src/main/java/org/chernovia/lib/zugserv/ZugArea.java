@@ -202,12 +202,14 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * Sets all options as JSON-formatted data.
      * @param user the user attempting to set the options
      * @param node the JSON-formatted data
+     * @return true upon success
      */
-    public void setOptions(ZugUser user, JsonNode node) { //log("Setting Options: " + node.toString());
+    public boolean setOptions(ZugUser user, JsonNode node) { //log("Setting Options: " + node.toString());
         if (user.equals(creator)) try {
-            zugOptions.options = (ObjectNode) node;
+            zugOptions.options = (ObjectNode) node; return true;
         } catch (Exception e) { err(user,"Error setting options: " + e.getMessage() + ", json: " + node); }
         else err(user, "Permission denied(not creator)");
+        return false;
     }
 
     /**

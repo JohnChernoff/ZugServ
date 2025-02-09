@@ -234,19 +234,32 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     }
 
     /**
-     * Looks for and returns an Optional String value from a field at the top level of a JSON node.
+     * Returns an Optional String value from a field at the top level of a JSON node.
      * @param node JSON container node
      * @param name name of a text field
-     * @return Optional String value of text field
+     * @return Optional String value of text field (including empty strings)
      */
     public static Optional<String> getTxtNode(JsonNode node, String name) {
-        if (node == null) return Optional.empty();
-        JsonNode n = node.get(name);
-        if (n == null || !n.isTextual()) return Optional.empty(); else return Optional.of(n.asText());
+        return getTxtNode(node, name, false);
     }
 
     /**
-     * Looks for and returns an Optional integer value from a field at the top level of a JSON node.
+     * Returns an Optional String value from a field at the top level of a JSON node.
+     * @param node JSON container node
+     * @param name name of a text field
+     * @param noEmpty treat empty string as Optional.empty
+     * @return Optional String value of text field
+     */
+    public static Optional<String> getTxtNode(JsonNode node, String name, boolean noEmpty) {
+        if (node == null) return Optional.empty();
+        JsonNode n = node.get(name);
+        if (n == null || !n.isTextual() || (n.asText().isEmpty() && noEmpty))
+            return Optional.empty(); else return Optional.of(n.asText());
+    }
+
+
+    /**
+     * Returns an Optional integer value from a field at the top level of a JSON node.
      * @param node JSON container node
      * @param name name of an int field
      * @return Optional value of int field
@@ -258,7 +271,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     }
 
     /**
-     * Looks for and returns an Optional double value from a field at the top level of a JSON node.
+     * Returns an Optional double value from a field at the top level of a JSON node.
      * @param node JSON container node
      * @param name name of a double field
      * @return Optional value of double field
@@ -270,7 +283,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     }
 
     /**
-     * Looks for and returns an Optional boolean value from a field at the top level of a JSON node.
+     * Returns an Optional boolean value from a field at the top level of a JSON node.
      * @param node JSON container node
      * @param name name of a boolean field
      * @return Optional value of boolean field
@@ -282,7 +295,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     }
 
     /**
-     * Looks for and returns an Optional JSON value from a field at the top level of a JSON node.
+     * Returns an Optional JSON value from a field at the top level of a JSON node.
      * @param node JSON container node
      * @param name name of a JSON field
      * @return Optional value of JSON field

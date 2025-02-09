@@ -7,6 +7,7 @@ import java.net.UnknownHostException;
 import java.time.MonthDay;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import net.datafaker.*;
 
@@ -230,7 +231,9 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         List<CommandHandler> handleList = new ArrayList<>();
         commandList.forEach(cmdSet -> {
             try {
-                Arrays.stream(cmdSet.getEnumConstants()).filter(eCon -> eCon.name().equalsIgnoreCase(type)).forEach(e -> {
+                Arrays.stream(cmdSet.getEnumConstants()).
+                        filter(eCon -> eCon.name().equalsIgnoreCase(type))
+                        .forEach(e -> {
                     CommandHandler handler = handMap.get(e);
                     if (handler != null) {
                         handler.handleCommand(user,dataNode);
@@ -259,14 +262,21 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                 () -> err(user,"Missing user name"));
     }
 
-    public void handleCreateArea(ZugUser user, JsonNode dataNode) {
-        getTxtNode(dataNode, ZugFields.AREA_ID)
-                .ifPresentOrElse(title -> getAreaByTitle(title)
-                                .ifPresentOrElse(zugArea -> err(user, "Already exists: " + title),
-                                        () -> handleCreateArea(user, title.isBlank() ? generateAreaName() : title, dataNode)
-                                                .ifPresent(area -> handleAreaCreated(area,dataNode))),
-                        () -> handleCreateArea(user, generateAreaName(), dataNode).ifPresent(area -> handleAreaCreated(area,dataNode))
-                );
+    public Optional<ZugArea> handleCreateArea(ZugUser user, JsonNode dataNode) {
+        log(dataNode.toPrettyString());
+        String title = getTxtNode(dataNode,ZugFields.AREA_ID,true).orElse(generateAreaName());
+        if (getArea(dataNode).isPresent()) {
+            err(user, "Already exists: " + title);
+            return Optional.empty();
+        }
+        else {
+            Optional<ZugArea> a = handleCreateArea(user, title, dataNode);
+            user.tell("Creating: " + title);
+            log("Creating: " + title);
+            a.ifPresentOrElse(area -> handleAreaCreated(area,dataNode),
+                    () -> err(user,"Failed to create area: " + title));
+            return a;
+        }
     }
 
     public String generateAreaName() {
@@ -274,76 +284,81 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         if (getAreaByTitle(name).isPresent()) return name + createID(); else return name;
     }
 
-    public void handleJoinArea(ZugUser user, JsonNode dataNode) {
-        getTxtNode(dataNode, ZugFields.AREA_ID)
-                .ifPresentOrElse(title -> getAreaByTitle(title)
-                                .ifPresentOrElse(zugArea -> createOccupant(zugArea,user,title,dataNode),
-                                        () -> err(user, ERR_TITLE_NOT_FOUND + ": " + title)),
-                        () -> handleJoinRandomArea(user,dataNode));
+    public Optional<ZugArea> handleJoinArea(ZugUser user, JsonNode dataNode) {
+        if (getTxtNode(dataNode, ZugFields.AREA_ID).isEmpty()) {
+            return handleJoinRandomArea(user,dataNode);
+        }
+        Optional<ZugArea> a = getArea(dataNode);
+        a.ifPresentOrElse(zugArea -> createOccupant(zugArea, user, dataNode), () -> err(user, ERR_AREA_NOT_FOUND));
+        return a;
     }
 
-    public void handleJoinRandomArea(ZugUser user, JsonNode dataNode) { //default is to join the area with the most users
-        areas.values().stream().filter(ZugArea::isOpen).sorted().findFirst()
-                .ifPresentOrElse(area -> handleCreateOccupant(user, area, dataNode)
+    public Optional<ZugArea> handleJoinRandomArea(ZugUser user, JsonNode dataNode) { //default is to join the area with the most users
+        AtomicReference<Optional<ZugArea>> a = new AtomicReference<>(areas.values().stream()
+                .filter(ZugArea::isOpen).sorted().findFirst());
+        a.get().ifPresentOrElse(area -> handleCreateOccupant(user, area, dataNode)
                                 .ifPresent(occupant -> joinArea(area,occupant))
-                        , () -> handleCreateArea(user,dataNode));
+                        , () -> a.set(handleCreateArea(user, dataNode)));
+        return a.get();
     }
 
-    public void handlePartArea(ZugUser user, JsonNode dataNode) {
-        getTxtNode(dataNode, ZugFields.AREA_ID)
-                .ifPresentOrElse(title -> getAreaByTitle(title)
-                                .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                .ifPresentOrElse(occupant -> {
-                                                    if (canPartArea(zugArea,occupant, dataNode)) {
-                                                        if (zugArea.dropOccupant(occupant)) {
-                                                            areaUpdated(zugArea);
-                                                            areaParted(zugArea,user);
-                                                        }
-                                                    }
-                                                    else {
-                                                        occupant.setAway(true,zugArea);
-                                                    }
-                                                }, () ->  err(user, ERR_NOT_OCCUPANT)),
-                                        () -> err(user, ERR_TITLE_NOT_FOUND)),
-                        () -> err(user, ERR_NO_TITLE));
+    public Optional<ZugArea> handlePartArea(ZugUser user, JsonNode dataNode) {
+        Optional<ZugArea> a = getArea(dataNode);
+        a.ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
+                        .ifPresentOrElse(occupant -> {
+                            if (canPartArea(zugArea, occupant, dataNode)) {
+                                if (zugArea.dropOccupant(occupant)) {
+                                    areaUpdated(zugArea);
+                                    areaParted(zugArea, user);
+                                }
+                            } else {
+                                occupant.setAway(true, zugArea);
+                            }
+                        }, () -> err(user, ERR_NOT_OCCUPANT)),
+                () -> err(user, ERR_TITLE_NOT_FOUND));
+        return a;
     }
 
-    public void handleStartArea(ZugUser user, JsonNode dataNode) {
-        getArea(dataNode).ifPresentOrElse(area -> {
+    public Optional<ZugArea> handleStartArea(ZugUser user, JsonNode dataNode) {
+        Optional<ZugArea> a = getArea(dataNode);
+        a.ifPresentOrElse(area -> {
             if (area.startArea(user,dataNode)) areaUpdated(area);
         }, () -> err(user,"Area not found"));
+        return a;
     }
 
-    public void handleAreaMsg(ZugUser user, JsonNode dataNode) {
-        getTxtNode(dataNode, ZugFields.AREA_ID)
-                .ifPresentOrElse(title -> getAreaByTitle(title)
-                                .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                                                .ifPresentOrElse(occupant ->
-                                                                sendAreaChat(occupant,getTxtNode(dataNode,ZugFields.MSG).orElse(""),zugArea),
-                                                        () ->  err(user, ERR_NOT_OCCUPANT)),
-                                        () -> err(user, ERR_TITLE_NOT_FOUND)),
-                        () -> err(user, ERR_NO_TITLE));
+    public Optional<ZugArea> handleAreaMsg(ZugUser user, JsonNode dataNode) {
+        Optional<ZugArea> a = getArea(dataNode);
+        a.ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
+                        .ifPresentOrElse(occupant ->
+                                        sendAreaChat(occupant,
+                                                getTxtNode(dataNode, ZugFields.MSG).orElse(""), zugArea),
+                                () -> err(user, ERR_NOT_OCCUPANT)),
+                () -> err(user, ERR_TITLE_NOT_FOUND));
+        return a;
     }
 
     public void handleUpdateServ(ZugUser user, JsonNode dataNode) {
         updateServ(user.getConn());
     }
 
-    public void handleUpdateArea(ZugUser user, JsonNode dataNode) {
-        getArea(dataNode).ifPresent(area -> {
+    public Optional<ZugArea> handleUpdateArea(ZugUser user, JsonNode dataNode) {
+        Optional<ZugArea> a = getArea(dataNode);
+        a.ifPresent(area -> {
                     if (!area.isPrivate()) area.update(user);
                     else getOccupant(user,dataNode).ifPresent(occupant -> area.update(occupant.getUser()));
                 }
         );
+        return a;
     }
 
-    public void handleUpdateOccupant(ZugUser user, JsonNode dataNode) {
-        String areaTitle = getTxtNode(dataNode,ZugFields.AREA_ID).orElse("");
-        getAreaByTitle(areaTitle)
-                .ifPresentOrElse(area -> area.getOccupant(user)
-                                .ifPresentOrElse(occupant -> occupant.update(user.getConn()),
-                                        () -> err(user.getConn(), ERR_OCCUPANT_NOT_FOUND)),
-                        () -> err(user.getConn(), ERR_AREA_NOT_FOUND));
+    public Optional<ZugArea> handleUpdateOccupant(ZugUser user, JsonNode dataNode) {
+        Optional<ZugArea> a = getArea(dataNode);
+        a.ifPresentOrElse(area -> area.getOccupant(user)
+                        .ifPresentOrElse(occupant -> occupant.update(user.getConn()),
+                                () -> err(user.getConn(), ERR_OCCUPANT_NOT_FOUND)),
+                () -> err(user.getConn(), ERR_AREA_NOT_FOUND));
+        return a;
     }
 
     public void handleUpdateUser(ZugUser user, JsonNode dataNode) {
@@ -359,19 +374,25 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
 
-    public void handleBan(ZugUser user, JsonNode dataNode) {
-        getArea(dataNode).ifPresent(area -> getOccupant(user, dataNode)
+    public Optional<ZugArea> handleBan(ZugUser user, JsonNode dataNode) {
+        Optional<ZugArea> a = getArea(dataNode);
+        a.ifPresent(area -> getOccupant(user, dataNode)
                 .flatMap(occupant -> getUniqueName(dataNode.get(ZugFields.NAME)))
                 .ifPresent(name -> area.banOccupant(user, name, 15 * 60 * 1000,true)));
+        return a;
     }
 
-    public void handleUpdateOptions(ZugUser user, JsonNode dataNode) {
-        getArea(dataNode).ifPresent(area -> area.updateOptions(user));
+    public Optional<ZugArea> handleUpdateOptions(ZugUser user, JsonNode dataNode) {
+        Optional<ZugArea> a = getArea(dataNode);
+        a.ifPresent(area -> area.updateOptions(user));
+        return a;
     }
 
-    public void handleSetOptions(ZugUser user, JsonNode dataNode) {
-        getArea(dataNode).ifPresent(area -> getJSONNode(dataNode,ZugFields.OPTIONS)
+    public Optional<ZugArea> handleSetOptions(ZugUser user, JsonNode dataNode) {
+        Optional<ZugArea> a = getArea(dataNode);
+        a.ifPresent(area -> getJSONNode(dataNode,ZugFields.OPTIONS)
                 .ifPresent(options -> area.setOptions(user,options)));
+        return a;
     }
 
     /* *** */
@@ -388,17 +409,17 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         addOrGetArea(area);
         Optional<Boolean> join = getBoolNode(dataNode, ZugFields.AUTO_JOIN);
         if (join.isEmpty() || join.get()) {
-            area.getCreator().ifPresent(creator -> createOccupant(area,creator,area.getTitle(),dataNode));
+            area.getCreator().ifPresent(creator -> createOccupant(area,creator,dataNode));
         }
         areaCreated(area);
     }
 
-    private void createOccupant(ZugArea area, ZugUser user, String title, JsonNode dataNode) {
+    private void createOccupant(ZugArea area, ZugUser user, JsonNode dataNode) {
         area.getOccupant(user).ifPresentOrElse(area::rejoin, () -> {
             if (area.numOccupants() < area.getMaxOccupants()) { //TODO: handle errors
                 handleCreateOccupant(user, area, dataNode).ifPresent(occupant -> joinArea(area,occupant));
             }
-            else err(user,"Game full: " + title);
+            else err(user,"Game full: " + area.getTitle());
         });
     }
 

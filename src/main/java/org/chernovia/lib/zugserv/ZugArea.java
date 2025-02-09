@@ -53,6 +53,11 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         action();
     }
 
+    @Override
+    protected String getScope() {
+        return ZugFields.AREA_ID;
+    }
+
     /**
      * Sets the existance of the ZugArea (i.e., if it's any longer being used)
      * @param e true for existence
@@ -133,7 +138,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      */
     public boolean addObserver(Connection conn) {  //(isOccupant(conn,true))
         if (conn == null || isOccupant(conn,false)) return false; else action();
-        conn.tell(ZugFields.ServMsgType.obs,ZugUtils.newJSON().put(ZugFields.TITLE,getTitle()));
+        conn.tell(ZugFields.ServMsgType.obs,ZugUtils.newJSON().put(getScope(),getTitle()));
         return observers.add(conn);
     }
 
@@ -143,7 +148,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * @return true if successful
      */
     public boolean removeObserver(Connection conn) {
-        if (conn != null) conn.tell(ZugFields.ServMsgType.unObs,ZugUtils.newJSON().put(ZugFields.TITLE,getTitle()));
+        if (conn != null) conn.tell(ZugFields.ServMsgType.unObs,ZugUtils.newJSON().put(getScope(),getTitle()));
         return observers.remove(conn);
     }
 
@@ -216,7 +221,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * @param user the ZugUser to update
      */
     public void updateOptions(ZugUser user) {
-        user.tell(ZugFields.ServMsgType.updateOptions,ZugUtils.newJSON().put(ZugFields.TITLE,getTitle()).set(ZugFields.OPTIONS,zugOptions.options));
+        user.tell(ZugFields.ServMsgType.updateOptions,ZugUtils.newJSON().put(getScope(),getTitle()).set(ZugFields.OPTIONS,zugOptions.options));
     }
 
     /**
@@ -352,7 +357,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         super.spamX(t,msg,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
+            else conn.tell(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(getScope(),getTitle()));
         }
     }
 
@@ -361,13 +366,13 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         super.spamX(t,msgNode,ignoreList);
         for (Connection conn : observers) {
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(t,msgNode.put(ZugFields.TITLE,getTitle()));
+            else conn.tell(t,msgNode.put(getScope(),getTitle()));
         }
     }
 
     @Override
     final public void msg(ZugUser user, String msg) {
-        user.tell(ZugFields.ServMsgType.areaMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
+        user.tell(ZugFields.ServMsgType.areaMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(getScope(),getTitle()));
     }
 
     @Override

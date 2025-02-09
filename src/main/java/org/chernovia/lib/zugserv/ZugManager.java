@@ -260,7 +260,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public void handleCreateArea(ZugUser user, JsonNode dataNode) {
-        getTxtNode(dataNode, ZugFields.TITLE)
+        getTxtNode(dataNode, ZugFields.AREA_ID)
                 .ifPresentOrElse(title -> getAreaByTitle(title)
                                 .ifPresentOrElse(zugArea -> err(user, "Already exists: " + title),
                                         () -> handleCreateArea(user, title.isBlank() ? generateAreaName() : title, dataNode)
@@ -275,7 +275,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public void handleJoinArea(ZugUser user, JsonNode dataNode) {
-        getTxtNode(dataNode, ZugFields.TITLE)
+        getTxtNode(dataNode, ZugFields.AREA_ID)
                 .ifPresentOrElse(title -> getAreaByTitle(title)
                                 .ifPresentOrElse(zugArea -> createOccupant(zugArea,user,title,dataNode),
                                         () -> err(user, ERR_TITLE_NOT_FOUND + ": " + title)),
@@ -290,14 +290,14 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public void handlePartArea(ZugUser user, JsonNode dataNode) {
-        getTxtNode(dataNode, ZugFields.TITLE)
+        getTxtNode(dataNode, ZugFields.AREA_ID)
                 .ifPresentOrElse(title -> getAreaByTitle(title)
                                 .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
                                                 .ifPresentOrElse(occupant -> {
                                                     if (canPartArea(zugArea,occupant, dataNode)) {
                                                         if (zugArea.dropOccupant(occupant)) {
                                                             user.tell(ZugFields.ServMsgType.partArea,ZugUtils.newJSON()
-                                                                    .put(ZugFields.TITLE,zugArea.getTitle()));
+                                                                    .put(ZugFields.AREA_ID,zugArea.getTitle()));
                                                             areaUpdated(zugArea);
                                                         }
                                                     }
@@ -316,7 +316,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public void handleAreaMsg(ZugUser user, JsonNode dataNode) {
-        getTxtNode(dataNode, ZugFields.TITLE)
+        getTxtNode(dataNode, ZugFields.AREA_ID)
                 .ifPresentOrElse(title -> getAreaByTitle(title)
                                 .ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
                                                 .ifPresentOrElse(occupant ->
@@ -339,7 +339,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public void handleUpdateOccupant(ZugUser user, JsonNode dataNode) {
-        String areaTitle = getTxtNode(dataNode,ZugFields.TITLE).orElse("");
+        String areaTitle = getTxtNode(dataNode,ZugFields.AREA_ID).orElse("");
         getAreaByTitle(areaTitle)
                 .ifPresentOrElse(area -> area.getOccupant(user)
                                 .ifPresentOrElse(occupant -> occupant.update(user.getConn()),
@@ -405,7 +405,6 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     private void joinArea(ZugArea area, Occupant occupant) {
         if (area.addOccupant(occupant)) { //occupant.getUser().tell(ZugFields.ServMsgType.joinRoom,area.toJSON());
-            occupant.tell(ZugFields.ServMsgType.joinArea,area.toJSON(true),area);
             areaUpdated(area);
             areaJoined(area,occupant);
         }
@@ -416,7 +415,9 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param area a ZugArea
      * @param occupant an Occupant
      */
-    public void areaJoined(ZugArea area, Occupant occupant) {}
+    public void areaJoined(ZugArea area, Occupant occupant) {
+        area.tell(occupant,ZugFields.ServMsgType.joinArea,area.toJSON(true));
+    }
 
     /* *** */
 
@@ -692,7 +693,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @return an (Optional) ZugArea
      */
     public Optional<ZugArea> getArea(JsonNode dataNode) {
-        return getTxtNode(dataNode, ZugFields.TITLE).flatMap(this::getAreaByTitle);
+        return getTxtNode(dataNode, ZugFields.AREA_ID).flatMap(this::getAreaByTitle);
     }
 
     /**

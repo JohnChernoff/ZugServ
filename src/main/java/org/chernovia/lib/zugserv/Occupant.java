@@ -95,59 +95,7 @@ abstract public class Occupant implements JSONifier {
         setUser(u);
     }
 
-    /**
-     * Sends a blank message with the indicated type.
-     * The message will automatically include the ZugArea and ZugRoom titles.
-     * @param type the enumerated message type
-     */
-    public void tell(Enum<?> type, ZugRoom room) {
-        tell(type,"",room);
-    }
 
-    /**
-     * Sends a message with the default type (ZugFields.ServMsgType.servMsg).
-     * The message will automatically include the ZugArea and ZugRoom titles.
-     * @param msg an alphanumeric message
-     */
-    public void tell(String msg, ZugRoom room) {
-        tell(ZugFields.ServMsgType.servMsg,msg,room);
-    }
-
-    /**
-     * Sends a message with the indicated type.
-     * The message will automatically include the ZugArea and ZugRoom titles.
-     * @param type the enumerated message type
-     * @param msg an alphanumeric message
-     */
-    public void tell(Enum<?> type, String msg, ZugRoom room) {
-        tell(type,msg.isBlank() ? ZugUtils.newJSON() : ZugUtils.newJSON().put(ZugFields.MSG,msg),room);
-    }
-
-    /**
-     * Sends a JSON-formatted message with the indicated type.
-     * The message will automatically include the ZugArea and ZugRoom titles.
-     * @param type the enumerated message type
-     * @param node a JSON-formatted message
-     */
-    public void tell(Enum<?> type, ObjectNode node, ZugRoom room) {
-        tell(type,node,false, room);
-    }
-
-    /**
-     * Sends a JSON-formatted message with the indicated type.
-     * The message will automatically include the ZugArea and ZugRoom titles.
-     * @param type the enumerated message type
-     * @param node a JSON-formatted message
-     * @param ignoreDeafness it true, message is sent regardless of isDeafened()
-     */
-    public void tell(Enum<?> type, ObjectNode node,boolean ignoreDeafness, ZugRoom room) {
-        if (!isDeafened() || ignoreDeafness) getUser().tell(type,(ZugUtils.joinNodes(
-                node,
-                room instanceof ZugArea area
-                        ? ZugUtils.newJSON().put(ZugFields.TITLE,area.getTitle())
-                        : ZugUtils.newJSON().put(ZugFields.ROOM,room.getTitle())
-        )));
-    }
 
     /**
      * Serializes the Occupant (typcially via toJSON()) to a Connection.

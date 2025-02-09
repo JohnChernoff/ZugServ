@@ -1,5 +1,6 @@
 package org.chernovia.lib.zugserv;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Arrays;
@@ -197,10 +198,10 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         for (Occupant occupant : occupants.values()) {
             if (exclude != null) {
                 if (Arrays.stream(exclude).noneMatch(o -> o.equals(occupant))) {
-                    occupant.tell(type,msg,this);
+                    tell(occupant,type,msg);
                 }
             }
-            else if (!occupant.isAway()) occupant.tell(type,msg,this);
+            else if (!occupant.isAway()) tell(occupant,type,msg);
         }
     }
 
@@ -226,9 +227,9 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         occupants.values().forEach(occupant -> {
             if (exclude != null) { //System.out.println("Checking ignore list");
                 if (Arrays.stream(exclude).noneMatch(o -> o.equals(occupant))) {
-                    occupant.tell(type, msgNode,ignoreDeafness,this);
+                    tell(occupant,type, msgNode,ignoreDeafness);
                 }
-            } else if (!occupant.isAway()) occupant.tell(type, msgNode,ignoreDeafness,this);
+            } else if (!occupant.isAway()) tell(occupant,type, msgNode,ignoreDeafness);
         });
     }
 
@@ -262,6 +263,11 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         spam(ZugFields.ServMsgType.updateOccupants,occupantsToJSON(showRoom));
     }
 
+
+    protected String getScope() {
+        return ZugFields.ROOM_ID;
+    }
+
     /**
      * Sends an alphanumeric message from the room to a ZugUser
      * @param user the ZugUser
@@ -269,7 +275,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      */
     public void msg(ZugUser user, String msg) {
         user.tell(ZugFields.ServMsgType.roomMsg,
-                ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
+                ZugUtils.newJSON().put(ZugFields.MSG,msg).put(getScope(),getTitle()));
     }
 
     /**
@@ -279,7 +285,56 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      */
     public void err(ZugUser user, String msg) {
         user.tell(ZugFields.ServMsgType.errMsg,
-                ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.TITLE,getTitle()));
+                ZugUtils.newJSON().put(ZugFields.MSG,msg).put(getScope(),getTitle()));
+    }
+
+    /**
+     * Sends a blank message with the indicated type.
+     * @param occupant the message recipient
+     * @param type the enumerated message type
+     */
+    public void tell(Occupant occupant, Enum<?> type) {
+        tell(occupant,type,"");
+    }
+
+    /**
+     * Sends a message with the default type (ZugFields.ServMsgType.servMsg).
+     * @param occupant the message recipient
+     * @param msg an alphanumeric message
+     */
+    public void tell(Occupant occupant, String msg) {
+        tell(occupant,ZugFields.ServMsgType.servMsg,msg);
+    }
+
+    /**
+     * Sends a message with the indicated type.
+     * @param occupant the message recipient
+     * @param type the enumerated message type
+     * @param msg an alphanumeric message
+     */
+    public void tell(Occupant occupant, Enum<?> type, String msg) {
+        tell(occupant, type,msg.isBlank() ? ZugUtils.newJSON() : ZugUtils.newJSON().put(ZugFields.MSG,msg));
+    }
+
+    /**
+     * Sends a JSON-formatted message with the indicated type.
+     * @param occupant the message recipient
+     * @param type the enumerated message type
+     * @param node a JSON-formatted message
+     */
+    public void tell(Occupant occupant, Enum<?> type, ObjectNode node) {
+        tell(occupant,type,node,false);
+    }
+
+    /**
+     * Sends a JSON-formatted message with the indicated type.
+     * @param occupant the message recipient
+     * @param type the enumerated message type
+     * @param node a JSON-formatted message
+     * @param ignoreDeafness it true, message is sent regardless of isDeafened()
+     */
+    public void tell(Occupant occupant, Enum<?> type, ObjectNode node,boolean ignoreDeafness) {
+        if (!occupant.isDeafened() || ignoreDeafness) occupant.getUser().tell(type, node.put(getScope(),getTitle()));
     }
 
     /**
@@ -295,7 +350,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      */
     public ObjectNode toJSON(boolean showOccupants) {
         if (showOccupants) return occupantsToJSON(false);
-        return ZugUtils.newJSON().put(ZugFields.TITLE,title).put(ZugFields.NAME,getName());
+        return ZugUtils.newJSON().put(getScope(),title).put(ZugFields.NAME,getName());
     }
 
     /**
@@ -308,7 +363,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         ArrayNode arrayNode = ZugUtils.newJSONArray();
         getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON(showRoom ? this : null)));
         node.set(ZugFields.OCCUPANTS,arrayNode);
-        node.put(ZugFields.TITLE,title);
+        node.put(getScope(),title);
         return node;
     }
 

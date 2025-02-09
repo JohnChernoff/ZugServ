@@ -296,9 +296,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                                                 .ifPresentOrElse(occupant -> {
                                                     if (canPartArea(zugArea,occupant, dataNode)) {
                                                         if (zugArea.dropOccupant(occupant)) {
-                                                            user.tell(ZugFields.ServMsgType.partArea,ZugUtils.newJSON()
-                                                                    .put(ZugFields.AREA_ID,zugArea.getTitle()));
                                                             areaUpdated(zugArea);
+                                                            areaParted(zugArea,user);
                                                         }
                                                     }
                                                     else {
@@ -417,6 +416,16 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public void areaJoined(ZugArea area, Occupant occupant) {
         area.tell(occupant,ZugFields.ServMsgType.joinArea,area.toJSON(true));
+    }
+
+    /**
+     * Called upon successfully leaving an area.
+     * @param area a ZugArea
+     * @param user a ZugUser (not an occupant, since just left)
+     */
+    public void areaParted(ZugArea area, ZugUser user) {
+        user.tell(ZugFields.ServMsgType.partArea,ZugUtils.newJSON().put(area.getScope(),area.getTitle()));
+        //area.tell(occupant,ZugFields.ServMsgType.partArea,area.toJSON(true));
     }
 
     /* *** */

@@ -1,6 +1,5 @@
 package org.chernovia.lib.zugserv;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Arrays;
@@ -13,8 +12,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>, JSONifier {
 
-    private final String name;
-
     private final String title;
 
     private int maxOccupants = 99;
@@ -25,7 +22,6 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
 
     public ZugRoom(String title) {
         this.title = title;
-        name = setName();
     }
 
     /**
@@ -151,8 +147,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         return title;
     }
 
-    abstract public String setName();
-    public String getName() { return name; }
+    abstract public String getName();
 
     /**
      * Sends a String message to all Occupants of the room.

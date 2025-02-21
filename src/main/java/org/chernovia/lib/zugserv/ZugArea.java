@@ -28,7 +28,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     private long phaseTime = 0;
     private Thread areaThread;
     boolean running = false;
-    private final ZugOptions zugOptions = new ZugOptions();
+    public ZugOptions om = new ZugOptions();
 
     /**
      * Constructs a ZugArea with a title, creator, and AreaListener.
@@ -194,10 +194,6 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         }
     }
 
-    public ZugOptions getOptMgr() {
-        return zugOptions;
-    }
-
     /**
      * Sets all options as JSON-formatted data.
      * @param user the user attempting to set the options
@@ -206,31 +202,25 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      */
     public boolean setOptions(ZugUser user, JsonNode node) { //log("Setting Options: " + node.toString());
         if (user.equals(creator)) try {
-            zugOptions.options = (ObjectNode) node; return true;
+            om = new ZugOptions(node); return true;
         } catch (Exception e) { err(user,"Error setting options: " + e.getMessage() + ", json: " + node); }
         else err(user, "Permission denied(not creator)");
         return false;
     }
 
     /**
-     * Get all options in JSON format.
-     * @return JSON-formatted option data
-     */
-    public ObjectNode getOptions() { return zugOptions.options; }
-
-    /**
      * Update a user of a (presumably changed) Option.
      * @param user the ZugUser to update
      */
     public void updateOptions(ZugUser user) {
-        user.tell(ZugFields.ServMsgType.updateOptions,ZugUtils.newJSON().put(getScope(),getTitle()).set(ZugFields.OPTIONS,zugOptions.options));
+        user.tell(ZugFields.ServMsgType.updateOptions,ZugUtils.newJSON().put(getScope(),getTitle()).set(ZugFields.OPTIONS, om.toJSON()));
     }
 
     /**
      * Update all Occupants of a (presumably changed) Option.
      */
     public void spamOptions() {
-        spam(ZugFields.ServMsgType.updateOptions,ZugUtils.newJSON().set(ZugFields.OPTIONS,zugOptions.options));
+        spam(ZugFields.ServMsgType.updateOptions,ZugUtils.newJSON().set(ZugFields.OPTIONS, om.toJSON()));
     }
 
     /**
@@ -251,9 +241,9 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * @return seconds slept
      */
     public boolean newPhase(Enum<?> p, int seconds) {
-        setPhase(p,false);
         phaseTime = seconds * 1000L;
         phaseStamp = System.currentTimeMillis();
+        setPhase(p,false);
         boolean timeout = true;
         if (seconds > 0) {
             try { Thread.sleep(phaseTime); } catch (InterruptedException e) { timeout = false; }
@@ -394,7 +384,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
             observers.forEach(obs -> arrayNode.add(obs.getID()));
             node.set(ZugFields.OBSERVERS,arrayNode);
         }
-        if (showOptions) node.set(ZugFields.OPTIONS,zugOptions.options);
+        if (showOptions) node.set(ZugFields.OPTIONS, om.toJSON());
         return node;
     }
 

@@ -262,8 +262,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                 () -> err(user,"Missing user name"));
     }
 
-    public Optional<ZugArea> handleCreateArea(ZugUser user, JsonNode dataNode) {
-        log(dataNode.toPrettyString());
+    public Optional<ZugArea> handleCreateArea(ZugUser user, JsonNode dataNode) { //log(dataNode.toPrettyString());
         String title = getTxtNode(dataNode,ZugFields.AREA_ID,true).orElse(generateAreaName());
         if (getArea(dataNode).isPresent()) {
             err(user, "Already exists: " + title);

@@ -30,18 +30,11 @@ abstract public class Occupant implements JSONifier {
     public void setUser(ZugUser user) { this.user = user; }
 
     /**
-     * Gets an Occupant's name and source joined by the @ character.
-     * @return a String representation of the Occupant's name and source
-     */
-    public String getName() { return getName(null); }
-
-    /**
      * If area != null, gets an Occupant's name when no other Occupant with the same same exists in the Area.
      * Otherwise, gets both Occupant username and source joined by the @ character.
-     * @param area the Occupant's current Area
      * @return a String representation of the Occupant's name and (optionally) source
      */
-    public String getName(ZugArea area) {
+    public String getName() {
         if (area != null && area.getOccupants()
                 .stream()
                 .anyMatch(occupant -> occupant.user.getName().equalsIgnoreCase(user.getName())
@@ -92,10 +85,9 @@ abstract public class Occupant implements JSONifier {
     public void setRoom(ZugRoom room) {
         this.room = room;
     }
-
     public ZugRoom getRoom() { return room; }
 
-    public ZugArea getArea(ZugArea area) { return area; }
+    public ZugArea getArea() { return area; }
 
     /**
      * Determines if the Occupant has the name UniqueName as another.

@@ -1,6 +1,10 @@
 package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.chernovia.lib.zugserv.enums.ZugAuthSource;
+import org.chernovia.lib.zugserv.enums.ZugScope;
+
+import java.util.List;
 
 /**
  * An Occupant encapsulates a ZugUser within a ZugArea.
@@ -9,8 +13,9 @@ abstract public class Occupant implements JSONifier {
 
     private ZugUser user;
     private boolean deafened = false;
-    private boolean isBot;
     private boolean away = false;
+    private final ZugArea area;
+    private ZugRoom room;
 
     /**
      * Gets the ZugUser associated with this Occupant.
@@ -77,33 +82,20 @@ abstract public class Occupant implements JSONifier {
 
     /**
      * Creates a roomless non-bot Occupant - note that whatever creates this is responsible for adding it to its assigned Area.
-     * Upon success, sends a notification to the user and an update to the ZugArea.
      * @param u the ZugUser associated with this Occupant
      */
-    public Occupant(ZugUser u) {
-        this(u,false);
-    }
-
-    /**
-     * Creates an Occupant - note that whatever creates this is responsible for adding it to its assigned Area.
-     * Upon success, sends a notification to the user and an update to the ZugArea and/or ZugRoom.
-     * @param u the ZugUser associated with this Occupant
-     * @param bot true if occupant is a "bot"
-     */
-    public Occupant(ZugUser u, boolean bot) {
-        isBot = bot;
+    public Occupant(ZugUser u, ZugArea area) {
         setUser(u);
+        this.area = area;
     }
 
-
-
-    /**
-     * Serializes the Occupant (typcially via toJSON()) to a Connection.
-     * @param conn the Connection to update
-     */
-    public void update(Connection conn) {
-        if (conn != null) conn.tell(ZugFields.ServMsgType.updateOccupant,toJSON());
+    public void setRoom(ZugRoom room) {
+        this.room = room;
     }
+
+    public ZugRoom getRoom() { return room; }
+
+    public ZugArea getArea(ZugArea area) { return area; }
 
     /**
      * Determines if the Occupant has the name UniqueName as another.
@@ -115,33 +107,28 @@ abstract public class Occupant implements JSONifier {
     }
 
     /**
-     * Serializes the Occupant to JSON.
-     * @return the results of toJSON(null)
-     */
-    public final ObjectNode toJSON() { return toJSON(null); }
-
-    /**
      * Serializes the Occupant to JSON. Subclasses should probably ovveride this.
-     * @param room includes ZugArea/ZugRoom information
+     * @param scopeList which fields to serialize, ZugScopes.all for everything
      * @return a JSON serialization of the Occupant
      */
-    public ObjectNode toJSON(ZugRoom room) {
+    public ObjectNode toJSON(List<String> scopeList) {
         ObjectNode node = ZugUtils.newJSON();
-        node.put("away",away);
-        node.put("banned", room instanceof ZugArea area && area.isBanned(getUser()));
-        if (room != null) {
-            if (room instanceof ZugArea area) node.set(ZugFields.AREA,area.toJSON());
-            else node.set(ZugFields.ROOM,room.toJSON());
+        if (isBasic(scopeList)) {
+            node.set(ZugFields.USER,user.toJSON());
+            node.put("away",away);
+            node.put("banned", area.isBanned(getUser()));
         }
-        node.set(ZugFields.USER,user.toJSON());
+        if (hasScope(scopeList, ZugScope.area,true)) {
+            node.set(ZugFields.AREA,area.toJSON(ZugScope.basic));
+        }
+        if (hasScope(scopeList,ZugScope.room,true)) {
+            node.set(ZugFields.ROOM,room.toJSON(ZugScope.basic));
+        }
         return node;
     }
 
     public boolean isBot() {
-        return isBot;
+        return getUser().getSource() == ZugAuthSource.bot;
     }
 
-    public void setBot(boolean bot) {
-        isBot = bot;
-    }
 }

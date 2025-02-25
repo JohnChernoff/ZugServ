@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.logging.Level;
 import net.datafaker.*;
+import org.chernovia.lib.zugserv.enums.*;
 
 /**
  * ZugManager extends ZugHandler to handle a variety of common server functions and user interactions.
@@ -79,10 +80,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public synchronized void cleanup() {
         areas.values().stream().filter(Timeoutable::timedOut).forEach(area -> { //handle rooms?
-            area.spam(ZugFields.ServMsgType.servMsg,"Closing " + area.getTitle() + " (reason: timeout)");
+            area.spam(ZugServMsgType.servMsg,"Closing " + area.getTitle() + " (reason: timeout)");
             areaFinished(area);
         });
-        users.values().stream().filter(user -> user.timedOut() && getAreasByUser(user).isEmpty()).forEach(user -> {
+        users.values().stream().filter(user -> user.timedOut() && areasByUserToJSON(user).isEmpty()).forEach(user -> {
             log("Removing (idle): " + user.getUniqueName());
             user.getConn().close("User Disconnection/Idle");
             users.remove(user.getUniqueName().toString());
@@ -98,7 +99,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * Pings all users.
      */
     public synchronized void pingAll() {
-        getUsers().values().stream().filter(ZugUser::isLoggedIn).forEach(user -> user.tell(ZugFields.ServMsgType.ping));
+        getUsers().values().stream().filter(ZugUser::isLoggedIn).forEach(user -> user.tell(ZugServMsgType.ping));
     }
 
     private boolean requirePassword = true;
@@ -107,7 +108,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     private boolean fancyGuestNames = true;
     private final List<Class<? extends Enum<?>>> commandList = new ArrayList<>();
     private int crowdThreshold = 100;
-    private Map<MonthDay,Set<String>> trafficMap = new HashMap<>();
+    private final Map<MonthDay,Set<String>> trafficMap = new HashMap<>();
     private static final AtomicLong idCounter = new AtomicLong();
     public static String createID() {
         return String.valueOf(idCounter.getAndIncrement());
@@ -136,25 +137,25 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public ZugManager(ZugServ.ServType type, int port) {
         super(type,port);
-        addMessageList(ZugFields.ClientMsgType.class);
-        addHandler(ZugFields.ClientMsgType.newArea,this::handleCreateArea);
-        addHandler(ZugFields.ClientMsgType.joinArea,this::handleJoinArea);
-        addHandler(ZugFields.ClientMsgType.partArea,this::handlePartArea);
-        addHandler(ZugFields.ClientMsgType.startArea,this::handleStartArea);
+        addMessageList(ZugClientMsgType.class);
+        addHandler(ZugClientMsgType.newArea,this::handleCreateArea);
+        addHandler(ZugClientMsgType.joinArea,this::handleJoinArea);
+        addHandler(ZugClientMsgType.partArea,this::handlePartArea);
+        addHandler(ZugClientMsgType.startArea,this::handleStartArea);
 
-        addHandler(ZugFields.ClientMsgType.servMsg,this::handleServerMessage);
-        addHandler(ZugFields.ClientMsgType.privMsg,this::handlePrivateMessage);
-        addHandler(ZugFields.ClientMsgType.areaMsg,this::handleAreaMsg);
+        addHandler(ZugClientMsgType.servMsg,this::handleServerMessage);
+        addHandler(ZugClientMsgType.privMsg,this::handlePrivateMessage);
+        addHandler(ZugClientMsgType.areaMsg,this::handleAreaMsg);
 
-        addHandler(ZugFields.ClientMsgType.updateServ,this::handleUpdateServ);
-        addHandler(ZugFields.ClientMsgType.updateArea,this::handleUpdateArea);
-        addHandler(ZugFields.ClientMsgType.updateOccupant,this::handleUpdateOccupant);
-        addHandler(ZugFields.ClientMsgType.updateUser,this::handleUpdateUser);
+        addHandler(ZugClientMsgType.updateServ,this::handleUpdateServ);
+        addHandler(ZugClientMsgType.updateArea,this::handleUpdateArea);
+        addHandler(ZugClientMsgType.updateOccupant,this::handleUpdateOccupant);
+        addHandler(ZugClientMsgType.updateUser,this::handleUpdateUser);
 
-        addHandler(ZugFields.ClientMsgType.setDeaf,this::handleDeafen);
-        addHandler(ZugFields.ClientMsgType.ban,this::handleBan);
-        addHandler(ZugFields.ClientMsgType.getOptions,this::handleUpdateOptions);
-        addHandler(ZugFields.ClientMsgType.setOptions,this::handleSetOptions);
+        addHandler(ZugClientMsgType.setDeaf,this::handleDeafen);
+        addHandler(ZugClientMsgType.ban,this::handleBan);
+        addHandler(ZugClientMsgType.getOptions,this::handleUpdateOptions);
+        addHandler(ZugClientMsgType.setOptions,this::handleSetOptions);
     }
 
     public boolean requiringPassword() {
@@ -204,10 +205,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         ZugUser user = getUserByConn(conn).orElse(null);
         if (user != null) user.action();
         log(Level.FINE,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
-        if (equalsType(type, ZugFields.ClientMsgType.login)) {
+        if (equalsType(type, ZugClientMsgType.login)) {
             if (user != null) err(conn,"Already logged in");
             else handleLoginRequest(conn,dataNode);
-        } else if (equalsType(type, ZugFields.ClientMsgType.ip)) {
+        } else if (equalsType(type, ZugClientMsgType.ip)) {
             getTxtNode(dataNode, ZugFields.ADDRESS).ifPresent(addressStr -> {
                         try {
                             conn.setAddress(InetAddress.getByName(addressStr));
@@ -216,10 +217,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                         catch (UnknownHostException oops) { log("Unknown Host: " + addressStr); }
                     }
             );
-            tell(conn,ZugFields.ServMsgType.ip,ZugUtils.newJSON().put(ZugFields.ADDRESS,conn.getAddress().toString()));
-        } else if (equalsType(type, ZugFields.ClientMsgType.obs)) { log(Level.FINE,"Obs requested from: " + conn.getID());
+            tell(conn, ZugServMsgType.ip,ZugUtils.newJSON().put(ZugFields.ADDRESS,conn.getAddress().toString()));
+        } else if (equalsType(type, ZugClientMsgType.obs)) { log(Level.FINE,"Obs requested from: " + conn.getID());
             getArea(dataNode).ifPresent(area -> area.addObserver(conn));
-        } else if (equalsType(type, ZugFields.ClientMsgType.unObs)) {  log(Level.FINE,"UnObs requested from: " + conn.getID());
+        } else if (equalsType(type, ZugClientMsgType.unObs)) {  log(Level.FINE,"UnObs requested from: " + conn.getID());
             getArea(dataNode).ifPresent(area -> area.removeObserver(conn));
         } else if (user != null) handleUserMsg(user,type,dataNode);
         else { //err(conn,"Please login first");
@@ -253,7 +254,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     public void handleServerMessage(ZugUser user, JsonNode dataNode) {
         String msg = getTxtNode(dataNode,ZugFields.MSG).orElse("");
-        spam(ZugFields.ServMsgType.servUserMsg,userMsgToJSON(user,msg));
+        spam(ZugServMsgType.servUserMsg,userMsgToJSON(user,msg));
     }
 
     public void handlePrivateMessage(ZugUser user, JsonNode dataNode) {
@@ -344,8 +345,9 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public Optional<ZugArea> handleUpdateArea(ZugUser user, JsonNode dataNode) {
         Optional<ZugArea> a = getArea(dataNode);
         a.ifPresent(area -> {
-                    if (!area.isPrivate()) area.update(user);
-                    else getOccupant(user,dataNode).ifPresent(occupant -> area.update(occupant.getUser()));
+                    if (!area.isPrivate()) user.tell(ZugServMsgType.updateArea,area.toJSON(ZugScope.all));
+                    else getOccupant(user,dataNode).ifPresent(occupant ->
+                            area.tell(occupant, ZugServMsgType.updateArea, area.toJSON(ZugScope.all)));
                 }
         );
         return a;
@@ -354,7 +356,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public Optional<ZugArea> handleUpdateOccupant(ZugUser user, JsonNode dataNode) {
         Optional<ZugArea> a = getArea(dataNode);
         a.ifPresentOrElse(area -> area.getOccupant(user)
-                        .ifPresentOrElse(occupant -> occupant.update(user.getConn()),
+                        .ifPresentOrElse(occupant -> user.getConn().tell(ZugServMsgType.updateOccupant,occupant.toJSON()),
                                 () -> err(user.getConn(), ERR_OCCUPANT_NOT_FOUND)),
                 () -> err(user.getConn(), ERR_AREA_NOT_FOUND));
         return a;
@@ -435,7 +437,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param occupant an Occupant
      */
     public void areaJoined(ZugArea area, Occupant occupant) {
-        area.tell(occupant,ZugFields.ServMsgType.joinArea,area.toJSON(true));
+        area.tell(occupant, ZugServMsgType.joinArea,area.toJSON(ZugScope.all));
     }
 
     /**
@@ -444,7 +446,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param user a ZugUser (not an occupant, since just left)
      */
     public void areaParted(ZugArea area, ZugUser user) {
-        user.tell(ZugFields.ServMsgType.partArea,ZugUtils.newJSON().put(area.getScope(),area.getTitle()));
+        user.tell(ZugServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.AREA_ID,area.getTitle()));
         //area.tell(occupant,ZugFields.ServMsgType.partArea,area.toJSON(true));
     }
 
@@ -455,7 +457,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param conn the Connection to update
      */
     public void updateServ(Connection conn) {
-        tell(conn, ZugFields.ServMsgType.updateServ,toJSON());
+        tell(conn, ZugServMsgType.updateServ,toJSON());
     }
 
     /**
@@ -474,7 +476,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param msg the chat message
      */
     public void sendAreaChat(Occupant occupant, String msg, ZugArea area) {
-        area.spam(ZugFields.ServMsgType.areaUserMsg,occupantMsgToJSON(occupant,msg));
+        area.spam(ZugServMsgType.areaUserMsg,occupantMsgToJSON(occupant,msg));
     }
 
     /**
@@ -485,8 +487,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public void sendPrivateMsg(ZugUser user1, ZugUser.UniqueName name, String msg) { //log("Handling privMsg to: " + name);
         getUserByUniqueName(name).ifPresentOrElse(user2 -> {
-            user2.tell(ZugFields.ServMsgType.privMsg,userMsgToJSON(user1,msg));
-            user1.tell(ZugFields.ServMsgType.servMsg,"Message sent to " + name + ": " + msg);
+            user2.tell(ZugServMsgType.privMsg,userMsgToJSON(user1,msg));
+            user1.tell(ZugServMsgType.servMsg,"Message sent to " + name + ": " + msg);
         }, () -> err(user1,"User not found: " + name));
     }
 
@@ -498,13 +500,13 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public void handleLoginRequest(Connection conn, JsonNode dataNode) {
         try {
-            ZugFields.AuthSource source =
-                    ZugFields.AuthSource.valueOf(dataNode.get(ZugFields.LOGIN_TYPE).textValue().toLowerCase());
-            if (source == ZugFields.AuthSource.lichess) {
+            ZugAuthSource source =
+                    ZugAuthSource.valueOf(dataNode.get(ZugFields.LOGIN_TYPE).textValue().toLowerCase());
+            if (source == ZugAuthSource.lichess) {
                 getTxtNode(dataNode,ZugFields.TOKEN).ifPresentOrElse(
                         token -> handleLichessLogin(conn,token), () -> err(conn,"Empty token"));
             }
-            else if (source == ZugFields.AuthSource.none) {
+            else if (source == ZugAuthSource.none) {
                 if (allowGuests) handleLogin(
                         conn,
                         generateGuestName(getTxtNode(dataNode,ZugFields.NAME).orElse(ZugFields.GUEST)),
@@ -538,8 +540,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public void handleLoggedIn(ZugUser user) {
         log("logged in: " + user.getUniqueName());
         user.setLoggedIn(true);
-        user.tell(ZugFields.ServMsgType.logOK,user.toJSON());
-        user.tell(ZugFields.ServMsgType.areaList,areasToJSON(true,isCrowded() ? user : null));
+        user.tell(ZugServMsgType.logOK,user.toJSON());
+        user.tell(ZugServMsgType.areaList, areasByUserToJSON(true,isCrowded() ? user : null));
         MonthDay monthDay = MonthDay.now();
         trafficMap.putIfAbsent(monthDay,new HashSet<>());
         if (!user.isGuest()) trafficMap.get(monthDay).add(user.getUniqueName().toString());
@@ -552,7 +554,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param newConn the newly logged in user
      */
     public void swapConnection(ZugUser prevUser, Connection newConn) {
-        newConn.tell(ZugFields.ServMsgType.servMsg,"Already logged in, swapping connections");
+        newConn.tell(ZugServMsgType.servMsg,"Already logged in, swapping connections");
         prevUser.setConn(newConn);
         handleLoggedIn(prevUser);
     }
@@ -571,7 +573,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                         .orElse(""));
         try {
             return Optional.of(new ZugUser.UniqueName(name,
-                    ZugFields.AuthSource.valueOf(source)));
+                    ZugAuthSource.valueOf(source)));
         }
         catch (IllegalArgumentException arg) {
             return Optional.empty(); //new ZugUser.UniqueName(name, ZugFields.AuthSource.none);
@@ -630,10 +632,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param area the changed area
      * @param change the enumerated type of change (e.g., ZugFields.AreaChange.created, etc.)
      */
-    public void handleAreaListUpdate(ZugArea area, ZugFields.AreaChange change) {
+    public void handleAreaListUpdate(ZugArea area, ZugAreaChange change) {
         if (!isCrowded() && area.exists()) {
-            spam(ZugFields.ServMsgType.updateAreaList,ZugUtils.newJSON()
-                    .put(ZugFields.AREA_CHANGE,change.name()).set(ZugFields.AREA,area.toJSON(true)));
+            spam(ZugServMsgType.updateAreaList,ZugUtils.newJSON()
+                    .put(ZugFields.AREA_CHANGE,change.name()).set(ZugFields.AREA,area.toJSON(ZugScope.basic)));
         }
     }
 
@@ -643,8 +645,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public void areaCreated(ZugArea area) {
         area.getCreator().ifPresent(creator ->
-                creator.tell(ZugFields.ServMsgType.createArea, area.toJSON(true))); //TODO: make redundant?
-        handleAreaListUpdate(area, ZugFields.AreaChange.created);
+                creator.tell(ZugServMsgType.createArea, area.toJSON(ZugScope.all)));
+        handleAreaListUpdate(area, ZugAreaChange.created);
     }
 
     /**
@@ -652,7 +654,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param area the completed Area
      */
     public void areaFinished(ZugArea area) {
-        handleAreaListUpdate(area, ZugFields.AreaChange.deleted);
+        handleAreaListUpdate(area, ZugAreaChange.deleted);
         area.setExistence(false);
         removeArea(area);
     }
@@ -662,7 +664,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param area the changed Area
      */
     public void areaUpdated(ZugArea area) {
-        handleAreaListUpdate(area, ZugFields.AreaChange.updated);
+        handleAreaListUpdate(area, ZugAreaChange.updated);
     }
 
     public boolean requiresPassword() {
@@ -682,7 +684,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public boolean isCrowded() {
-        return users.values().size() > crowdThreshold;
+        return users.size() > crowdThreshold;
     }
 
     /**
@@ -691,29 +693,32 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     @Override
     public void connected(Connection conn) {
-        tell(conn, ZugFields.ServMsgType.reqLogin,ZugUtils.newJSON().put(ZugFields.ID,conn.getID()));
+        tell(conn, ZugServMsgType.reqLogin,ZugUtils.newJSON().put(ZugFields.AREA_ID,conn.getID()));
     }
 
     @Override
     public void err(Connection conn, String msg) {
-        tell(conn, ZugFields.ServMsgType.errMsg, msg);
+        tell(conn, ZugServMsgType.errMsg, msg);
     }
 
     @Override
     public void msg(Connection conn, String msg) {
-        tell(conn, ZugFields.ServMsgType.servMsg, msg);
+        tell(conn, ZugServMsgType.servMsg, msg);
     }
 
     @Override
-    public ObjectNode toJSON() {
-        Set<String> dailyUsers = trafficMap.get(MonthDay.now());
-        return  ZugUtils.newJSON()
-                .put(ZugFields.CROWDED,isCrowded())
-                .put(ZugFields.ALLOW_GUESTS,allowGuests)
-                .put(ZugFields.USERS, getUsers().size())
-                .put(ZugFields.LOGGED_IN,getUsers().values().stream().filter(ZugUser::isLoggedIn).count())
-                .put(ZugFields.DAILY_USERS,dailyUsers != null ? dailyUsers.size() : 0);
-
+    public ObjectNode toJSON(List<String> scopes) {
+        ObjectNode node = ZugUtils.newJSON();
+        if (isBasic(scopes)) {
+            Set<String> dailyUsers = trafficMap.get(MonthDay.now());
+            node
+                    .put(ZugFields.CROWDED, isCrowded())
+                    .put(ZugFields.ALLOW_GUESTS, allowGuests)
+                    .put(ZugFields.USERS, getUsers().size())
+                    .put(ZugFields.LOGGED_IN, getUsers().values().stream().filter(ZugUser::isLoggedIn).count())
+                    .put(ZugFields.DAILY_USERS, dailyUsers != null ? dailyUsers.size() : 0);
+        }
+        return node;
     }
 
     /**
@@ -740,7 +745,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
             userName.replace(0,userName.length(),name + (++i));
 
         }
-        return new ZugUser.UniqueName(userName.toString(), ZugFields.AuthSource.none);
+        return new ZugUser.UniqueName(userName.toString(), ZugAuthSource.none);
     }
 
 }

@@ -2,11 +2,14 @@ package org.chernovia.lib.zugserv;
 
 import chariot.Client;
 import chariot.ClientAuth;
-//import chariot.api.AccountAuth;
 import chariot.api.AccountApiAuth;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.chernovia.lib.zugserv.enums.ZugAuthSource;
+import org.chernovia.lib.zugserv.enums.ZugClientMsgType;
+import org.chernovia.lib.zugserv.enums.ZugScope;
+import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import org.chernovia.lib.zugserv.web.WebSockServ;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
@@ -26,7 +29,6 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
 
     ZugServ serv;
 
-    public ZugHandler(ZugServ.ServType type) { this(type,0); }
     public ZugHandler(ZugServ.ServType type, int port) {
         setLoggingLevel(Level.INFO);
         serv = switch (type) {
@@ -80,7 +82,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
      * @param user A ZugUser
      * @return list of ZugAreas
      */
-    public List<ZugArea> getAreasByUser(ZugUser user) {
+    public List<ZugArea> areasByUserToJSON(ZugUser user) {
         return getAreas().stream().filter(area -> area.getOccupant(user).isPresent()).toList();
     }
 
@@ -100,7 +102,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     }
 
     public Optional<ZugUser> getUserByName(String name, String source) {
-        return getUserByUniqueName(new ZugUser.UniqueName(name,ZugFields.AuthSource.valueOf(source)));
+        return getUserByUniqueName(new ZugUser.UniqueName(name, ZugAuthSource.valueOf(source)));
     }
 
     public Optional<ZugUser> getUserByUniqueName(ZugUser.UniqueName name) {
@@ -125,7 +127,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
             AccountApiAuth aa = client.account(); //log("Created account: " + aa);
             if (aa.profile().isPresent()) {
                 log("Logging in lichess user: " + aa.profile().get().name());
-                handleLogin(conn, new ZugUser.UniqueName(aa.profile().get().name(),ZugFields.AuthSource.lichess),ZugUtils.newJSON().put(ZugFields.TOKEN,token));
+                handleLogin(conn, new ZugUser.UniqueName(aa.profile().get().name(), ZugAuthSource.lichess),ZugUtils.newJSON().put(ZugFields.TOKEN,token));
             } else {
                 log("Login failure: bad token"); err(conn, "Login failure: bad token");
             }
@@ -133,7 +135,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     }
 
     public void spam(String msg) {
-        spam(ZugFields.ServMsgType.servMsg,msg);
+        spam(ZugServMsgType.servMsg,msg);
     }
 
     public void spam(Enum<?> type,String msg) {
@@ -208,7 +210,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         if (typeNode == null || dataNode == null) {
             err(conn,"Error: Bad Data(null)"); //return;
         }
-        else if (equalsType(typeNode.asText(), ZugFields.ClientMsgType.pong)) {
+        else if (equalsType(typeNode.asText(), ZugClientMsgType.pong)) {
             conn.setLatency(System.currentTimeMillis() - conn.lastPing());
         }
         else {
@@ -224,7 +226,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         for (ZugUser user : getUsersByConn(conn)) {
             log("Disconnected: " + user.getName());
             user.setLoggedIn(false);
-            List<ZugArea> areas = getAreasByUser(user);
+            List<ZugArea> areas = areasByUserToJSON(user);
             if (!isPreservingDisconnectedUsers() || areas.isEmpty()) {
                 areas.forEach(area -> area.dropOccupant(user));
                 removeUser(user);
@@ -336,16 +338,20 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         return ZugUtils.newJSON().set(ZugFields.USERS,arrayNode);
     }
 
-    final public ObjectNode areasToJSON(boolean showOccupants, ZugUser user) {
+    final public ObjectNode areasByUserToJSON(boolean showOccupants, ZugUser user) {
         ArrayNode arrayNode = ZugUtils.newJSONArray();
         areas.values().forEach(area -> {
-            if (user == null || area.getOccupant(user).isPresent()) arrayNode.add(area.toJSON(showOccupants));
+            if (user == null || area.getOccupant(user).isPresent()) {
+                if (showOccupants) arrayNode.add(area.toJSON(ZugScope.basic,ZugScope.occupants_basic));
+                else arrayNode.add(area.toJSON(ZugScope.basic));
+            }
+
         });
         return ZugUtils.newJSON().set(ZugFields.AREAS,arrayNode);
     }
 
     public ObjectNode toJSON() {
-        return ZugUtils.joinNodes(usersToJSON(true),areasToJSON(true,null));
+        return ZugUtils.joinNodes(usersToJSON(true), areasByUserToJSON(true,null));
     }
 
 }

@@ -183,7 +183,7 @@ public class ZugOptions implements JSONifier {
         }
 
         @Override
-        public ObjectNode toJSON() { //ZugManager.log("Serializing: " + label);
+        public ObjectNode toJSON(List<String> scopes) { //ZugManager.log("Serializing: " + label);
             return switch (type) {
                 case opt_int -> toJSON(intVal,intMin,intMax,intInc);
                 case opt_dbl -> toJSON(dblVal,dblMin,dblMax,dblInc);
@@ -255,7 +255,8 @@ public class ZugOptions implements JSONifier {
         });
     }
 
-    public ObjectNode toJSON() {
+    @Override
+    public ObjectNode toJSON(List<String> scopes) {
         ObjectNode node = ZugUtils.newJSON();
         for (String field : optionsMap.keySet()) node.set(field,optionsMap.get(field).toJSON());
         return node;

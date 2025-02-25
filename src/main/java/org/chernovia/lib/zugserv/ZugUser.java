@@ -2,11 +2,15 @@ package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.chernovia.lib.zugserv.enums.ZugAuthSource;
+import org.chernovia.lib.zugserv.enums.ZugServMsgType;
+
+import java.util.List;
 
 /**
  * ZugUser encapsulates a Connection with indentiable data relating to an identifiable (typically logged in/authenticated) user.
  */
-abstract public class ZugUser extends Timeoutable implements JSONifier {  // long lastMessage = Long.MAX_VALUE;
+public class ZugUser extends Timeoutable implements JSONifier {  // long lastMessage = Long.MAX_VALUE;
     private Connection conn;
     private UniqueName uniqueName;
     private boolean loggedIn;
@@ -17,24 +21,24 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
      */
     public static class UniqueName {
         public String name;
-        public ZugFields.AuthSource source;
+        public ZugAuthSource source;
 
         /**
          * Creates a UniqueName.
          *  @param n a username
          *  @param src the authentication type (such as ZugFields.AuthSource.lichess)
          */
-        public UniqueName(String n, ZugFields.AuthSource src) {
+        public UniqueName(String n, ZugAuthSource src) {
             name = n; source = src;
         }
 
         public UniqueName(JsonNode dataNode) {
             name = ZugManager.getTxtNode(dataNode,ZugFields.NAME).orElse("");
             try {
-                source = ZugFields.AuthSource.valueOf(ZugManager.getTxtNode(dataNode,ZugFields.SOURCE).orElse(ZugFields.AuthSource.none.name()));
+                source = ZugAuthSource.valueOf(ZugManager.getTxtNode(dataNode,ZugFields.SOURCE).orElse(ZugAuthSource.none.name()));
             }
             catch (IllegalArgumentException oops) {
-                source = ZugFields.AuthSource.none;
+                source = ZugAuthSource.none;
             }
         }
 
@@ -45,7 +49,7 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
 
         @Override
         public String toString() {
-            return name + (source == ZugFields.AuthSource.none ? "" : ("@" + source.name()));
+            return name + (source == ZugAuthSource.none ? "" : ("@" + source.name()));
         }
 
         public ObjectNode toJSON() {
@@ -82,7 +86,7 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
      * Gets the authentication source this user logged in with (if any).
      * @return an authentication source (such as ZugFields.AuthSource.lichess)
      */
-    public ZugFields.AuthSource getSource() { return uniqueName.source; }
+    public ZugAuthSource getSource() { return uniqueName.source; }
 
     /**
      * Gets the user's (possibly null) login token.
@@ -134,7 +138,7 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
      * @return false if unauthenticated
      */
     public boolean isGuest() {
-        return getUniqueName().source.equals(ZugFields.AuthSource.none);
+        return getUniqueName().source.equals(ZugAuthSource.none);
     }
 
     /**
@@ -142,7 +146,7 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
      * @param msg the alphanumeric message to send
      */
     public void tell(String msg) {
-        tell(ZugFields.ServMsgType.servMsg,msg);
+        tell(ZugServMsgType.servMsg,msg);
     }
 
     /**
@@ -165,7 +169,7 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
      * @param json the JSON-formatted message
      */
     public void tell(JsonNode json) {
-        if (loggedIn && conn != null) conn.tell(ZugFields.ServMsgType.servMsg,json);
+        if (loggedIn && conn != null) conn.tell(ZugServMsgType.servMsg,json);
     }
 
     /**
@@ -182,7 +186,7 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
      * @param conn the Connection to update
      */
     public void update(Connection conn) {
-        if (conn != null) conn.tell(ZugFields.ServMsgType.updateUser,toJSON());
+        if (conn != null) conn.tell(ZugServMsgType.updateUser,toJSON());
     }
 
     public boolean sameAddress(Connection conn) {
@@ -190,10 +194,16 @@ abstract public class ZugUser extends Timeoutable implements JSONifier {  // lon
     }
 
     public boolean sameUser(ZugUser.UniqueName name, Connection conn) {
-        return name.source.equals(ZugFields.AuthSource.none) ? sameAddress(conn) : name.equals(getUniqueName());
+        return name.source.equals(ZugAuthSource.none) ? sameAddress(conn) : name.equals(getUniqueName());
     }
 
-    public ObjectNode toJSON() {
-        return ZugUtils.newJSON().put(ZugFields.LOGGED_IN,loggedIn).set(ZugFields.UNAME,uniqueName.toJSON());
+    @Override
+    public ObjectNode toJSON(List<String> scopes) {
+        ObjectNode node = ZugUtils.newJSON();
+        if (isBasic(scopes)) {
+            node.put(ZugFields.LOGGED_IN,loggedIn).set(ZugFields.UNAME,uniqueName.toJSON());
+        }
+        return node;
     }
+
 }

@@ -68,7 +68,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     public boolean addOccupant(Occupant occupant) {
         if (occupants.putIfAbsent(occupant.getUser().getUniqueName().toString(),occupant) == null) {
             action();
-            spam(ZugServMsgType.updateOccupants,toJSON(ZugScope.all));
+            spam(ZugServMsgType.updateOccupants,toJSON(ZugScope.occupants_basic));
             return true;
         }
         return false;
@@ -98,7 +98,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      */
     public boolean dropOccupant(ZugUser user) {
         if (occupants.remove(user.getUniqueName().toString()) != null) {
-            spam(ZugServMsgType.updateOccupants,toJSON(ZugScope.occupants_all));
+            spam(ZugServMsgType.updateOccupants,toJSON(ZugScope.occupants_basic));
             return true;
         }
         return false;

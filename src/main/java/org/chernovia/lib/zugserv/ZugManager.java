@@ -635,7 +635,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public void handleAreaListUpdate(ZugArea area, ZugAreaChange change) {
         if (!isCrowded() && area.exists()) {
             spam(ZugServMsgType.updateAreaList,ZugUtils.newJSON()
-                    .put(ZugFields.AREA_CHANGE,change.name()).set(ZugFields.AREA,area.toJSON(ZugScope.basic)));
+                    .put(ZugFields.AREA_CHANGE,change.name()).set(ZugFields.AREA,area.toJSON(ZugScope.basic,ZugScope.occupants_basic)));
         }
     }
 

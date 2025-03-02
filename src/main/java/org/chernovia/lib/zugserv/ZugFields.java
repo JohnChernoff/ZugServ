@@ -50,5 +50,12 @@ public interface ZugFields {
             DAILY_USERS = "daily_users",
             UNIQUE_USERS = "unique_users",
             AUTO_JOIN = "auto_join",
+            ZUG_MSG = "zug_msg",
+            MSG_DATE = "zug_msg_date",
+            MSG_USER = "zug_msg_user",
+            ZUG_TEXT = "zug_text",
+            TXT_EMOJI = "txt_emoji",
+            TXT_ASCII = "txt_ascii",
+            MSG_HISTORY = "msg_history",
             UPDATE_SCOPE = "up_scope";
 }

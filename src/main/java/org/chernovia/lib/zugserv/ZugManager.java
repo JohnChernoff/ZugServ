@@ -252,9 +252,9 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     /* *** */
 
-    public void handleServerMessage(ZugUser user, JsonNode dataNode) {
-        String msg = getTxtNode(dataNode,ZugFields.MSG).orElse("");
-        spam(ZugServMsgType.servUserMsg,userMsgToJSON(user,msg));
+    public void handleServerMessage(ZugUser user, JsonNode dataNode) { //String msg = getTxtNode(dataNode,ZugFields.MSG).orElse("");
+        spam(ZugServMsgType.servUserMsg, ZugUtils.newJSON().set(ZugFields.ZUG_MSG,
+                new ZugMessage(new ZugMessage.ZugText(dataNode.get(ZugFields.ZUG_TEXT)),user).toJSON()));
     }
 
     public void handlePrivateMessage(ZugUser user, JsonNode dataNode) {
@@ -332,7 +332,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         a.ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
                         .ifPresentOrElse(occupant ->
                                         sendAreaChat(occupant,
-                                                getTxtNode(dataNode, ZugFields.MSG).orElse(""), zugArea),
+                                                new ZugMessage.ZugText(dataNode.get(ZugFields.ZUG_TEXT)),
+                                                 zugArea),
                                 () -> err(user, ERR_NOT_OCCUPANT)),
                 () -> err(user, ERR_TITLE_NOT_FOUND));
         return a;
@@ -398,14 +399,6 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     /* *** */
 
-    private ObjectNode userMsgToJSON(ZugUser user, String msg) {
-        return ZugUtils.newJSON().put(ZugFields.MSG,msg).set(ZugFields.USER,user.toJSON());
-    }
-
-    private ObjectNode occupantMsgToJSON(Occupant occupant, String msg) {
-        return ZugUtils.newJSON().put(ZugFields.MSG,msg).set(ZugFields.OCCUPANT,occupant.toJSON());
-    }
-
     private void handleAreaCreated(ZugArea area, JsonNode dataNode) {
         addOrGetArea(area);
         Optional<Boolean> join = getBoolNode(dataNode, ZugFields.AUTO_JOIN);
@@ -425,7 +418,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     private void joinArea(ZugArea area, Occupant occupant) {
-        if (area.addOccupant(occupant)) { //occupant.getUser().tell(ZugFields.ServMsgType.joinRoom,area.toJSON());
+        if (area.addOccupant(occupant)) {
             areaUpdated(area);
             areaJoined(area,occupant);
         }
@@ -447,7 +440,6 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public void areaParted(ZugArea area, ZugUser user) {
         user.tell(ZugServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.AREA_ID,area.getTitle()));
-        //area.tell(occupant,ZugFields.ServMsgType.partArea,area.toJSON(true));
     }
 
     /* *** */
@@ -473,10 +465,23 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     /**
      * Sends a chat message from an Occupant to its inhabited area.
      * @param occupant the Occupant
-     * @param msg the chat message
+     * @param zugTxt the chat message
      */
-    public void sendAreaChat(Occupant occupant, String msg, ZugArea area) {
-        area.spam(ZugServMsgType.areaUserMsg,occupantMsgToJSON(occupant,msg));
+    public void sendAreaChat(Occupant occupant, ZugMessage.ZugText zugTxt, ZugArea area) {
+        //ObjectNode chatNode = .set(ZugFields.OCCUPANT,occupant.toJSON(ZugScope.basic));
+        area.spam(ZugServMsgType.areaUserMsg,ZugUtils.newJSON()
+                .set(ZugFields.ZUG_MSG,new ZugMessage(zugTxt,occupant.getUser()).toJSON()));
+    }
+
+    /**
+     * Sends a chat message from an Occupant to its inhabited room.
+     * @param occupant the Occupant
+     * @param zugTxt the chat message
+     */
+    public void sendRoomChat(Occupant occupant, ZugMessage.ZugText zugTxt, ZugRoom room) {
+        ObjectNode chatNode = ZugUtils.newJSON().set(ZugFields.OCCUPANT,occupant.toJSON(ZugScope.basic));
+        room.spam(ZugServMsgType.roomUserMsg,chatNode
+                .set(ZugFields.ZUG_MSG,new ZugMessage(zugTxt,occupant.getUser()).toJSON()));
     }
 
     /**
@@ -487,7 +492,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public void sendPrivateMsg(ZugUser user1, ZugUser.UniqueName name, String msg) { //log("Handling privMsg to: " + name);
         getUserByUniqueName(name).ifPresentOrElse(user2 -> {
-            user2.tell(ZugServMsgType.privMsg,userMsgToJSON(user1,msg));
+            user2.tell(ZugServMsgType.privMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).set(ZugFields.USER,user1.toJSON(ZugScope.basic)));
             user1.tell(ZugServMsgType.servMsg,"Message sent to " + name + ": " + msg);
         }, () -> err(user1,"User not found: " + name));
     }

@@ -1,14 +1,11 @@
 package org.chernovia.lib.zugserv;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
-
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -23,6 +20,8 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     private boolean isPrivate = false;
 
     private final ConcurrentHashMap<String,Occupant> occupants = new ConcurrentHashMap<>();
+
+    private final List<JsonNode> messages = new ArrayList<>();
 
     public ZugRoom(String title) {
         this.title = title;
@@ -170,26 +169,27 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         spam(type,"");
     }
 
+
     /**
      * Sends an alphanumeric message and enumerated type to all Occupants to the room.
      * @param type an enumerated type
      * @param msg an alphanumeric message
      */
     public final void spam(Enum<?> type, String msg) {
-        spamX(type,msg,  null);
+        spamX(type,msg, null); //TODO: remove varargs, add List
     }
 
     /**
-     * Sends a JSON-encoded message and enumerated type to all Occupants to the room.
+     * Sends a JSON-encoded message and enumerated type to all Occupants in the room.
      * @param type an enumerated type
      * @param msgNode a JSON-encoded message
      */
-    public final void spam(Enum<?> type, ObjectNode msgNode) { //ZugManager.log("Spamming: " + type + "," + msgNode.toString());
-        spamX(type,msgNode, null);
+    public final void spam(Enum<?> type, ObjectNode msgNode) {
+        spamX(type,msgNode,  null); //TODO: remove varargs, add List
     }
 
     /**
-     * Sends an alphanumeric message and enumerated type to all unexcluded Occupants to the room.
+     * Sends an alphanumeric message and enumerated type to all unexcluded Occupants in the room.
      * @param type an enumerated type
      * @param msg an alphanumeric message
      * @param exclude a list of excluded Occupants
@@ -231,6 +231,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
                 }
             } else if (!occupant.isAway()) tell(occupant,type, msgNode,ignoreDeafness);
         });
+        if (type.equals(ZugServMsgType.areaUserMsg) || type.equals(ZugServMsgType.roomUserMsg)) messages.add(msgNode);
     }
 
    /**
@@ -313,7 +314,11 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         if (isBasic(scopeList)) {
             node.put(ZugFields.AREA_ID,title).put(ZugFields.NAME,getName());
         }
-        //scope_all = occupants.toJson(ZugScope.all) (doesn't include room/area info)
+        if (hasScope(scopeList,ZugScope.msg_history,true)) {
+            ArrayNode historyNode = ZugUtils.newJSONArray();
+            messages.forEach(historyNode::add);
+            node.set(ZugFields.MSG_HISTORY,historyNode);
+        }
         if (hasScope(scopeList,ZugScope.occupants_basic) || hasScope(scopeList,ZugScope.occupants_all)) {
             ArrayNode arrayNode = ZugUtils.newJSONArray();
             if (hasScope(scopeList,ZugScope.occupants_basic,true)) {

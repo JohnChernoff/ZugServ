@@ -9,6 +9,10 @@ public interface AreaListener {
      * Called upon the (server defined) conclusion of an Area's purpose.
      * @param area the no longeer extant Area
      */
+    public void areaClosed(ZugArea area);
+
+    public void areaStarted(ZugArea area);
+
     public void areaFinished(ZugArea area);
 
     /**

@@ -1,7 +1,5 @@
 package org.chernovia.lib.zugserv;
 
-enum ZugAreaPhase {initializing,querying,finalizing}
-
 public interface ZugFields {
     String UNKNOWN_STRING = "STRING_UNKNOWN"; //TODO: get rid of this in favor of either Optional or @Nullable
     String TYPE = "type",
@@ -57,5 +55,7 @@ public interface ZugFields {
             TXT_EMOJI = "txt_emoji",
             TXT_ASCII = "txt_ascii",
             MSG_HISTORY = "msg_history",
+            CONFIRM = "confirm",
+            CONFIRM_TYPE = "confirm_type",
             UPDATE_SCOPE = "up_scope";
 }

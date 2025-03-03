@@ -6,10 +6,12 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import net.datafaker.Faker;
 import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
-
 import java.util.*;
-
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import static org.chernovia.lib.zugserv.ZugHandler.log;
+
+enum ZugAreaPhase {initializing,confirming,running,finalizing}
 
 /**
  * ZugArea is a fuller featured extension of ZugRoom that includes passwords, bans, options, phases, and observers.
@@ -33,6 +35,19 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     boolean running = false;
     public ZugOptions om = new ZugOptions();
 
+    public record ObjResponse (Optional<Object> response, Occupant occupant) {}
+    public record BoolResponse (Optional<Boolean> response, Occupant occupant) {}
+    public record IntResponse (Optional<Integer> response, Occupant occupant) {}
+    public record DoubleResponse (Optional<Double> response, Occupant occupant) {}
+    public record StringResponse (Optional<String> response, Occupant occupant) {}
+
+    private final Map<String,CompletableFuture<List<ObjResponse>>> objCheckerMap = new HashMap<>();
+    private final Map<String,CompletableFuture<List<BoolResponse>>> boolCheckerMap = new HashMap<>();
+    private final Map<String,CompletableFuture<List<IntResponse>>> intCheckerMap = new HashMap<>();
+    private final Map<String,CompletableFuture<List<DoubleResponse>>> doubleCheckerMap = new HashMap<>();
+    private final Map<String,CompletableFuture<List<StringResponse>>> stringCheckerMap = new HashMap<>();
+
+
     /**
      * Constructs a ZugArea with a title, creator, and AreaListener.
      * @param t the title
@@ -53,6 +68,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     public ZugArea(String t, String p, ZugUser c, AreaListener l) { //l.areaCreated(this);
         super(t);
         password = p; creator = c; listener = l;
+        areaThread = new Thread(this);
         action();
     }
 
@@ -296,33 +312,133 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     public void setRunning(boolean running) { this.running = running; }
 
+    public void checkObjResponse(String confType) {
+        CompletableFuture<List<ObjResponse>> objFuture = objCheckerMap.get(confType);
+        List<ObjResponse> responseMap = getOccupants().stream()
+                .filter(occupant -> !occupant.isBot())
+                .map(occupant -> new ObjResponse(occupant.getObjResponse(confType),occupant)).toList();
+        if (responseMap.stream().allMatch(objResponse -> objResponse.response().isPresent())) {
+            objFuture.complete(responseMap);
+        }
+    }
+
+    public void checkBoolResponse(String confType) {
+        CompletableFuture<List<BoolResponse>> boolFuture = boolCheckerMap.get(confType);
+        List<BoolResponse> responseMap = getOccupants().stream()
+                .filter(occupant -> !occupant.isBot())
+                .map(occupant -> new BoolResponse(occupant.getBoolResponse(confType),occupant)).toList();
+        if (responseMap.stream().allMatch(boolResponse -> boolResponse.response().isPresent())) {
+            boolFuture.complete(responseMap);
+        }
+    }
+
+    public void checkIntResponse(String confType) {
+        CompletableFuture<List<IntResponse>> intFuture = intCheckerMap.get(confType);
+        List<IntResponse> responseMap = getOccupants().stream()
+                .filter(occupant -> !occupant.isBot())
+                .map(occupant -> new IntResponse(occupant.getIntResponse(confType),occupant)).toList();
+        if (responseMap.stream().allMatch(intResponse -> intResponse.response().isPresent())) {
+            intFuture.complete(responseMap);
+        }
+    }
+
+    public void checkDoubleResponse(String confType) {
+        CompletableFuture<List<DoubleResponse>> dblFuture = doubleCheckerMap.get(confType);
+        List<DoubleResponse> responseMap = getOccupants().stream()
+                .filter(occupant -> !occupant.isBot())
+                .map(occupant -> new DoubleResponse(occupant.getDoubleResponse(confType),occupant)).toList();
+        if (responseMap.stream().allMatch(dblResponse -> dblResponse.response().isPresent())) {
+            dblFuture.complete(responseMap);
+        }
+    }
+
+    public void checkStringResponse(String confType) {
+        CompletableFuture<List<StringResponse>> strFuture = stringCheckerMap.get(confType);
+        List<StringResponse> responseMap = getOccupants().stream()
+                .filter(occupant -> !occupant.isBot())
+                .map(occupant -> new StringResponse(occupant.getStringResponse(confType),occupant)).toList();
+        if (responseMap.stream().allMatch(strResponse -> strResponse.response().isPresent())) {
+            strFuture.complete(responseMap);
+        }
+    }
+
+    public CompletableFuture<List<BoolResponse>> requestBoolean(String confType, int timeout) {
+        getOccupants().forEach(occupant -> occupant.setBoolResponse(confType,null));
+        CompletableFuture<List<BoolResponse>> future = new CompletableFuture<>();
+        boolCheckerMap.put(confType, future);
+        spam(ZugServMsgType.reqConfirm, ZugUtils.newJSON().put(ZugFields.CONFIRM_TYPE,confType));
+        return future.completeOnTimeout(
+                getOccupants().stream().filter(occupant -> !occupant.isBot())
+                        .map(occupant -> new BoolResponse(occupant.getBoolResponse(confType),occupant))
+                        .toList()
+                ,timeout, TimeUnit.SECONDS);
+    }
+
+    public CompletableFuture<List<IntResponse>> requestInteger(String confType, int timeout) {
+        getOccupants().forEach(occupant -> occupant.setIntResponse(confType, null));
+        CompletableFuture<List<IntResponse>> future = new CompletableFuture<>();
+        intCheckerMap.put(confType, future);
+        spam(ZugServMsgType.reqInt, ZugUtils.newJSON().put(ZugFields.CONFIRM_TYPE,confType));
+        return future.completeOnTimeout(
+                getOccupants().stream().filter(occupant -> !occupant.isBot())
+                        .map(occupant -> new IntResponse(occupant.getIntResponse(confType),occupant))
+                        .toList()
+                ,timeout, TimeUnit.SECONDS);
+    }
+
+    public CompletableFuture<List<DoubleResponse>> requestDouble(String confType, int timeout) {
+        getOccupants().forEach(occupant -> occupant.setDoubleResponse(confType, null));
+        CompletableFuture<List<DoubleResponse>> future = new CompletableFuture<>();
+        doubleCheckerMap.put(confType, future);
+        spam(ZugServMsgType.reqDbl, ZugUtils.newJSON().put(ZugFields.CONFIRM_TYPE,confType));
+        return future.completeOnTimeout(
+                getOccupants().stream().filter(occupant -> !occupant.isBot())
+                        .map(occupant -> new DoubleResponse(occupant.getDoubleResponse(confType),occupant))
+                        .toList()
+                ,timeout, TimeUnit.SECONDS);
+    }
+
+    public CompletableFuture<List<StringResponse>> requestString(String confType, int timeout) {
+        getOccupants().forEach(occupant -> occupant.setStringResponse(confType, null));
+        CompletableFuture<List<StringResponse>> future = new CompletableFuture<>();
+        stringCheckerMap.put(confType, future);
+        spam(ZugServMsgType.reqStr, ZugUtils.newJSON().put(ZugFields.CONFIRM_TYPE,confType));
+        return future.completeOnTimeout(
+                getOccupants().stream().filter(occupant -> !occupant.isBot())
+                        .map(occupant -> new StringResponse(occupant.getStringResponse(confType),occupant))
+                        .toList()
+                ,timeout, TimeUnit.SECONDS);
+    }
+
+
     /**
-     * Starts an area.  Note this does not send a ZugFields.ServMsgType.startArea message to the client.
+     * Starts an area.  Note this does not send a ZugFields.ServMsgType.startArea message to the client and is a CompleteableFuture in case of subclasses
+     * wishing to use requestConfirmation() or what not.
      * @param user The user (typicially the creator of the area) starting the area
      * @param initData initialization data (in JSON format)
      * @return true upon success
      */
-    public boolean startArea(ZugUser user, JsonNode initData) { //ZugManager.log("Starting: " + getTitle());
+    public CompletableFuture<Boolean> startArea(ZugUser user, JsonNode initData) { //ZugManager.log("Starting: " + getTitle());
+        CompletableFuture<Boolean> future = new CompletableFuture<>();
         if (!allowed(user,OperationType.start)) {
             err(user,"Permission denied");
         }
-        else if (areaThread == null) {
-            areaThread = new Thread(this);
-            running = true;
-            //spam(ZugFields.ServMsgType.startArea,toJSON(true));
+        else if (areaThread.getState() == Thread.State.NEW) { //areaThread = new Thread(this);
+            running = true; //spam(ZugFields.ServMsgType.startArea,toJSON(true));
             areaThread.start();
-            return true;
+            future.complete(true);
         }
         else err(user,"Area already started");
-        return false;
+        future.complete(false);
+        return future;
     }
 
-    public void stopArea(boolean finish) {
+    public void stopArea(boolean close) {
         if (areaThread != null) {
             running = false;
             interruptPhase(); //TODO: join thread?
         }
-        if (finish) getListener().areaFinished(this);
+        if (close) getListener().areaClosed(this);
     }
 
     public boolean allowed(ZugUser user, OperationType t) {

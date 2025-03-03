@@ -81,7 +81,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public synchronized void cleanup() {
         areas.values().stream().filter(Timeoutable::timedOut).forEach(area -> { //handle rooms?
             area.spam(ZugServMsgType.servMsg,"Closing " + area.getTitle() + " (reason: timeout)");
-            areaFinished(area);
+            areaClosed(area);
         });
         users.values().stream().filter(user -> user.timedOut() && areasByUserToJSON(user).isEmpty()).forEach(user -> {
             log("Removing (idle): " + user.getUniqueName());
@@ -154,6 +154,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
         addHandler(ZugClientMsgType.setDeaf,this::handleDeafen);
         addHandler(ZugClientMsgType.ban,this::handleBan);
+        addHandler(ZugClientMsgType.kick,this::handleKick);
+        addHandler(ZugClientMsgType.confirm,this::handleConfirmation);
         addHandler(ZugClientMsgType.getOptions,this::handleUpdateOptions);
         addHandler(ZugClientMsgType.setOptions,this::handleSetOptions);
     }
@@ -321,9 +323,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     public Optional<ZugArea> handleStartArea(ZugUser user, JsonNode dataNode) {
         Optional<ZugArea> a = getArea(dataNode);
-        a.ifPresentOrElse(area -> {
-            if (area.startArea(user,dataNode)) areaUpdated(area);
-        }, () -> err(user,"Area not found"));
+        a.ifPresentOrElse(area -> area.startArea(user,dataNode)
+                .thenAccept(starting -> { if (starting) {
+                    areaStarted(area);
+                    areaUpdated(area);
+                }}),
+                () -> err(user,"Area not found"));
         return a;
     }
 
@@ -375,12 +380,38 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.DEAFENED).ifPresent(occupant::setDeafened));
     }
 
-
     public Optional<ZugArea> handleBan(ZugUser user, JsonNode dataNode) {
         Optional<ZugArea> a = getArea(dataNode);
         a.ifPresent(area -> getOccupant(user, dataNode)
                 .flatMap(occupant -> getUniqueName(dataNode.get(ZugFields.NAME)))
                 .ifPresent(name -> area.banOccupant(user, name, 15 * 60 * 1000,true)));
+        return a;
+    }
+
+    public Optional<ZugArea> handleKick(ZugUser kicker, JsonNode dataNode) {
+        Optional<ZugArea> a = getArea(dataNode);
+        a.ifPresent(area ->
+            getJSONNode(dataNode, ZugFields.UNAME).flatMap(uName -> getUserByUniqueName(new ZugUser.UniqueName(uName)))
+                    .ifPresent(user -> area.getCreator().ifPresent(creator -> {
+                        if (kicker.equals(creator)) {
+                            area.dropOccupant(user);
+                            user.tell(ZugServMsgType.kicked, area.getTitle());
+                            area.spam(ZugServMsgType.updateOccupants,area.toJSON(ZugScope.occupants_basic));
+                        }
+                    })));
+        return a;
+    }
+
+    public Optional<ZugArea> handleConfirmation(ZugUser user, JsonNode dataNode) { //log("Confirming start (" + user.getUniqueName().toString() + ")");
+        Optional<ZugArea> a = getArea(dataNode);
+        Optional<Boolean> choice = getBoolNode(dataNode, ZugFields.CONFIRM);
+        getTxtNode(dataNode, ZugFields.CONFIRM_TYPE).ifPresent(type ->
+                a.flatMap(area -> getOccupant(user, dataNode))
+                .ifPresent(occupant ->
+                        occupant.setConfirmation(type,
+                                choice.map(aBoolean ->
+                                        (aBoolean ? Occupant.ConfirmationChoice.yes : Occupant.ConfirmationChoice.no))
+                                        .orElse(Occupant.ConfirmationChoice.undecided))));
         return a;
     }
 
@@ -658,10 +689,18 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * Called upon completion of an area.
      * @param area the completed Area
      */
-    public void areaFinished(ZugArea area) {
+    public void areaClosed(ZugArea area) {
         handleAreaListUpdate(area, ZugAreaChange.deleted);
         area.setExistence(false);
         removeArea(area);
+    }
+
+    public void areaStarted(ZugArea area) {
+        log(Level.FINE, "area started: " + area.toString());
+    }
+
+    public void areaFinished(ZugArea area) {
+        log(Level.FINE, "area finished: " + area.toString());
     }
 
     /**

@@ -328,10 +328,10 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
                 ,timeout, TimeUnit.SECONDS);
     }
 
-    public <T> CompletableFuture<List<OccupantResponse>> requestResponse(String confType, int timeout, T clazz) {
+    public CompletableFuture<List<OccupantResponse>> requestResponse(String confType, int timeout, Class<?> clazz) {
         return requestResponse(confType,timeout).thenApply(response ->
             response.stream().map(occupantResponse ->
-                (occupantResponse.response.isEmpty() || !(occupantResponse.response.get().getClass().isInstance(clazz.getClass())))
+                (occupantResponse.response.isEmpty() || !(occupantResponse.response.get().getClass().isInstance(clazz)))
                         ? new OccupantResponse(Optional.empty(), occupantResponse.occupant) : occupantResponse
             ).toList()
         );

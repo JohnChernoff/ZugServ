@@ -55,7 +55,7 @@ public interface ZugFields {
             TXT_EMOJI = "txt_emoji",
             TXT_ASCII = "txt_ascii",
             MSG_HISTORY = "msg_history",
-            CONFIRM = "confirm",
-            CONFIRM_TYPE = "confirm_type",
+            RESPONSE = "response",
+            RESPONSE_TYPE = "response_type",
             UPDATE_SCOPE = "up_scope";
 }

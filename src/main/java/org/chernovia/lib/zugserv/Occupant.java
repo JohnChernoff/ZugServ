@@ -13,18 +13,13 @@ import java.util.Optional;
  */
 abstract public class Occupant implements JSONifier {
 
-    //public enum ConfirmationChoice {yes,no,undecided}
     private ZugUser user;
     private boolean deafened = false;
     private boolean away = false;
     private final ZugArea area;
     private ZugRoom room;
 
-    private final Map<String, Optional<Object>> objResponseMap = new HashMap<>();
-    private final Map<String, Optional<Boolean>> boolResponseMap = new HashMap<>();
-    private final Map<String, Optional<Integer>> intResponseMap = new HashMap<>();
-    private final Map<String, Optional<Double>> doubleResponseMap = new HashMap<>();
-    private final Map<String, Optional<String>> stringResponseMap = new HashMap<>();
+    private final Map<String, Optional<?>> responseMap = new HashMap<>();
 
     /**
      * Gets the ZugUser associated with this Occupant.
@@ -132,32 +127,10 @@ abstract public class Occupant implements JSONifier {
         return getUser().getSource() == ZugAuthSource.bot;
     }
 
-    public Optional<Object> getObjResponse(String confType) { return objResponseMap.get(confType); }
-    public void setObjResponse(String confType, Object obj) {
-        objResponseMap.put(confType,Optional.ofNullable(obj));
-        area.checkObjResponse(confType);
+    public Optional<?> getResponse(String confType) { return responseMap.get(confType); }
+    public <T> void setResponse(String confType, T response) {
+        responseMap.put(confType,Optional.ofNullable(response));
+        area.checkResponse(confType);
     }
 
-    public Optional<Boolean> getBoolResponse(String confType) { return boolResponseMap.get(confType); }
-    public void setBoolResponse(String confType, Boolean bool) {
-        boolResponseMap.put(confType,Optional.ofNullable(bool));
-        area.checkBoolResponse(confType);
-    }
-
-    public Optional<Integer> getIntResponse(String confType) { return intResponseMap.get(confType); }
-    public void setIntResponse(String confType, Integer val) {
-        intResponseMap.put(confType,Optional.ofNullable(val));
-        area.checkIntResponse(confType);
-    }
-
-    public Optional<Double> getDoubleResponse(String confType) { return doubleResponseMap.get(confType); }
-    public void setDoubleResponse(String confType, Double val) {
-        doubleResponseMap.put(confType,Optional.ofNullable(val));
-        area.checkDoubleResponse(confType);
-    }
-    public Optional<String> getStringResponse(String confType) { return stringResponseMap.get(confType); }
-    public void setStringResponse(String confType, String str) {
-        stringResponseMap.put(confType,Optional.ofNullable(str));
-        area.checkStringResponse(confType);
-    }
 }

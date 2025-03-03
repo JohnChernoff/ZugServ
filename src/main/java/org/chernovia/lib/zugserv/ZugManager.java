@@ -155,7 +155,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         addHandler(ZugClientMsgType.setDeaf,this::handleDeafen);
         addHandler(ZugClientMsgType.ban,this::handleBan);
         addHandler(ZugClientMsgType.kick,this::handleKick);
-        addHandler(ZugClientMsgType.confirm,this::handleConfirmation);
+        addHandler(ZugClientMsgType.response,this::handleResponse);
         addHandler(ZugClientMsgType.getOptions,this::handleUpdateOptions);
         addHandler(ZugClientMsgType.setOptions,this::handleSetOptions);
     }
@@ -402,16 +402,16 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         return a;
     }
 
-    public Optional<ZugArea> handleConfirmation(ZugUser user, JsonNode dataNode) { //log("Confirming start (" + user.getUniqueName().toString() + ")");
+    public Optional<ZugArea> handleResponse(ZugUser user, JsonNode dataNode) { //log("Confirming start (" + user.getUniqueName().toString() + ")");
         Optional<ZugArea> a = getArea(dataNode);
-        Optional<Boolean> choice = getBoolNode(dataNode, ZugFields.CONFIRM);
-        getTxtNode(dataNode, ZugFields.CONFIRM_TYPE).ifPresent(type ->
+        Optional<?> response;
+        if (dataNode.get(ZugFields.RESPONSE).isBoolean()) response = getBoolNode(dataNode, ZugFields.RESPONSE);
+        else if (dataNode.get(ZugFields.RESPONSE).isInt()) response = getIntNode(dataNode, ZugFields.RESPONSE);
+        else if (dataNode.get(ZugFields.RESPONSE).isDouble()) response = getDblNode(dataNode, ZugFields.RESPONSE);
+        else response = getTxtNode(dataNode, ZugFields.RESPONSE);
+        getTxtNode(dataNode, ZugFields.RESPONSE_TYPE).ifPresent(type ->
                 a.flatMap(area -> getOccupant(user, dataNode))
-                .ifPresent(occupant ->
-                        occupant.setConfirmation(type,
-                                choice.map(aBoolean ->
-                                        (aBoolean ? Occupant.ConfirmationChoice.yes : Occupant.ConfirmationChoice.no))
-                                        .orElse(Occupant.ConfirmationChoice.undecided))));
+                .ifPresent(occupant -> occupant.setResponse(type, response)));
         return a;
     }
 

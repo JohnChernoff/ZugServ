@@ -333,7 +333,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, int timeout, Class<?> clazz) {
         log(Level.FINE,"Requesting response " + responseType + "," + timeout + "," + clazz);
-        return requestResponse(responseType,timeout).thenApply(response ->
+        return requestResponse(responseType,timeout).thenApplyAsync(response ->
             response.stream().map(occupantResponse ->
                 (occupantResponse.response.isEmpty() || !clazz.isAssignableFrom(occupantResponse.response.get().getClass()))
                         ? new OccupantResponse(Optional.empty(), occupantResponse.occupant) : occupantResponse
@@ -342,30 +342,30 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     }
 
     public CompletableFuture<List<BoolResponse>> requestBoolResponse(String responseType, int timeout) { //log("Requesting boolean response ");
-        return requestResponse(responseType,timeout,Boolean.class).thenApply(response -> { //log("Received boolean response");
+        return requestResponse(responseType,timeout,Boolean.class).thenApplyAsync(response -> { //log("Received boolean response");
                     return response.stream().map(occupantResponse ->
                             new BoolResponse(Optional.ofNullable((Boolean)occupantResponse.response.orElse(null)),occupantResponse.occupant)).toList();
                 });
     }
 
     public CompletableFuture<List<IntResponse>> requestIntResponse(String responseType, int timeout) {
-        return requestResponse(responseType,timeout,Integer.class).thenApply(response ->
+        return requestResponse(responseType,timeout,Integer.class).thenApplyAsync(response ->
                 response.stream().map(occupantResponse ->
                         new IntResponse(Optional.ofNullable((Integer)occupantResponse.response.orElse(null)),occupantResponse.occupant)).toList());
     }
     public CompletableFuture<List<DoubleResponse>> requestDoubleResponse(String responseType, int timeout) {
-        return requestResponse(responseType,timeout,Double.class).thenApply(response ->
+        return requestResponse(responseType,timeout,Double.class).thenApplyAsync(response ->
                 response.stream().map(occupantResponse ->
                         new DoubleResponse(Optional.ofNullable((Double)occupantResponse.response.orElse(null)),occupantResponse.occupant)).toList());
     }
     public CompletableFuture<List<StringResponse>> requestStringResponse(String responseType, int timeout) {
-        return requestResponse(responseType,timeout,String.class).thenApply(response ->
+        return requestResponse(responseType,timeout,String.class).thenApplyAsync(response ->
                 response.stream().map(occupantResponse ->
                         new StringResponse(Optional.ofNullable((String)occupantResponse.response.orElse(null)),occupantResponse.occupant)).toList());
     }
 
     public CompletableFuture<Boolean> getConfirmation(String responseType, int timeout) { //log("Confirming...");
-        return requestBoolResponse(responseType,timeout).thenApply(response -> { //log("Confirmation Response: " + response);
+        return requestBoolResponse(responseType,timeout).thenApplyAsync(response -> { //log("Confirmation Response: " + response);
             return response.stream().allMatch(boolResponse -> boolResponse.response.orElse(false));
         });
     }

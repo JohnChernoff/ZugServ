@@ -402,7 +402,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         return a;
     }
 
-    public Optional<ZugArea> handleResponse(ZugUser user, JsonNode dataNode) { //log("Confirming start (" + user.getUniqueName().toString() + ")");
+    public Optional<ZugArea> handleResponse(ZugUser user, JsonNode dataNode) { //log("Handling Response: " + dataNode + ", " + user.getUniqueName());
         Optional<ZugArea> a = getArea(dataNode);
         Optional<?> response;
         if (dataNode.get(ZugFields.RESPONSE).isBoolean()) response = getBoolNode(dataNode, ZugFields.RESPONSE);
@@ -411,7 +411,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         else response = getTxtNode(dataNode, ZugFields.RESPONSE);
         getTxtNode(dataNode, ZugFields.RESPONSE_TYPE).ifPresent(type ->
                 a.flatMap(area -> getOccupant(user, dataNode))
-                .ifPresent(occupant -> occupant.setResponse(type, response)));
+                .ifPresent(occupant -> occupant.setResponse(type, response.orElse(null))));
         return a;
     }
 

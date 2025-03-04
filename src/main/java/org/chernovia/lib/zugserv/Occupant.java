@@ -19,7 +19,7 @@ abstract public class Occupant implements JSONifier {
     private final ZugArea area;
     private ZugRoom room;
 
-    private final Map<String, Optional<?>> responseMap = new HashMap<>();
+    private final Map<String, Optional<Object>> responseMap = new HashMap<>();
 
     /**
      * Gets the ZugUser associated with this Occupant.
@@ -127,10 +127,10 @@ abstract public class Occupant implements JSONifier {
         return getUser().getSource() == ZugAuthSource.bot;
     }
 
-    public Optional<?> getResponse(String confType) { return responseMap.get(confType); }
-    public <T> void setResponse(String confType, T response) {
-        responseMap.put(confType,Optional.ofNullable(response));
-        area.checkResponse(confType);
+    public Optional<Object> getResponse(String responseType) { return responseMap.get(responseType); }
+    public void setResponse(String responseType, Object response) {
+        responseMap.put(responseType,Optional.ofNullable(response));
+        area.checkResponse(responseType);
     }
 
 }

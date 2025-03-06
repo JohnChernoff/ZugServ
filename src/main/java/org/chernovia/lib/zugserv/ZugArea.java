@@ -37,12 +37,21 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     boolean running = false;
     public ZugOptions om = new ZugOptions();
 
-    public record OccupantResponse(Optional<?> response, Occupant occupant) {}
+    public record OccupantResponse(Optional<Object> response, Occupant occupant) {}
     public record BoolResponse (Optional<Boolean> response, Occupant occupant) {}
     public record IntResponse (Optional<Integer> response, Occupant occupant) {}
     public record DoubleResponse (Optional<Double> response, Occupant occupant) {}
     public record StringResponse (Optional<String> response, Occupant occupant) {}
-    private final Map<String,CompletableFuture<List<OccupantResponse>>> responseCheckerMap = new HashMap<>();
+
+    public static class ZugResponse {
+        CompletableFuture<List<OccupantResponse>> futureResponse;
+        Object cancelValue;
+        public ZugResponse(CompletableFuture<List<OccupantResponse>> futureResponse, Object cancelValue) {
+            this.futureResponse = futureResponse;
+            this.cancelValue = cancelValue;
+        }
+    }
+    private final Map<String,ZugResponse> responseCheckerMap = new HashMap<>();
 
     /**
      * Constructs a ZugArea with a title, creator, and AreaListener.
@@ -309,20 +318,29 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     public void setRunning(boolean running) { this.running = running; }
 
     public void checkResponse(String responseType) { //log("Checking response: " + responseType);
-        CompletableFuture<List<OccupantResponse>> future = responseCheckerMap.get(responseType);
+        ZugResponse response = responseCheckerMap.get(responseType);
         List<OccupantResponse> responseMap = getOccupants().stream()
                 .filter(occupant -> !occupant.isBot())
                 .map(occupant -> new OccupantResponse(occupant.getResponse(responseType),occupant)).toList();
         if (responseMap.stream().allMatch(occupantResponse -> occupantResponse.response().isPresent())) {
-            future.complete(responseMap);
+            spam(ZugServMsgType.completedResponse,ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE,responseType));
+            response.futureResponse.complete(responseMap);
+        }
+        else if (responseMap.stream().flatMap(occupantResponse -> occupantResponse.response.stream())
+                .anyMatch(obj -> obj.equals(response.cancelValue))) {
+            spam(ZugServMsgType.cancelledResponse,ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE,responseType));
+            response.futureResponse.complete(responseMap);
         }
     }
 
     public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, int timeout) {
+        return requestResponse(responseType,null,timeout);
+    }
+    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, Object cancelValue, int timeout) {
         log(Level.FINE,"Requesting response " + responseType + "," + timeout);
         getOccupants().forEach(occupant -> occupant.setResponse(responseType,null));
         CompletableFuture<List<OccupantResponse>> future = new CompletableFuture<>();
-        responseCheckerMap.put(responseType, future);
+        responseCheckerMap.put(responseType, new ZugResponse(future,cancelValue));
         spam(ZugServMsgType.reqResponse, ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE,responseType));
         return future.completeOnTimeout(
                 getOccupants().stream().filter(occupant -> !occupant.isBot())
@@ -331,11 +349,15 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
                 ,timeout, TimeUnit.SECONDS);
     }
 
-    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, int timeout, Class<?> clazz) {
-        log(Level.FINE,"Requesting response " + responseType + "," + timeout + "," + clazz);
+    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, int timeout, Class<?> classFilter) {
+        return requestResponse(responseType,null,timeout,classFilter);
+    }
+
+    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, Object cancelValue, int timeout, Class<?> classFilter) {
+        log(Level.FINE,"Requesting response " + responseType + "," + timeout + "," + classFilter);
         return requestResponse(responseType,timeout).thenApplyAsync(response ->
             response.stream().map(occupantResponse ->
-                (occupantResponse.response.isEmpty() || !clazz.isAssignableFrom(occupantResponse.response.get().getClass()))
+                (occupantResponse.response.isEmpty() || !classFilter.isAssignableFrom(occupantResponse.response.get().getClass()))
                         ? new OccupantResponse(Optional.empty(), occupantResponse.occupant) : occupantResponse
             ).toList()
         );

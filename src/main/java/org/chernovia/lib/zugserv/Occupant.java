@@ -128,9 +128,9 @@ abstract public class Occupant implements JSONifier {
     }
 
     public Optional<Object> getResponse(String responseType) { return responseMap.get(responseType); }
-    public void setResponse(String responseType, Object response) {
+    public void setResponse(String responseType, Object response) { //ZugManager.log("Got response: " + responseType + ", " + response);
         responseMap.put(responseType,Optional.ofNullable(response));
-        area.checkResponse(responseType);
+        if (response != null) area.checkResponse(responseType);
     }
 
 }

@@ -9,11 +9,8 @@ import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.*;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
 
-import static org.chernovia.lib.zugserv.ZugHandler.log;
-
-enum ZugAreaPhase {initializing,confirming,running,finalizing}
+enum ZugAreaPhase {initializing,running,finalizing}
 
 /**
  * ZugArea is a fuller featured extension of ZugRoom that includes passwords, bans, options, phases, and observers.
@@ -322,12 +319,14 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         List<OccupantResponse> responseMap = getOccupants().stream()
                 .filter(occupant -> !occupant.isBot())
                 .map(occupant -> new OccupantResponse(occupant.getResponse(responseType),occupant)).toList();
+        //TODO: how can occupantResponse.response() be null?!
         if (responseMap.stream().allMatch(occupantResponse -> occupantResponse.response().isPresent())) {
             spam(ZugServMsgType.completedResponse,ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE,responseType));
             response.futureResponse.complete(responseMap);
         }
-        else if (responseMap.stream().flatMap(occupantResponse -> occupantResponse.response.stream())
-                .anyMatch(obj -> obj.equals(response.cancelValue))) {
+        else if (responseMap.stream()
+                .map(r -> r.response).filter(Optional::isPresent)
+                .anyMatch(optVal -> optVal.get().equals(response.cancelValue))) {
             spam(ZugServMsgType.cancelledResponse,ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE,responseType));
             response.futureResponse.complete(responseMap);
         }
@@ -337,10 +336,10 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         return requestResponse(responseType,null,timeout);
     }
     public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, Object cancelValue, int timeout) {
-        log(Level.FINE,"Requesting response " + responseType + "," + timeout);
-        getOccupants().forEach(occupant -> occupant.setResponse(responseType,null));
+        //ZugManager.log("Requesting response " + responseType + "," + timeout + "," + cancelValue);
         CompletableFuture<List<OccupantResponse>> future = new CompletableFuture<>();
         responseCheckerMap.put(responseType, new ZugResponse(future,cancelValue));
+        getOccupants().forEach(occupant -> occupant.setResponse(responseType,null));
         spam(ZugServMsgType.reqResponse, ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE,responseType));
         return future.completeOnTimeout(
                 getOccupants().stream().filter(occupant -> !occupant.isBot())
@@ -352,10 +351,9 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, int timeout, Class<?> classFilter) {
         return requestResponse(responseType,null,timeout,classFilter);
     }
-
     public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, Object cancelValue, int timeout, Class<?> classFilter) {
-        log(Level.FINE,"Requesting response " + responseType + "," + timeout + "," + classFilter);
-        return requestResponse(responseType,timeout).thenApplyAsync(response ->
+        //ZugManager.log(Level.FINE,"Requesting response " + responseType + "," + timeout + "," + classFilter);
+        return requestResponse(responseType,cancelValue,timeout).thenApplyAsync(response ->
             response.stream().map(occupantResponse ->
                 (occupantResponse.response.isEmpty() || !classFilter.isAssignableFrom(occupantResponse.response.get().getClass()))
                         ? new OccupantResponse(Optional.empty(), occupantResponse.occupant) : occupantResponse
@@ -363,31 +361,45 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         );
     }
 
-    public CompletableFuture<List<BoolResponse>> requestBoolResponse(String responseType, int timeout) { //log("Requesting boolean response ");
-        return requestResponse(responseType,timeout,Boolean.class).thenApplyAsync(response -> { //log("Received boolean response");
+    public CompletableFuture<List<BoolResponse>> requestBoolResponse(String responseType, int timeout) {
+        return requestBoolResponse(responseType,null,timeout);
+    }
+    public CompletableFuture<List<BoolResponse>> requestBoolResponse(String responseType, Object cancelValue, int timeout) { //log("Requesting boolean response ");
+        return requestResponse(responseType,cancelValue,timeout,Boolean.class).thenApplyAsync(response -> { //log("Received boolean response");
                     return response.stream().map(occupantResponse ->
                             new BoolResponse(Optional.ofNullable((Boolean)occupantResponse.response.orElse(null)),occupantResponse.occupant)).toList();
                 });
     }
 
     public CompletableFuture<List<IntResponse>> requestIntResponse(String responseType, int timeout) {
-        return requestResponse(responseType,timeout,Integer.class).thenApplyAsync(response ->
+        return requestIntResponse(responseType,null,timeout);
+    }
+    public CompletableFuture<List<IntResponse>> requestIntResponse(String responseType, Object cancelValue, int timeout) {
+        return requestResponse(responseType,cancelValue,timeout,Integer.class).thenApplyAsync(response ->
                 response.stream().map(occupantResponse ->
                         new IntResponse(Optional.ofNullable((Integer)occupantResponse.response.orElse(null)),occupantResponse.occupant)).toList());
     }
+
     public CompletableFuture<List<DoubleResponse>> requestDoubleResponse(String responseType, int timeout) {
-        return requestResponse(responseType,timeout,Double.class).thenApplyAsync(response ->
+        return requestDoubleResponse(responseType,null,timeout);
+    }
+    public CompletableFuture<List<DoubleResponse>> requestDoubleResponse(String responseType, Object cancelValue, int timeout) {
+        return requestResponse(responseType,cancelValue,timeout,Double.class).thenApplyAsync(response ->
                 response.stream().map(occupantResponse ->
                         new DoubleResponse(Optional.ofNullable((Double)occupantResponse.response.orElse(null)),occupantResponse.occupant)).toList());
     }
+
     public CompletableFuture<List<StringResponse>> requestStringResponse(String responseType, int timeout) {
-        return requestResponse(responseType,timeout,String.class).thenApplyAsync(response ->
+        return requestStringResponse(responseType,null,timeout);
+    }
+    public CompletableFuture<List<StringResponse>> requestStringResponse(String responseType, Object cancelValue, int timeout) {
+        return requestResponse(responseType,cancelValue,timeout,String.class).thenApplyAsync(response ->
                 response.stream().map(occupantResponse ->
                         new StringResponse(Optional.ofNullable((String)occupantResponse.response.orElse(null)),occupantResponse.occupant)).toList());
     }
 
     public CompletableFuture<Boolean> getConfirmation(String responseType, int timeout) { //log("Confirming...");
-        return requestBoolResponse(responseType,timeout).thenApplyAsync(response -> { //log("Confirmation Response: " + response);
+        return requestBoolResponse(responseType,false,timeout).thenApplyAsync(response -> { //log("Confirmation Response: " + response);
             return response.stream().allMatch(boolResponse -> boolResponse.response.orElse(false));
         });
     }

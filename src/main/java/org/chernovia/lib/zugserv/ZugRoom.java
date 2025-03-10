@@ -1,6 +1,5 @@
 package org.chernovia.lib.zugserv;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.enums.ZugScope;
@@ -21,7 +20,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
 
     private final ConcurrentHashMap<String,Occupant> occupants = new ConcurrentHashMap<>();
 
-    private final List<JsonNode> messages = new ArrayList<>();
+    private final MessageManager messageManager = new MessageManager();
 
     public ZugRoom(String title) {
         this.title = title;
@@ -231,7 +230,9 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
                 }
             } else if (!occupant.isAway()) tell(occupant,type, msgNode,ignoreDeafness);
         });
-        if (type.equals(ZugServMsgType.areaUserMsg) || type.equals(ZugServMsgType.roomUserMsg)) messages.add(msgNode);
+        if (type.equals(ZugServMsgType.areaUserMsg) || type.equals(ZugServMsgType.roomUserMsg)) {
+            messageManager.addMessage(msgNode);
+        }
     }
 
    /**
@@ -315,9 +316,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
             node.put(ZugFields.AREA_ID,title).put(ZugFields.NAME,getName());
         }
         if (hasScope(scopeList,ZugScope.msg_history,true)) {
-            ArrayNode historyNode = ZugUtils.newJSONArray();
-            messages.forEach(historyNode::add);
-            node.set(ZugFields.MSG_HISTORY,historyNode);
+            node.set(ZugFields.MSG_HISTORY,messageManager.toJSONArray());
         }
         if (hasScope(scopeList,ZugScope.occupants_basic) || hasScope(scopeList,ZugScope.occupants_all)) {
             ArrayNode arrayNode = ZugUtils.newJSONArray();

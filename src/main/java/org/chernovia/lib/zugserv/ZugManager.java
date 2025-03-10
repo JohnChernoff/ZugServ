@@ -102,6 +102,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         getUsers().values().stream().filter(ZugUser::isLoggedIn).forEach(user -> user.tell(ZugServMsgType.ping));
     }
 
+    private MessageManager messageManager = new MessageManager();
+
     private boolean requirePassword = true;
     private boolean allowGuests = true;
     private boolean swapGuestConnection = false;
@@ -151,6 +153,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         addHandler(ZugClientMsgType.updateArea,this::handleUpdateArea);
         addHandler(ZugClientMsgType.updateOccupant,this::handleUpdateOccupant);
         addHandler(ZugClientMsgType.updateUser,this::handleUpdateUser);
+        addHandler(ZugClientMsgType.getMessages,this::handleUpdateMessages);
 
         addHandler(ZugClientMsgType.setDeaf,this::handleDeafen);
         addHandler(ZugClientMsgType.ban,this::handleBan);
@@ -255,8 +258,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     /* *** */
 
     public void handleServerMessage(ZugUser user, JsonNode dataNode) { //String msg = getTxtNode(dataNode,ZugFields.MSG).orElse("");
-        spam(ZugServMsgType.servUserMsg, ZugUtils.newJSON().set(ZugFields.ZUG_MSG,
-                new ZugMessage(new ZugMessage.ZugText(dataNode.get(ZugFields.ZUG_TEXT)),user).toJSON()));
+        JsonNode msg = ZugUtils.newJSON().set(ZugFields.ZUG_MSG,
+                new ZugMessage(new ZugMessage.ZugText(dataNode.get(ZugFields.ZUG_TEXT)), user).toJSON());
+        spam(ZugServMsgType.servUserMsg, msg);
+        messageManager.addMessage(msg);
     }
 
     public void handlePrivateMessage(ZugUser user, JsonNode dataNode) {
@@ -376,6 +381,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                         () -> user.update(user.getConn()));
     }
 
+    public  Optional<ZugArea> handleUpdateMessages(ZugUser user, JsonNode dataNode) {
+        Optional<ZugArea> a = getArea(dataNode);
+        a.ifPresent(area -> user.tell(ZugServMsgType.msgHistory,area.toJSON(ZugScope.msg_history)));
+        return a;
+    }
+
     public void handleDeafen(ZugUser user, JsonNode dataNode) {
         getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.DEAFENED).ifPresent(occupant::setDeafened));
     }
@@ -404,7 +415,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     public Optional<ZugArea> handleResponse(ZugUser user, JsonNode dataNode) { //log("Handling Response: " + dataNode + ", " + user.getUniqueName());
         Optional<ZugArea> a = getArea(dataNode);
-        Optional<?> response;
+        Optional<?> response; //TODO: should this be Object?
         if (dataNode.get(ZugFields.RESPONSE).isBoolean()) response = getBoolNode(dataNode, ZugFields.RESPONSE);
         else if (dataNode.get(ZugFields.RESPONSE).isInt()) response = getIntNode(dataNode, ZugFields.RESPONSE);
         else if (dataNode.get(ZugFields.RESPONSE).isDouble()) response = getDblNode(dataNode, ZugFields.RESPONSE);
@@ -461,7 +472,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param occupant an Occupant
      */
     public void areaJoined(ZugArea area, Occupant occupant) {
-        area.tell(occupant, ZugServMsgType.joinArea,area.toJSON(ZugScope.all));
+        area.tell(occupant, ZugServMsgType.joinArea,area.toJSON(ZugScope.all,ZugScope.msg_history));
     }
 
     /**
@@ -480,7 +491,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param conn the Connection to update
      */
     public void updateServ(Connection conn) {
-        tell(conn, ZugServMsgType.updateServ,toJSON());
+        tell(conn, ZugServMsgType.updateServ,toJSON(ZugScope.all,ZugScope.msg_history));
     }
 
     /**
@@ -578,6 +589,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         user.setLoggedIn(true);
         user.tell(ZugServMsgType.logOK,user.toJSON());
         user.tell(ZugServMsgType.areaList, areasByUserToJSON(true,isCrowded() ? user : null));
+        updateServ(user.getConn()); //TODO: incorporate arealist?
         MonthDay monthDay = MonthDay.now();
         trafficMap.putIfAbsent(monthDay,new HashSet<>());
         if (!user.isGuest()) trafficMap.get(monthDay).add(user.getUniqueName().toString());
@@ -761,6 +773,9 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                     .put(ZugFields.USERS, getUsers().size())
                     .put(ZugFields.LOGGED_IN, getUsers().values().stream().filter(ZugUser::isLoggedIn).count())
                     .put(ZugFields.DAILY_USERS, dailyUsers != null ? dailyUsers.size() : 0);
+        }
+        if (hasScope(scopes,ZugScope.msg_history,true)) {
+            node.set(ZugFields.MSG_HISTORY,messageManager.toJSONArray());
         }
         return node;
     }

@@ -1,6 +1,6 @@
 package org.chernovia.lib.zugserv;
 
-import java.net.InetAddress;
+import java.util.Objects;
 
 /**
  * The Ban class encapsulates information relating to a specific banning of a ZugUser by another ZugUser.
@@ -70,15 +70,17 @@ public class Ban {
 		return inEffect() && bannedUser.equals(user);
 	}
 
-	private boolean addressMatch(InetAddress a) {
+	private boolean addressMatch(String a) {
 		return addressMatch(a,-1);
 	}
-	private boolean addressMatch(InetAddress a, int level) {
+	private boolean addressMatch(String a, int level) {
 		if (bannedUser.getConn().getAddress() == null || a == null) return false;
 		if (level == -1) return a.equals(bannedUser.getConn().getAddress());
 		else {
+			String[] a1 = a.split("\\.");
+			String[] a2 = bannedUser.getConn().getAddress().split("\\.");
 			for (int i=0;i<level;i++) {
-				if (a.getAddress()[i] != bannedUser.getConn().getAddress().getAddress()[i]) return false;
+				if (!Objects.equals(a1[i], a2[i])) return false;
 			}
 			return true;
 		}

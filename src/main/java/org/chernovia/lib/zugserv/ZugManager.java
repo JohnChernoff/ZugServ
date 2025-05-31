@@ -215,12 +215,9 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
             else handleLoginRequest(conn,dataNode);
         } else if (equalsType(type, ZugClientMsgType.ip)) {
             getTxtNode(dataNode, ZugFields.ADDRESS).ifPresent(addressStr -> {
-                        try {
-                            conn.setAddress(InetAddress.getByName(addressStr));
-                            log("Incoming address: " + conn.getAddress());
-                        }
-                        catch (UnknownHostException oops) { log("Unknown Host: " + addressStr); }
-                    }
+                    conn.setAddress(addressStr);
+                    log("Incoming address: " + conn.getAddress());
+                }
             );
             tell(conn, ZugServMsgType.ip,ZugUtils.newJSON().put(ZugFields.ADDRESS,conn.getAddress().toString()));
         } else if (equalsType(type, ZugClientMsgType.obs)) { log(Level.FINE,"Obs requested from: " + conn.getID());
@@ -552,6 +549,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
             if (source == ZugAuthSource.lichess) {
                 getTxtNode(dataNode,ZugFields.TOKEN).ifPresentOrElse(
                         token -> handleLichessLogin(conn,token), () -> err(conn,"Empty token"));
+            }
+            else if (source == ZugAuthSource.google) {
+                getTxtNode(dataNode,ZugFields.TOKEN).ifPresentOrElse(
+                        token -> handleGoogleLogin(conn,token), () -> err(conn,"Empty token"));
             }
             else if (source == ZugAuthSource.none) {
                 if (allowGuests) handleLogin(

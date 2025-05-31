@@ -6,11 +6,20 @@ import chariot.api.AccountApiAuth;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.auth.oauth2.GoogleCredentials;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.FirebaseToken;
 import org.chernovia.lib.zugserv.enums.ZugAuthSource;
 import org.chernovia.lib.zugserv.enums.ZugClientMsgType;
 import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import org.chernovia.lib.zugserv.web.WebSockServ;
+
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
@@ -20,21 +29,40 @@ import java.util.logging.Logger;
  * ZugHandler extends ConnListener and encapsulates ZugServ to provide basic server functionality.
  */
 abstract public class ZugHandler extends Thread implements ConnListener, JSONifier {
-
+    public static String GOOGLE_APPLICATION_CREDENTIALS_FILE_NAME = "google_app_credentials.json";
     private static boolean VERBOSE = true; //for enum names vs ordinal
     static final Logger logger = Logger.getLogger("ZugServLog");
     ConcurrentHashMap<String,ZugUser> users = new ConcurrentHashMap<>();
     ConcurrentHashMap<String,ZugArea> areas = new ConcurrentHashMap<>();
+    Map<ZugAuthSource,Boolean> authSources = new HashMap<>();
     private boolean preserveDisconnectedUsers = true;
-
     ZugServ serv;
 
     public ZugHandler(ZugServ.ServType type, int port) {
+        this(type,port,null);
+    }
+
+    public ZugHandler(ZugServ.ServType type, int port,  Map<ZugAuthSource,Boolean> auths) {
+        if (auths != null) authSources.putAll(auths);
+        else for (ZugAuthSource authSource : ZugAuthSource.values()) authSources.put(authSource, Boolean.TRUE);
         setLoggingLevel(Level.INFO);
         serv = switch (type) {
             case SOCK, IRC, TWITCH, DISCORD, UNKNOWN -> null; //TODO: implement?
             case WEBSOCK -> new WebSockServ(port,this);
         };
+        if (authSources.get(ZugAuthSource.google)) {
+            try {
+                FileInputStream serviceAccount =
+                        new FileInputStream(GOOGLE_APPLICATION_CREDENTIALS_FILE_NAME + ".json");
+                FirebaseOptions options = new FirebaseOptions.Builder()
+                        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                        .build();
+                FirebaseApp.initializeApp(options);
+            } catch (IOException ioException) {
+                log("Firebase Error: " + Level.WARNING, ioException.getMessage());
+            }
+
+        }
     }
 
     public static void setLoggingLevel(Level level) {
@@ -132,6 +160,20 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
                 log("Login failure: bad token"); err(conn, "Login failure: bad token");
             }
         }
+    }
+
+    public void handleGoogleLogin(Connection conn, String token) {
+        try {
+            FirebaseToken firebaseToken = FirebaseAuth.getInstance().verifyIdToken(token);
+            if (firebaseToken != null) {
+                log("Logging in Google user: " + firebaseToken.getName());
+                handleLogin(conn, new ZugUser.UniqueName(firebaseToken.getName(), ZugAuthSource.google),ZugUtils.newJSON().put(ZugFields.TOKEN,token));
+            }
+        } catch (FirebaseAuthException e) {
+            log("Google Login failure: " + e.getMessage()); err(conn, "Login failure: bad token");
+        }
+
+
     }
 
     public void spam(String msg) {

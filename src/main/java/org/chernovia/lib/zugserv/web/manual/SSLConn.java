@@ -18,17 +18,17 @@ import org.chernovia.lib.zugserv.web.*;
 
 public class SSLConn extends ConnAdapter implements Runnable {
 
-	public static final Logger logger = Logger.getLogger(WebSockConn.class.getName());
+	public static final Logger logger = Logger.getLogger(SSLConn.class.getName());
 	public static final ObjectMapper mapper = new ObjectMapper();
 	private final SSLSocket socket;
-	private InetAddress address;
+	private String address;
 	InputStream in; BufferedReader reader;
 	OutputStream out; BufferedWriter writer;
 	ConnListener listener;
 	boolean running = false;
 	
 	public SSLConn(SSLSocket sock, ConnListener l) {
-		socket = sock; listener = l; address = sock.getInetAddress(); //setID?
+		socket = sock; listener = l; address = sock.getInetAddress().toString(); //setID?
 		try { 
 			in = sock.getInputStream(); out = sock.getOutputStream(); 
 			reader = new BufferedReader(new InputStreamReader(in));
@@ -39,12 +39,12 @@ public class SSLConn extends ConnAdapter implements Runnable {
 
 
 	@Override
-	public void setAddress(InetAddress a) {
+	public void setAddress(String a) {
 		address = a;
 	}
 
 	@Override
-	public InetAddress getAddress() {
+	public String getAddress() {
 		return address;
 	}
 

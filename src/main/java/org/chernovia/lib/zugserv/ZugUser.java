@@ -190,7 +190,7 @@ public class ZugUser extends Timeoutable implements JSONifier {  // long lastMes
     }
 
     public boolean sameAddress(Connection conn) {
-        return !conn.getAddress().isLoopbackAddress() && conn.getAddress().equals(getConn().getAddress());
+        return !conn.getAddress().equals("127.0.0.1") && conn.getAddress().equals(getConn().getAddress());
     }
 
     public boolean sameUser(ZugUser.UniqueName name, Connection conn) {

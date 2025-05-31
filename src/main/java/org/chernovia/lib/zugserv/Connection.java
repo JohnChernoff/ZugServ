@@ -45,13 +45,13 @@ public interface Connection {
 	 * Sets the Internet address associated with this Connection.
 	 * @param address the (normally Internet-based) address to associate with this Connection
 	 */
-	void setAddress(InetAddress address);
+	void setAddress(String address);
 
 	/**
 	 * Gets an Internet address associated with this Connection.
 	 * @return the Internet address associated with this Connection
 	 */
-	InetAddress getAddress();
+	String getAddress();
 
 	/**
 	 * Indicates if a Connection is of the same origin as another.

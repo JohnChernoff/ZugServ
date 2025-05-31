@@ -23,10 +23,10 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.*;
 
 public class ManualWebSockConn extends ConnAdapter implements Runnable {
-	public static final Logger logger = Logger.getLogger(WebSockConn.class.getName());
+	public static final Logger logger = Logger.getLogger(ManualWebSockConn.class.getName());
 	public static final ObjectMapper mapper = new ObjectMapper();
 	private final Socket socket;
-	private InetAddress address;
+	private String address;
 	InputStream in; BufferedReader reader;
 	OutputStream out; Scanner scanner;
 	ConnListener listener;
@@ -35,7 +35,7 @@ public class ManualWebSockConn extends ConnAdapter implements Runnable {
 	
 	public ManualWebSockConn(Socket sock, ConnListener l) {
 		socket = sock; listener = l;
-		address = sock.getInetAddress();
+		address = sock.getInetAddress().toString();
 		setID(getAddress().hashCode());
 		try { 
 			in = sock.getInputStream(); out = sock.getOutputStream(); 
@@ -158,12 +158,12 @@ public class ManualWebSockConn extends ConnAdapter implements Runnable {
 	}
 
 	@Override
-	public void setAddress(InetAddress a) {
+	public void setAddress(String a) {
 		address = a;
 	}
 
 	@Override
-	public InetAddress getAddress() { return address; }
+	public String getAddress() { return address; }
 
 	@Override
 	public void tell(Enum<?> type, String msg) {

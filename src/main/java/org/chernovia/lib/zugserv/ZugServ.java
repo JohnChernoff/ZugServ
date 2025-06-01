@@ -11,7 +11,7 @@ public interface ZugServ {
 	/**
 	 * The server transport type.  Currently only WEBSOCK is supported.
 	 */
-	enum ServType {SOCK, WEBSOCK, IRC, TWITCH, DISCORD, UNKNOWN}
+	enum ServType {SOCK, WEBSOCK_DEFAULT, WEBSOCK_JAVALIN, IRC, TWITCH, DISCORD, UNKNOWN}
 
 	/**
 	 * Returns a list of all Connections (conditionally filtered by connection status)

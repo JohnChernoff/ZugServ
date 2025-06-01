@@ -151,7 +151,7 @@ public class WebSockServ extends ServAdapter implements ZugServ {
 	 * @return the tyoe of server (in this case ZugServ.ServType.WEBSOCK)
 	 */
 	@Override
-	public ServType getType() { return ZugServ.ServType.WEBSOCK; }
+	public ServType getType() { return ZugServ.ServType.WEBSOCK_DEFAULT; }
 
 	@Override
 	public void broadcast(Enum<?> type, String msg, boolean active) {

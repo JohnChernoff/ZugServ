@@ -16,8 +16,8 @@ import org.chernovia.lib.zugserv.enums.ZugAuthSource;
 import org.chernovia.lib.zugserv.enums.ZugClientMsgType;
 import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
+import org.chernovia.lib.zugserv.web.JavalinServ;
 import org.chernovia.lib.zugserv.web.WebSockServ;
-
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
@@ -39,16 +39,21 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     ZugServ serv;
 
     public ZugHandler(ZugServ.ServType type, int port) {
-        this(type,port,null);
+        this(type,port,new ArrayList<>(),null);
     }
 
-    public ZugHandler(ZugServ.ServType type, int port,  Map<ZugAuthSource,Boolean> auths) {
+    public ZugHandler(ZugServ.ServType type, int port, List<String> hosts) {
+        this(type,port,hosts,null);
+    }
+
+    public ZugHandler(ZugServ.ServType type, int port, List<String> hosts, Map<ZugAuthSource,Boolean> auths) {
         if (auths != null) authSources.putAll(auths);
         else for (ZugAuthSource authSource : ZugAuthSource.values()) authSources.put(authSource, Boolean.TRUE);
         setLoggingLevel(Level.INFO);
         serv = switch (type) {
             case SOCK, IRC, TWITCH, DISCORD, UNKNOWN -> null; //TODO: implement?
-            case WEBSOCK -> new WebSockServ(port,this);
+            case WEBSOCK_JAVALIN -> new JavalinServ(port,this, hosts);
+            case WEBSOCK_DEFAULT -> new WebSockServ(port,this);
         };
         if (authSources.get(ZugAuthSource.google)) {
             try {
@@ -266,7 +271,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
      */
     public void disconnected(Connection conn) {
         for (ZugUser user : getUsersByConn(conn)) {
-            log("Disconnected: " + user.getName());
+            log("Disconnected: " + user.getName() + ", duration: " + conn.getTimeConnected()/1000 + " seconds");
             user.setLoggedIn(false);
             List<ZugArea> areas = areasByUserToJSON(user);
             if (!isPreservingDisconnectedUsers() || areas.isEmpty()) {

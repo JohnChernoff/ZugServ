@@ -50,7 +50,7 @@ public class JavalinConn extends ConnAdapter {
         ObjectNode node = mapper.createObjectNode();
         node.put(ZugFields.TYPE, type.name()); node.set(ZugFields.DATA, data);
         try {
-            if (!ctx.session.isOpen()) {
+            if (ctx.session.isOpen()) {
                 ctx.send(node.toString());
             }
             else logger.log(Level.WARNING,"Sending to closed session: " + getAddress() + " ,data: " + data.toString());

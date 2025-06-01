@@ -2,8 +2,6 @@ package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import java.net.InetAddress;
-import java.net.UnknownHostException;
 import java.time.MonthDay;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
@@ -16,6 +14,8 @@ import org.chernovia.lib.zugserv.enums.*;
  * ZugManager extends ZugHandler to handle a variety of common server functions and user interactions.
  */
 abstract public class ZugManager extends ZugHandler implements AreaListener, Runnable {
+
+    long pingFreq = 30000L;
     public static String
             ERR_USER_NOT_FOUND = "User not found",
             ERR_OCCUPANT_NOT_FOUND = "Occupant not found",
@@ -70,10 +70,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         }
     }
 
+
+    public void setPingFreq(long millis) { pingFreq = millis; }
     /**
-     * Clears defunct areas/users every 30 seconds.
+     * Clears defunct areas/users every pingFreq milliseconds.
      */
-    public WorkerProc cleanupProc = new WorkerProc(30000L, this::cleanup);
+    public WorkerProc cleanupProc = new WorkerProc(pingFreq, this::cleanup);
 
     /**
      * Clears defunct areas and users.
@@ -750,7 +752,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     @Override
     public void connected(Connection conn) {
-        tell(conn, ZugServMsgType.reqLogin,ZugUtils.newJSON().put(ZugFields.AREA_ID,conn.getID()));
+        tell(conn, ZugServMsgType.reqLogin,ZugUtils.newJSON().put(ZugFields.USER_ID,conn.getID()));
     }
 
     @Override

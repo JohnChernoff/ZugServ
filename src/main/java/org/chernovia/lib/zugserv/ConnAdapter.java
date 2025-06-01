@@ -9,9 +9,13 @@ public abstract class ConnAdapter implements Connection {
 	private boolean auto;
 	private Status status;
 	private long userID;
-
+	long connectionTimeStamp = System.currentTimeMillis();;
 	private long latency = 0;
 	private long lastPing = System.currentTimeMillis();
+
+	public long getTimeConnected() {
+		return System.currentTimeMillis() - connectionTimeStamp;
+	}
 
 	public long lastPing() {
 		return lastPing;
@@ -29,7 +33,7 @@ public abstract class ConnAdapter implements Connection {
 		this.latency = latency;
 	}
 
-	public boolean isSameOrigin(Connection conn) {
+	public boolean isSameOrigin(Connection conn) { //TODO: remember what is this for
 		if (conn == null) return false; else return (conn.getID() == userID);
 	}
 	

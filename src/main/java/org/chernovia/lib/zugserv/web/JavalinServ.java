@@ -3,6 +3,7 @@ package org.chernovia.lib.zugserv.web;
 import com.fasterxml.jackson.databind.JsonNode;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
+import io.javalin.websocket.WsContext;
 import org.chernovia.lib.zugserv.ConnListener;
 import org.chernovia.lib.zugserv.Connection;
 import org.chernovia.lib.zugserv.ServAdapter;
@@ -15,7 +16,7 @@ public class JavalinServ extends ServAdapter implements ZugServ {
 
     private final Javalin server;
     private static final Logger logger = Logger.getLogger(JavalinServ.class.getName());
-    private final Map<String, Connection> connections = new HashMap<>();
+    private final Map<WsContext, Connection> connections = new HashMap<>();
     int port;
 
     /**
@@ -24,14 +25,15 @@ public class JavalinServ extends ServAdapter implements ZugServ {
      * @param l the connection listener (see ConnListener)
      */
     public JavalinServ(int p, ConnListener l, List<String> hosts) {
+
         super(l); port = p;
-        server = Javalin.create(config ->
-                        config.bundledPlugins.enableCors(cors ->
-                                cors.addRule(it -> {
-                                    for (String host : hosts) it.allowHost(host);
-                                    it.allowCredentials = true;
-                                    it.exposeHeader("Authorization");
-                                })))
+        server = Javalin.create(config -> config.bundledPlugins.enableCors(cors ->
+                cors.addRule(it -> {
+                    if (hosts.isEmpty()) it.reflectClientOrigin = true;
+                    else for (String host : hosts) it.allowHost(host);
+                    it.allowCredentials = true;
+                    it.exposeHeader("Authorization");
+                })))
                 .post("/twitchsrv/shutdown", this::handleShutdown)
                 .before(ctx -> {
                     String origin = ctx.header("Origin");
@@ -44,29 +46,28 @@ public class JavalinServ extends ServAdapter implements ZugServ {
                 .options("/*", ctx -> {
                     ctx.status(200); // Respond to preflight CORS requests
                 })
-                .ws(
-                        "/ws", ws -> {
+                .ws("/ws", ws -> {
                             ws.onConnect(ctx -> {
-                                String id = UUID.randomUUID().toString();
-                                ctx.attribute("id",id);
                                 System.out.println("Client connected: " + ctx.session.getRemoteAddress());
-                                if (getConn(id).isEmpty()) {
+                                if (getConn(ctx).isEmpty()) {
                                     JavalinConn conn = new JavalinConn(ctx);
                                     logger.log(Level.INFO,"Incoming Connection at address: " + conn.getAddress());
-                                    connections.put(id,conn);
+                                    connections.put(ctx,conn);
                                     getConnListener().connected(conn);
                                 }
                                 else logger.log(Level.INFO,"Already connected at address: " + ctx.session.getRemoteAddress());
                             });
                             ws.onMessage(ctx -> {
                                 String message = ctx.message();
-                                Connection conn = getConn(ctx.attribute("id")).orElse(null);
-                                if (conn != null) getConnListener().newMsg(conn, message);
-                                else logger.log(Level.WARNING,
-                                        "Unknown connection message: " + message + " at address: " + ctx.session.getRemoteAddress());
+                                getConn(ctx).ifPresentOrElse(
+                                        conn -> getConnListener().newMsg(conn, message),
+                                        () -> logger.log(Level.WARNING, "Unknown connection message: " +
+                                                message + " at address: " + ctx.session.getRemoteAddress()));
                             });
                             ws.onClose(ctx -> {
                                 logger.log(Level.INFO,"Client disconnected: " + ctx.session.getRemoteAddress());
+                                getConn(ctx).ifPresentOrElse(conn -> getConnListener().disconnected(conn),
+                                        () -> logger.warning("Unknown client"));
                             });
                         }
                 );
@@ -74,11 +75,11 @@ public class JavalinServ extends ServAdapter implements ZugServ {
 
     /**
      * Gets the Connection associated with the provided Session id.
-     * @param ctx the Session id
+     * @param id the Session id
      * @return the Connection
      */
-    public Optional<Connection> getConn(String id) {
-        Connection conn = connections.get(id);
+    public Optional<Connection> getConn(WsContext ctx) {
+        Connection conn = connections.get(ctx);
         if (conn == null)  return Optional.empty(); else return Optional.of(conn);
     }
 
@@ -116,7 +117,7 @@ public class JavalinServ extends ServAdapter implements ZugServ {
      * @return the tyoe of server (in this case ZugServ.ServType.WEBSOCK)
      */
     @Override
-    public ServType getType() { return ZugServ.ServType.WEBSOCK; }
+    public ServType getType() { return ZugServ.ServType.WEBSOCK_DEFAULT; }
 
     @Override
     public void broadcast(Enum<?> type, String msg, boolean active) {

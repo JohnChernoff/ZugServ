@@ -92,7 +92,7 @@ public class SSLServ implements ZugServ, Runnable {
 	}
 
 	@Override
-	public ServType getType() { return ZugServ.ServType.WEBSOCK; }
+	public ServType getType() { return ZugServ.ServType.WEBSOCK_DEFAULT; }
 
 	@Override
 	public int getMaxConnections() {

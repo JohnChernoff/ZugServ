@@ -135,4 +135,6 @@ public interface Connection {
 	 * @param t the latency (lag) of a Connection expressed in milliseconds
 	 */
 	void setLatency(long t);
+
+	long getTimeConnected();
 }

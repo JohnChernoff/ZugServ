@@ -58,7 +58,7 @@ public class ManualWebSockServ implements ZugServ, Runnable {
 	}
 
 	@Override
-	public ServType getType() { return ZugServ.ServType.WEBSOCK; }
+	public ServType getType() { return ZugServ.ServType.WEBSOCK_DEFAULT; }
 
 	@Override
 	public void broadcast(Enum<?> type, String msg, boolean active) {

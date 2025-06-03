@@ -57,6 +57,8 @@ public class JavalinConn extends ConnAdapter {
         }
         catch (WebsocketNotConnectedException argh) {
             logger.log(Level.WARNING,"Sending to unconnected session: " + getAddress() + " ,data: " + data.toString());
+        } catch (Exception e) {
+            logger.log(Level.WARNING,"Unknown error (" + e.getMessage() + ") at address: " + getAddress() + " ,data: " + data.toString());
         }
     }
 }

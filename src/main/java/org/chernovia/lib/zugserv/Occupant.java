@@ -56,7 +56,7 @@ abstract public class Occupant implements JSONifier {
      * Sets the away/idle status of an Occupant.
      * @param b true for away
      */
-    public void setAway(boolean b, ZugArea area) {
+    public void setAway(boolean b) {
         away = b;
         if (away && area != null) area.handleAway(this);
     }
@@ -130,7 +130,7 @@ abstract public class Occupant implements JSONifier {
     public Optional<Object> getResponse(String responseType) { return responseMap.get(responseType); }
     public void setResponse(String responseType, Object response) { //ZugManager.log("Got response: " + responseType + ", " + response);
         responseMap.put(responseType,Optional.ofNullable(response));
-        if (response != null) area.checkResponse(responseType);
+        if (response != null) area.rm().checkResponse(responseType);
     }
 
 }

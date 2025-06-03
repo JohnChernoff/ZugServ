@@ -15,7 +15,6 @@ import org.chernovia.lib.zugserv.enums.*;
  */
 abstract public class ZugManager extends ZugHandler implements AreaListener, Runnable {
 
-    long pingFreq = 30000L;
     public static String
             ERR_USER_NOT_FOUND = "User not found",
             ERR_OCCUPANT_NOT_FOUND = "Occupant not found",
@@ -70,12 +69,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         }
     }
 
-
-    public void setPingFreq(long millis) { pingFreq = millis; }
     /**
-     * Clears defunct areas/users every pingFreq milliseconds.
+     * Clears defunct areas/users every cleanFreq milliseconds.
      */
-    public WorkerProc cleanupProc = new WorkerProc(pingFreq, this::cleanup);
+    public void startCleaner(long cleanFreq) {
+        new WorkerProc(cleanFreq, this::cleanup).start();
+    }
 
     /**
      * Clears defunct areas and users.
@@ -93,9 +92,11 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     /**
-     * Pings all users every 30 seconds.
+     * Ping all users every pingFreq milliseconds.
      */
-    public WorkerProc pingProc = new WorkerProc(30000L, this::pingAll);
+    public void startPings(long pingFreq) {
+        new WorkerProc(pingFreq, this::pingAll).start();
+    }
 
     /**
      * Pings all users.
@@ -104,7 +105,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         getUsers().values().stream().filter(ZugUser::isLoggedIn).forEach(user -> user.tell(ZugServMsgType.ping));
     }
 
-    private MessageManager messageManager = new MessageManager();
+    private final MessageManager messageManager = new MessageManager();
 
     private boolean requirePassword = true;
     private boolean allowGuests = true;
@@ -318,7 +319,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                                     areaParted(zugArea, user);
                                 }
                             } else {
-                                occupant.setAway(true, zugArea);
+                                occupant.setAway(true);
                             }
                         }, () -> err(user, ERR_NOT_OCCUPANT)),
                 () -> err(user, ERR_TITLE_NOT_FOUND));

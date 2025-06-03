@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.*;
 
 /**
  * A ZugRoom represents an area that can contain and rudimentarily manage an arbitrarily defined number of Occupants.
@@ -168,7 +168,6 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         spam(type,"");
     }
 
-
     /**
      * Sends an alphanumeric message and enumerated type to all Occupants to the room.
      * @param type an enumerated type
@@ -235,7 +234,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         }
     }
 
-   /**
+    /**
      * Sends an alphanumeric message from the room to a ZugUser
      * @param user the ZugUser
      * @param msg the alphanumeric message

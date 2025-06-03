@@ -29,7 +29,7 @@ import java.util.logging.Logger;
  * ZugHandler extends ConnListener and encapsulates ZugServ to provide basic server functionality.
  */
 abstract public class ZugHandler extends Thread implements ConnListener, JSONifier {
-    public static String GOOGLE_APPLICATION_CREDENTIALS_FILE_NAME = "google_app_credentials.json";
+    public static String GOOGLE_APPLICATION_CREDENTIALS_FILE_NAME = "google_app_credentials";
     private static boolean VERBOSE = true; //for enum names vs ordinal
     static final Logger logger = Logger.getLogger("ZugServLog");
     ConcurrentHashMap<String,ZugUser> users = new ConcurrentHashMap<>();
@@ -258,6 +258,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
             err(conn,"Error: Bad Data(null)"); //return;
         }
         else if (equalsType(typeNode.asText(), ZugClientMsgType.pong)) {
+            log(Level.FINE,"Pong from: " + conn.getID());
             conn.setLatency(System.currentTimeMillis() - conn.lastPing());
         }
         else {

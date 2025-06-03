@@ -6,7 +6,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.*;
 import java.util.logging.Level;
 
-public class ZugOptions implements JSONifier {
+public class OptionsManager implements JSONifier {
 
     public enum OptionType {opt_int,opt_dbl,opt_bool,opt_txt}
     public static class Option implements JSONifier  {
@@ -243,13 +243,13 @@ public class ZugOptions implements JSONifier {
     }
 
     @SafeVarargs
-    public ZugOptions(Map.Entry<Enum<?>,Option>... entries) {
+    public OptionsManager(Map.Entry<Enum<?>,Option>... entries) {
         for (Map.Entry<Enum<?>, Option> entry : entries) { //ZugManager.log("Setting: " + entry.getKey() + " to " + entry.getValue());
             setOption(entry.getKey(),entry.getValue());
         }
     }
 
-    public ZugOptions(JsonNode node) { //ZugManager.log("Setting: " + node.toString());
+    public OptionsManager(JsonNode node) { //ZugManager.log("Setting: " + node.toString());
         node.fieldNames().forEachRemaining(field -> {
             optionsMap.put(field,new Option(node.get(field)));
         });

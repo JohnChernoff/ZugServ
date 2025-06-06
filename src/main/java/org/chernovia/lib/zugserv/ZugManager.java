@@ -131,8 +131,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * Creates a ZugManager of a given type.
      * @param type a ZugServ type (for example, ZugServ.ServType.TWITCH)
      */
-    public ZugManager(ZugServ.ServType type) {
-        this(type,0);
+    public ZugManager(ZugServ.ServType type, int port) {
+        this(type,port, new ArrayList<>(), null);
     }
 
     /**
@@ -140,8 +140,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param type a ZugServ type (for example, ZugServ.ServType.WEBSOCK)
      * @param port a port to listen for incomming connections on
      */
-    public ZugManager(ZugServ.ServType type, int port) {
-        super(type,port);
+    public ZugManager(ZugServ.ServType type, int port, List<String> hosts, Map<ZugAuthSource,Boolean> auths) {
+        super(type,port, hosts, auths);
         addMessageList(ZugClientMsgType.class);
         addHandler(ZugClientMsgType.newArea,this::handleCreateArea);
         addHandler(ZugClientMsgType.joinArea,this::handleJoinArea);

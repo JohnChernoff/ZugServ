@@ -346,7 +346,7 @@ public class OptionsManager implements JSONifier {
      * @param txt the String text
      * @param desc the field description
      */
-    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String label,String desc) {
+    public static Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String label,String desc) {
         return Map.entry(e, new Option(txt, label, desc));
     }
 
@@ -357,7 +357,7 @@ public class OptionsManager implements JSONifier {
      * @param desc the field description
      * @param elist enumerated values
      */
-    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String label, String desc, List<String> elist) {
+    public static Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String label, String desc, List<String> elist) {
         return Map.entry(e, new Option(txt, label, desc, elist));
     }
 
@@ -367,7 +367,7 @@ public class OptionsManager implements JSONifier {
      * @param bool the boolean
      * @param desc the field description
      */
-    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, boolean bool, String label, String desc) {
+    public static Map.Entry<Enum<?>,Option> createOption(Enum<?> e, boolean bool, String label, String desc) {
         return Map.entry(e, new Option(bool, label, desc));
     }
 
@@ -380,7 +380,7 @@ public class OptionsManager implements JSONifier {
      * @param inc the granularity allowed between the minimum and maximum values (e.g., 2 with min/max values of 0/10 would allow for 0,2,4,6,8,10)
      * @param desc the field description
      */
-    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, int i, int min, int max, int inc, String label, String desc) {
+    public static Map.Entry<Enum<?>,Option> createOption(Enum<?> e, int i, int min, int max, int inc, String label, String desc) {
         return Map.entry(e, new Option(i, min, max, inc, label, desc));
     }
 
@@ -393,7 +393,7 @@ public class OptionsManager implements JSONifier {
      * @param inc the granularity allowed between the minimum and maximum values (e.g., .5 with min/max values of 0/2.5 would allow for 0,.5,1,1.5,2,2.5)
      * @param desc the field description
      */
-    public Map.Entry<Enum<?>,Option> createOption(Enum<?> e, double d, double min, double max, double inc, String label, String desc) {
+    public static Map.Entry<Enum<?>,Option> createOption(Enum<?> e, double d, double min, double max, double inc, String label, String desc) {
         return Map.entry(e, new Option(d, min, max, inc, label, desc));
     }
 

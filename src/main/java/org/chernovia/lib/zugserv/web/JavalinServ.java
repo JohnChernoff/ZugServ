@@ -99,7 +99,7 @@ public class JavalinServ extends ServAdapter implements ZugServ {
      */
     @Override
     public void startSrv() {
-        server.start(port);
+        server.start("127.0.0.1",port);
         setRunning(true);
     }
 

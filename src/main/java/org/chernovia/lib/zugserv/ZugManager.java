@@ -296,7 +296,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
             return handleJoinRandomArea(user,dataNode);
         }
         Optional<ZugArea> a = getArea(dataNode);
-        a.ifPresentOrElse(zugArea -> createOccupant(zugArea, user, dataNode), () -> err(user, ERR_AREA_NOT_FOUND));
+        a.ifPresentOrElse(zugArea -> createOccupantAndJoin(zugArea, user, dataNode), () -> err(user, ERR_AREA_NOT_FOUND));
         return a;
     }
 
@@ -445,17 +445,20 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         addOrGetArea(area);
         Optional<Boolean> join = getBoolNode(dataNode, ZugFields.AUTO_JOIN);
         if (join.isEmpty() || join.get()) {
-            area.getCreator().ifPresent(creator -> createOccupant(area,creator,dataNode));
+            area.getCreator().ifPresent(creator -> createOccupantAndJoin(area,creator,dataNode));
         }
         areaCreated(area);
     }
 
-    private void createOccupant(ZugArea area, ZugUser user, JsonNode dataNode) {
+    private void createOccupantAndJoin(ZugArea area, ZugUser user, JsonNode dataNode) {
         area.getOccupant(user).ifPresentOrElse(area::rejoin, () -> {
-            if (area.numOccupants() < area.getMaxOccupants()) { //TODO: handle errors
+            if (!area.config.allowGuests && user.isGuest()) {
+                err(user,"Sorry, guests are not allowed in this area");
+            }
+            else if (area.numOccupants() < area.getMaxOccupants()) {
                 handleCreateOccupant(user, area, dataNode).ifPresent(occupant -> joinArea(area,occupant));
             }
-            else err(user,"Game full: " + area.getTitle());
+            else handleMaxOccupancy(user, area, dataNode);
         });
     }
 
@@ -463,6 +466,19 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         if (area.addOccupant(occupant)) {
             areaUpdated(area);
             areaJoined(area,occupant);
+        }
+    }
+
+    public void handleMaxOccupancy(ZugUser user, ZugArea area, JsonNode dataNode) {
+        if (area.isBumpAway()) {
+                area.getOccupants().stream()
+                        .filter(o -> o.isAway() && !area.isCreator(o.getUser()))
+                        .findFirst().ifPresent(occupant -> {
+                    area.spam("Dropping idle occupant: " + occupant.getName());
+                    if (area.dropOccupant(occupant)) createOccupantAndJoin(area,user,dataNode);
+                });
+        } else {
+            err(user,"Game full: " + area.getTitle());
         }
     }
 

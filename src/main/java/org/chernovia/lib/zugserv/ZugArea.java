@@ -15,10 +15,23 @@ enum ZugAreaPhase {initializing,running,finalizing}
  * ZugArea is a fuller featured extension of ZugRoom that includes passwords, bans, options, phases, and observers.
  */
 abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnable {
+    public static class AreaConfig {
+        boolean allowGuests;
+        boolean purgeDeserted;
+        boolean purgeAway; //TODO: should this drop away occupants?
+        boolean bumpAway;
+        boolean async;
+        public AreaConfig(boolean allowGuests, boolean purgeDeserted, boolean purgeAway, boolean bumpAway, boolean async) {
+            this.allowGuests = allowGuests;
+            this.purgeDeserted = purgeDeserted;
+            this.purgeAway = purgeAway;
+            this.bumpAway = bumpAway;
+            this.async = async;
+        }
+    }
+    final AreaConfig config;
     public enum OperationType {start,stop}
     final private AreaListener listener;
-    private boolean purgeDeserted = true;
-    private boolean purgeAway = true; //TODO: should this drop away occupants?
     private String password;
     private ZugUser creator;
     private final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
@@ -30,6 +43,9 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     private final ResponseManager responseManager;
     private final PhaseManager phaseManager;
     public OptionsManager om() { return optionsManager; }
+    public void setOptionsManager(OptionsManager o) {
+        optionsManager = o;
+    }
     public ResponseManager rm() { return responseManager; }
     public PhaseManager pm() { return phaseManager; }
 
@@ -40,7 +56,18 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * @param l an AreaListener
      */
     public ZugArea(String t, ZugUser c, AreaListener l) {
-        this(t,ZugFields.UNKNOWN_STRING,c, l, true);
+        this(t,ZugFields.UNKNOWN_STRING,c, l, new AreaConfig(true,true, true, false, true));
+    }
+
+    /**
+     * Constructs a ZugArea with a title, creator, and AreaListener.
+     * @param t the title
+     * @param c the creator
+     * @param l an AreaListener
+     * @param config Area Configuration
+     */
+    public ZugArea(String t, ZugUser c, AreaListener l, AreaConfig config) {
+        this(t,ZugFields.UNKNOWN_STRING,c, l, config);
     }
 
     /**
@@ -49,13 +76,15 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * @param p the password
      * @param c the creator
      * @param l an AreaListener
+     * @param config Area Configuration
      */
-    public ZugArea(String t, String p, ZugUser c, AreaListener l, boolean async) { //l.areaCreated(this);
+    public ZugArea(String t, String p, ZugUser c, AreaListener l, AreaConfig config) { //l.areaCreated(this);
         super(t);
+        this.config = config;
         password = p; creator = c; listener = l;
         areaThread = new Thread(this);
         responseManager = new ResponseManager(this);
-        phaseManager = async ? new PhaseManager(this) : new PhaseManagerSimple(this);
+        phaseManager = config.async ? new PhaseManager(this) : new PhaseManagerSimple(this);
         action();
     }
 
@@ -116,11 +145,19 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     public void handleRoomJoin(Occupant occupant, ZugRoom prevRoom, ZugRoom newRoom) {}
 
     public void setPurgeAway(boolean purgeAway) {
-        this.purgeAway = purgeAway;
+        config.purgeAway = purgeAway;
     }
 
     public void setPurgeDeserted(boolean purgeDeserted) {
-        this.purgeDeserted = purgeDeserted;
+        config.purgeDeserted = purgeDeserted;
+    }
+
+    public boolean isBumpAway() {
+        return config.bumpAway;
+    }
+
+    public void setBumpAway(boolean bumpAway) {
+        config.bumpAway = bumpAway;
     }
 
     /**
@@ -244,7 +281,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     }
 
     private boolean checkPurge() {
-        return purgeDeserted && isDeserted(purgeAway);
+        return config.purgeDeserted && isDeserted(config.purgeAway);
     }
 
     public void setRunning(boolean running) { this.running = running; }

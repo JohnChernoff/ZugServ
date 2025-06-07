@@ -30,7 +30,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         }
     }
     public final AreaConfig config;
-    public enum OperationType {start,stop}
+    public enum OperationType {start,stop,nudge}
     final private AreaListener listener;
     private String password;
     private ZugUser creator;
@@ -316,9 +316,16 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         if (close) getListener().areaClosed(this);
     }
 
+    public boolean nudgeArea(Occupant occupant) {
+        if (allowed(occupant.getUser(),OperationType.nudge)) {
+            action(); return true;
+        } return false;
+    }
+
     public boolean allowed(ZugUser user, OperationType t) {
         return switch (t) {
             case start, stop -> isCreator(user);
+            case nudge -> isOccupant(user.getConn());
         };
     }
 

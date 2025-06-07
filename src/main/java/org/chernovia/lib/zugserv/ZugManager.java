@@ -161,6 +161,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         addHandler(ZugClientMsgType.setDeaf,this::handleDeafen);
         addHandler(ZugClientMsgType.ban,this::handleBan);
         addHandler(ZugClientMsgType.kick,this::handleKick);
+        addHandler(ZugClientMsgType.nudge,this::handleNudge);
         addHandler(ZugClientMsgType.response,this::handleResponse);
         addHandler(ZugClientMsgType.getOptions,this::handleUpdateOptions);
         addHandler(ZugClientMsgType.setOptions,this::handleSetOptions);
@@ -411,6 +412,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                         }
                     })));
         return a;
+    }
+
+    public Optional<ZugArea> handleNudge(ZugUser nudger, JsonNode dataNode) {
+        Optional<Occupant> occupant = getOccupant(nudger, dataNode);
+        occupant.ifPresent(o -> o.getArea().nudgeArea(o));
+        return occupant.map(Occupant::getArea);
     }
 
     public Optional<ZugArea> handleResponse(ZugUser user, JsonNode dataNode) { //log("Handling Response: " + dataNode + ", " + user.getUniqueName());

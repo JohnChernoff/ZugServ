@@ -1,6 +1,7 @@
 package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.List;
 import java.util.concurrent.*;
@@ -151,6 +152,14 @@ public class PhaseManager implements JSONifier {
 
     public long getRemainingMillis() {
         return isPaused ? remainingMillis : getPhaseTimeRemaining();
+    }
+
+    public CompletableFuture<Boolean> newPhase(Enum<?> phase) {
+        return newPhase(phase,0,false);
+    }
+
+    public CompletableFuture<Boolean> newPhase(Enum<?> phase, boolean quietly) {
+        return newPhase(phase,0,quietly);
     }
 
     public CompletableFuture<Boolean> newPhase(Enum<?> phase, int millis) {

@@ -300,6 +300,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         }
         else if (areaThread.getState() == Thread.State.NEW) { //areaThread = new Thread(this);
             running = true; //spam(ZugFields.ServMsgType.startArea,toJSON(true));
+            action();
             areaThread.start();
             future.complete(true);
         }
@@ -331,7 +332,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     @Override
     public void run() {
-        spam("Whee");
+        action();
     }
 
     @Override

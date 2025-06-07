@@ -264,12 +264,12 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     }
 
     /**
-     * Sends a message with the default type (ZugFields.ServMsgType.servMsg).
+     * Sends a message with the default type (ZugFields.ServMsgType.roomMsg).
      * @param occupant the message recipient
      * @param msg an alphanumeric message
      */
-    public final void tell(Occupant occupant, String msg) {
-        tell(occupant, ZugServMsgType.servMsg,msg);
+    public void tell(Occupant occupant, String msg) {
+        tell(occupant, ZugServMsgType.roomMsg,msg);
     }
 
     /**

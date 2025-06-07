@@ -16,11 +16,11 @@ enum ZugAreaPhase {initializing,running,finalizing}
  */
 abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnable {
     public static class AreaConfig {
-        boolean allowGuests;
-        boolean purgeDeserted;
-        boolean purgeAway; //TODO: should this drop away occupants?
-        boolean bumpAway;
-        boolean async;
+        public boolean allowGuests;
+        public boolean purgeDeserted;
+        public boolean purgeAway; //TODO: should this drop away occupants?
+        public boolean bumpAway;
+        public boolean async;
         public AreaConfig(boolean allowGuests, boolean purgeDeserted, boolean purgeAway, boolean bumpAway, boolean async) {
             this.allowGuests = allowGuests;
             this.purgeDeserted = purgeDeserted;
@@ -29,7 +29,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
             this.async = async;
         }
     }
-    final AreaConfig config;
+    public final AreaConfig config;
     public enum OperationType {start,stop}
     final private AreaListener listener;
     private String password;
@@ -349,6 +349,16 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
             if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
             else conn.tell(t,msgNode.put(ZugFields.AREA_ID,getTitle()));
         }
+    }
+
+    /**
+     * Sends a message with the default type (ZugFields.ServMsgType.areaMsg).
+     * @param occupant the message recipient
+     * @param msg an alphanumeric message
+     */
+    @Override
+    public void tell(Occupant occupant, String msg) {
+        tell(occupant, ZugServMsgType.areaMsg,msg);
     }
 
     @Override

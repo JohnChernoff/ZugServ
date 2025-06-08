@@ -212,7 +212,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     @Override
     public void handleMsg(Connection conn, String type, JsonNode dataNode) {
         ZugUser user = getUserByConn(conn).orElse(null);
-        if (user != null) user.action();
+        if (user != null) user.action(Timeoutable.ActionType.user);
         log(Level.FINE,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
         if (equalsType(type, ZugClientMsgType.login)) {
             if (user != null) err(conn,"Already logged in");

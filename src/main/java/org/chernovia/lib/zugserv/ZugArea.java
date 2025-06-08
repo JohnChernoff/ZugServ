@@ -85,7 +85,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         areaThread = new Thread(this);
         responseManager = new ResponseManager(this);
         phaseManager = config.async ? new PhaseManager(this) : new PhaseManagerSimple(this);
-        action();
+        action(ActionType.creation);
     }
 
     /**
@@ -175,7 +175,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * @return false if Connection is null or already represents an Occupant
      */
     public boolean addObserver(Connection conn) {  //(isOccupant(conn,true))
-        if (conn == null || isOccupant(conn,false)) return false; else action();
+        if (conn == null || isOccupant(conn,false)) return false; else action(ActionType.obs);
         conn.tell(ZugServMsgType.obs,ZugUtils.newJSON().put(ZugFields.AREA_ID,getTitle()));
         return observers.add(conn);
     }
@@ -300,7 +300,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         }
         else if (areaThread.getState() == Thread.State.NEW) { //areaThread = new Thread(this);
             running = true; //spam(ZugFields.ServMsgType.startArea,toJSON(true));
-            action();
+            action(ActionType.start);
             areaThread.start();
             future.complete(true);
         }
@@ -319,7 +319,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     public boolean nudgeArea(Occupant occupant) {
         if (allowed(occupant.getUser(),OperationType.nudge)) {
-            action(); return true;
+            action(ActionType.nudge); return true;
         } return false;
     }
 
@@ -332,7 +332,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     @Override
     public void run() {
-        action();
+        spam("Running " + getTitle());
     }
 
     @Override

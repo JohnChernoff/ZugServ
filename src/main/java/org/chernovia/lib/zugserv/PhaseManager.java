@@ -82,7 +82,7 @@ public class PhaseManager implements JSONifier {
      * @param quietly suppress client notification
      */
     public void setPhase(Enum<?> p, boolean quietly) {
-        area.action();
+        area.action(Timeoutable.ActionType.phase);
         phase = p;
         if (!quietly) area.spam(ZugServMsgType.phase,toJSON()); //getListener().areaUpdated(this);
     }

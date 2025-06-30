@@ -1,7 +1,6 @@
 package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.List;
 import java.util.concurrent.*;
@@ -87,6 +86,11 @@ public class PhaseManager implements JSONifier {
         if (!quietly) area.spam(ZugServMsgType.phase,toJSON()); //getListener().areaUpdated(this);
     }
 
+    public void setPhase(Enum<?> p, ObjectNode data) {
+        setPhase(p, true);
+        area.spam(ZugServMsgType.phase,toJSON().set(ZugFields.PHASE_DATA,data));
+    }
+
     public void setPhaseStamp(long t) { phaseStamp = t; }
     public long getPhaseStamp() { return phaseStamp; }
 
@@ -155,22 +159,30 @@ public class PhaseManager implements JSONifier {
     }
 
     public CompletableFuture<Boolean> newPhase(Enum<?> phase) {
-        return newPhase(phase,0,false);
+        return newPhase(phase,0,false,null);
+    }
+
+    public CompletableFuture<Boolean> newPhase(Enum<?> phase, ObjectNode data) {
+        return newPhase(phase,0,false,data);
     }
 
     public CompletableFuture<Boolean> newPhase(Enum<?> phase, boolean quietly) {
-        return newPhase(phase,0,quietly);
+        return newPhase(phase,0,quietly,null);
     }
 
     public CompletableFuture<Boolean> newPhase(Enum<?> phase, int millis) {
-        return newPhase(phase,millis,false);
+        return newPhase(phase,millis,false,null);
     }
 
-    public CompletableFuture<Boolean> newPhase(Enum<?> p, int millis, boolean quietly) {
+    public CompletableFuture<Boolean> newPhase(Enum<?> phase, int millis, ObjectNode data) {
+        return newPhase(phase,millis,false,data);
+    }
+
+    public CompletableFuture<Boolean> newPhase(Enum<?> p, int millis, boolean quietly, ObjectNode data) {
         cancelPhase();
         phaseStamp = System.currentTimeMillis();
         phaseTime = millis;
-        setPhase(p, quietly);
+        if (data != null) setPhase(p,data); else setPhase(p, quietly);
         currentPhaseFuture = new CompletableFuture<>();
         currentTimeout = scheduler.schedule(() -> {
             currentPhaseFuture.complete(true);

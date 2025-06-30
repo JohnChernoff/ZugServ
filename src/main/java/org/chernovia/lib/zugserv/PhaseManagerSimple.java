@@ -1,5 +1,7 @@
 package org.chernovia.lib.zugserv;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
+
 import java.util.concurrent.CompletableFuture;
 
 public class PhaseManagerSimple extends PhaseManager {
@@ -14,11 +16,11 @@ public class PhaseManagerSimple extends PhaseManager {
      * @return seconds slept
      */
     @Override
-    public CompletableFuture<Boolean> newPhase(Enum<?> p, int seconds, boolean quiety) {
+    public CompletableFuture<Boolean> newPhase(Enum<?> p, int seconds, boolean quietly, ObjectNode data) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
         phaseTime = seconds * 1000L;
         phaseStamp = System.currentTimeMillis();
-        setPhase(p,quiety);
+        if (data != null) setPhase(p,data); else setPhase(p, quietly);
         boolean timeout = true;
         if (seconds > 0) {
             try { Thread.sleep(phaseTime); } catch (InterruptedException e) { timeout = false; }

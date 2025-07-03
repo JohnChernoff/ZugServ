@@ -130,18 +130,33 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     /**
      * Creates a ZugManager of a given type.
      * @param type a ZugServ type (for example, ZugServ.ServType.TWITCH)
+     * @param port server port
      */
     public ZugManager(ZugServ.ServType type, int port) {
         this(type,port, new ArrayList<>(), null);
     }
 
     /**
-     * Creates a ZugManager of a given type and port.
-     * @param type a ZugServ type (for example, ZugServ.ServType.WEBSOCK)
-     * @param port a port to listen for incomming connections on
+     * Creates a ZugManager of a given type.
+     * @param type a ZugServ type (for example, ZugServ.ServType.TWITCH)
+     * @param port server port
+     * @param hosts allowed hosts
+     * @param auths authentication map
      */
     public ZugManager(ZugServ.ServType type, int port, List<String> hosts, Map<ZugAuthSource,Boolean> auths) {
-        super(type,port, hosts, auths);
+        this(type,port, "ws",hosts, auths);
+    }
+
+    /**
+     * Creates a ZugManager of a given type and port.
+     * @param type a ZugServ type (for example, ZugServ.ServType.WEBSOCK)
+     * @param port server port to listen for incomming connections
+     * @param ep server endpoint (for Javalin, etc.)
+     * @param hosts allowed hosts
+     * @param auths authentication map
+     */
+    public ZugManager(ZugServ.ServType type, int port, String ep, List<String> hosts, Map<ZugAuthSource,Boolean> auths) {
+        super(type,port, ep, hosts, auths);
         addMessageList(ZugClientMsgType.class);
         addHandler(ZugClientMsgType.newArea,this::handleCreateArea);
         addHandler(ZugClientMsgType.joinArea,this::handleJoinArea);

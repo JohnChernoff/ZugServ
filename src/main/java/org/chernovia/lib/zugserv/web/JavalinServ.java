@@ -24,7 +24,7 @@ public class JavalinServ extends ServAdapter implements ZugServ {
      * @param p the port for incoming connections
      * @param l the connection listener (see ConnListener)
      */
-    public JavalinServ(int p, ConnListener l, List<String> hosts) {
+    public JavalinServ(int p, ConnListener l, String endpoint, List<String> hosts) {
 
         super(l); port = p;
         server = Javalin.create(config -> config.bundledPlugins.enableCors(cors ->
@@ -46,7 +46,7 @@ public class JavalinServ extends ServAdapter implements ZugServ {
                 .options("/*", ctx -> {
                     ctx.status(200); // Respond to preflight CORS requests
                 })
-                .ws("/ws", ws -> {
+                .ws("/" + endpoint, ws -> {
                             ws.onConnect(ctx -> {
                                 System.out.println("Client connected: " + ctx.session.getRemoteAddress());
                                 if (getConn(ctx).isEmpty()) {

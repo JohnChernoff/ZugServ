@@ -39,20 +39,24 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     ZugServ serv;
 
     public ZugHandler(ZugServ.ServType type, int port) {
-        this(type,port,new ArrayList<>(),null);
+        this(type,port,"ws",new ArrayList<>(),null);
     }
 
     public ZugHandler(ZugServ.ServType type, int port, List<String> hosts) {
-        this(type,port,hosts,null);
+        this(type,port,"ws",hosts,null);
     }
 
-    public ZugHandler(ZugServ.ServType type, int port, List<String> hosts, Map<ZugAuthSource,Boolean> auths) {
+    public ZugHandler(ZugServ.ServType type, String ep, int port, List<String> hosts) {
+        this(type,port,ep,hosts,null);
+    }
+
+    public ZugHandler(ZugServ.ServType type, int port, String ep, List<String> hosts, Map<ZugAuthSource,Boolean> auths) {
         if (auths != null) authSources.putAll(auths);
         else for (ZugAuthSource authSource : ZugAuthSource.values()) authSources.put(authSource, Boolean.TRUE);
         setLoggingLevel(Level.INFO);
         serv = switch (type) {
             case SOCK, IRC, TWITCH, DISCORD, UNKNOWN -> null; //TODO: implement?
-            case WEBSOCK_JAVALIN -> new JavalinServ(port,this, hosts);
+            case WEBSOCK_JAVALIN -> new JavalinServ(port,this, ep, hosts);
             case WEBSOCK_DEFAULT -> new WebSockServ(port,this);
         };
         if (authSources.get(ZugAuthSource.google)) {

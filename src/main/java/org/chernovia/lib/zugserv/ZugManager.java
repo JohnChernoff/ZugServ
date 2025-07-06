@@ -407,7 +407,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.DEAFENED).ifPresent(occupant::setDeafened));
     }
 
-    public Optional<ZugArea> handleBan(ZugUser user, JsonNode dataNode) {
+    public Optional<ZugArea> handleBan(ZugUser user, JsonNode dataNode) { //TODO: use UNAME (see below)
         Optional<ZugArea> a = getArea(dataNode);
         a.ifPresent(area -> getOccupant(user, dataNode)
                 .flatMap(occupant -> getUniqueName(dataNode.get(ZugFields.NAME)))
@@ -418,14 +418,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public Optional<ZugArea> handleKick(ZugUser kicker, JsonNode dataNode) {
         Optional<ZugArea> a = getArea(dataNode);
         a.ifPresent(area ->
-            getJSONNode(dataNode, ZugFields.UNAME).flatMap(uName -> getUserByUniqueName(new ZugUser.UniqueName(uName)))
-                    .ifPresent(user -> area.getCreator().ifPresent(creator -> {
-                        if (kicker.equals(creator)) {
-                            area.dropOccupant(user);
-                            user.tell(ZugServMsgType.kicked, area.getTitle());
-                            area.spam(ZugServMsgType.updateOccupants,area.toJSON(ZugScope.occupants_basic));
-                        }
-                    })));
+                getJSONNode(dataNode, ZugFields.UNAME)
+                        .flatMap(uName -> getUserByUniqueName(new ZugUser.UniqueName(uName)))
+                        .flatMap(user -> getOccupant(user, dataNode))
+                        .ifPresent(occupant -> area.kick(occupant, kicker)));
         return a;
     }
 

@@ -169,6 +169,18 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         return banList.stream().anyMatch(ban -> ban.inEffect(user));
     }
 
+    public void kick(Occupant occupant) {
+        kick(occupant, creator);
+    }
+    public void kick(Occupant occupant, ZugUser kicker) {
+        if (kicker.equals(creator)) {
+            dropOccupant(occupant);
+            tell(occupant,ZugServMsgType.kicked, getTitle());
+            tell(occupant,ZugServMsgType.updateArea,toJSON(ZugScope.occupants_basic));
+            spam(ZugServMsgType.updateOccupants,toJSON(ZugScope.occupants_basic));
+        }
+    }
+
     /**
      * Adds an observer by Connection.
      * @param conn the observing Connection

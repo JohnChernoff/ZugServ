@@ -26,7 +26,7 @@ public class ZugMessage implements JSONifier, Comparable<ZugMessage> {
         }
 
         @Override
-        public ObjectNode toJSON(List<String> scopes) {
+        public ObjectNode toJSON2(Enum<?>... scopes) {
             ArrayNode txtArray = ZugUtils.newJSONArray();
             for (Object el : elements) {
                 if (el instanceof Integer emoCode) txtArray.add(ZugUtils.newJSON().put(ZugFields.TXT_EMOJI,emoCode));
@@ -55,10 +55,8 @@ public class ZugMessage implements JSONifier, Comparable<ZugMessage> {
     }
 
     @Override
-    public ObjectNode toJSON(List<String> scopes) {
-        return
-
-
-                msg.toJSON().put(ZugFields.MSG_DATE, dateTime.toEpochSecond()).set(ZugFields.MSG_USER,author.toJSON(ZugScope.basic));
+    public ObjectNode toJSON2(Enum<?>... scopes) {
+        return msg.toJSON2(ZugScope.all).put(
+                ZugFields.MSG_DATE, dateTime.toEpochSecond()).set(ZugFields.MSG_USER,author.toJSON2(ZugScope.basic));
     }
 }

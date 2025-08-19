@@ -3,6 +3,8 @@ package org.chernovia.lib.zugserv;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.chernovia.lib.zugserv.enums.ZugScope;
+
 import java.util.*;
 import java.util.logging.Level;
 
@@ -183,16 +185,16 @@ public class OptionsManager implements JSONifier {
         }
 
         @Override
-        public ObjectNode toJSON(List<String> scopes) { //ZugManager.log("Serializing: " + label);
+        public ObjectNode toJSON2(Enum<?>... scopes) { //ZugManager.log("Serializing: " + label);
             return switch (type) {
-                case opt_int -> toJSON(intVal,intMin,intMax,intInc);
-                case opt_dbl -> toJSON(dblVal,dblMin,dblMax,dblInc);
-                case opt_bool -> toJSON(boolVal,null,null,null);
-                case opt_txt -> toJSON(text,null,null,null);
+                case opt_int -> toJson(intVal,intMin,intMax,intInc);
+                case opt_dbl -> toJson(dblVal,dblMin,dblMax,dblInc);
+                case opt_bool -> toJson(boolVal,null,null,null);
+                case opt_txt -> toJson(text,null,null,null);
             };
         }
 
-        private ObjectNode toJSON(Object o, Number minVal, Number maxVal, Number incVal) {
+        private ObjectNode toJson(Object o, Number minVal, Number maxVal, Number incVal) {
             ObjectNode node = ZugUtils.newJSON();
             if (o instanceof String str) {
                 node.put(ZugFields.OPT_VAL,str);
@@ -250,13 +252,11 @@ public class OptionsManager implements JSONifier {
     }
 
     public OptionsManager(JsonNode node) { //ZugManager.log("Setting: " + node.toString());
-        node.fieldNames().forEachRemaining(field -> {
-            optionsMap.put(field,new Option(node.get(field)));
-        });
+        node.fieldNames().forEachRemaining(field -> optionsMap.put(field,new Option(node.get(field))));
     }
 
     @Override
-    public ObjectNode toJSON(List<String> scopes) {
+    public ObjectNode toJSON2(Enum<?>... scopes) {
         ObjectNode node = ZugUtils.newJSON();
         for (String field : optionsMap.keySet()) node.set(field,optionsMap.get(field).toJSON());
         return node;

@@ -386,7 +386,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
 
     final public ObjectNode usersToJSON(boolean nameOnly) {
         ArrayNode arrayNode = ZugUtils.newJSONArray();
-        users.values().forEach(user -> arrayNode.add(nameOnly ? user.getUniqueName().toJSON() : user.toJSON()));
+        users.values().forEach(user -> arrayNode.add(nameOnly ? user.getUniqueName().toJSON2(ZugScope.all) : user.toJSON()));
         return ZugUtils.newJSON().set(ZugFields.USERS,arrayNode);
     }
 
@@ -394,15 +394,16 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         ArrayNode arrayNode = ZugUtils.newJSONArray();
         areas.values().forEach(area -> {
             if (user == null || area.getOccupant(user).isPresent()) {
-                if (showOccupants) arrayNode.add(area.toJSON(ZugScope.basic,ZugScope.occupants_basic));
-                else arrayNode.add(area.toJSON(ZugScope.basic));
+                if (showOccupants) arrayNode.add(area.toJSON2(ZugScope.basic,ZugScope.occupants_basic));
+                else arrayNode.add(area.toJSON2(ZugScope.basic));
             }
 
         });
         return ZugUtils.newJSON().set(ZugFields.AREAS,arrayNode);
     }
 
-    public ObjectNode toJSON() {
+    @Override
+    public ObjectNode toJSON2(Enum<?>... scopes) {
         return ZugUtils.joinNodes(usersToJSON(true), areasByUserToJSON(true,null));
     }
 

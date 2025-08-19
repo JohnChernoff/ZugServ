@@ -3,8 +3,8 @@ package org.chernovia.lib.zugserv;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.enums.ZugAuthSource;
 import org.chernovia.lib.zugserv.enums.ZugScope;
+
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -107,18 +107,13 @@ abstract public class Occupant implements JSONifier {
      * @param scopeList which fields to serialize, ZugScopes.all for everything
      * @return a JSON serialization of the Occupant
      */
-    public ObjectNode toJSON(List<String> scopeList) {
+    @Override
+    public ObjectNode toJSON2(Enum<?>... scopeList) {
         ObjectNode node = ZugUtils.newJSON();
         if (isBasic(scopeList)) {
             node.set(ZugFields.USER,user.toJSON());
             node.put("away",away);
             node.put("banned", area.isBanned(getUser()));
-        }
-        if (hasScope(scopeList, ZugScope.area,true)) {
-            node.set(ZugFields.AREA,area.toJSON(ZugScope.basic));
-        }
-        if (hasScope(scopeList,ZugScope.room,true)) {
-            node.set(ZugFields.ROOM,room.toJSON(ZugScope.basic));
         }
         return node;
     }

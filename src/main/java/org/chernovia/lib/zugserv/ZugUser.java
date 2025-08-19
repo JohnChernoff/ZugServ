@@ -5,8 +5,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.enums.ZugAuthSource;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 
-import java.util.List;
-
 /**
  * ZugUser encapsulates a Connection with indentiable data relating to an identifiable (typically logged in/authenticated) user.
  */
@@ -19,7 +17,7 @@ public class ZugUser extends Timeoutable implements JSONifier {  // long lastMes
     /**
      * Unique Name is combination of a ZugUser's alphanumeric name/handle and their authentication source, if any.
      */
-    public static class UniqueName {
+    public static class UniqueName implements JSONifier {
         public String name;
         public ZugAuthSource source;
 
@@ -52,7 +50,8 @@ public class ZugUser extends Timeoutable implements JSONifier {  // long lastMes
             return name + (source == ZugAuthSource.none ? "" : ("@" + source.name()));
         }
 
-        public ObjectNode toJSON() {
+        @Override
+        public ObjectNode toJSON2(Enum<?>... scopeList) {
             return ZugUtils.newJSON().put(ZugFields.SOURCE,source.name()).put(ZugFields.NAME,name);
         }
     }
@@ -186,7 +185,7 @@ public class ZugUser extends Timeoutable implements JSONifier {  // long lastMes
      * @param conn the Connection to update
      */
     public void update(Connection conn) {
-        if (conn != null) conn.tell(ZugServMsgType.updateUser,toJSON());
+        if (conn != null) conn.tell(ZugServMsgType.updateUser, toJSON());
     }
 
     public boolean sameAddress(Connection conn) {
@@ -198,7 +197,7 @@ public class ZugUser extends Timeoutable implements JSONifier {  // long lastMes
     }
 
     @Override
-    public ObjectNode toJSON(List<String> scopes) {
+    public ObjectNode toJSON2(Enum<?>... scopes) {
         ObjectNode node = ZugUtils.newJSON();
         if (isBasic(scopes)) {
             node.put(ZugFields.LOGGED_IN,loggedIn).set(ZugFields.UNAME,uniqueName.toJSON());

@@ -1,6 +1,7 @@
 package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.List;
 import java.util.concurrent.*;
@@ -83,12 +84,12 @@ public class PhaseManager implements JSONifier {
     public void setPhase(Enum<?> p, boolean quietly) {
         area.action(Timeoutable.ActionType.phase);
         phase = p;
-        if (!quietly) area.spam(ZugServMsgType.phase,toJSON()); //getListener().areaUpdated(this);
+        if (!quietly) area.spam(ZugServMsgType.phase, toJSON()); //getListener().areaUpdated(this);
     }
 
     public void setPhase(Enum<?> p, ObjectNode data) {
         setPhase(p, true);
-        area.spam(ZugServMsgType.phase,toJSON().set(ZugFields.PHASE_DATA,data));
+        area.spam(ZugServMsgType.phase, toJSON2(ZugScope.all).set(ZugFields.PHASE_DATA,data));
     }
 
     public void setPhaseStamp(long t) { phaseStamp = t; }
@@ -247,7 +248,7 @@ public class PhaseManager implements JSONifier {
     }
 
     @Override
-    public ObjectNode toJSON(List<String> scopes) {
+    public ObjectNode toJSON2(Enum<?>... scopes) {
         return ZugUtils.newJSON()
                 .put(ZugFields.PHASE,phase.name())
                 .put(ZugFields.PHASE_STAMP,getPhaseStamp())

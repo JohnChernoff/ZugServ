@@ -66,7 +66,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     public boolean addOccupant(Occupant occupant) {
         if (occupants.putIfAbsent(occupant.getUser().getUniqueName().toString(),occupant) == null) {
             action(ActionType.join);
-            spam(ZugServMsgType.updateOccupants,toJSON(ZugScope.occupants_basic));
+            spam(ZugServMsgType.updateOccupants, toJSON2(ZugScope.occupants_basic));
             return true;
         }
         return false;
@@ -98,7 +98,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     public boolean dropOccupant(ZugUser user) {
         if (occupants.remove(user.getUniqueName().toString()) != null) {
             action(ActionType.part);
-            spam(ZugServMsgType.updateOccupants,toJSON(ZugScope.occupants_basic));
+            spam(ZugServMsgType.updateOccupants, toJSON2(ZugScope.occupants_basic));
             return true;
         }
         return false;
@@ -305,27 +305,22 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         if (!occupant.isDeafened() || ignoreDeafness) occupant.getUser().tell(type, node.put(ZugFields.AREA_ID,getTitle()));
     }
 
-    /**
-     * Returns a JSON serialization of the room (but not its Occupants).
-     * @return the result of toJSON(ZugFields.SCOPE_BASIC)
-     */
-    public final ObjectNode toJSON() { return toJSON(ZugScope.basic); }
-
-    public ObjectNode toJSON(List<String> scopeList) {
+    //@Override public ObjectNode toJSON() { return toJSON2(ZugScope.basic); }
+    public ObjectNode toJSON2(Enum<?>... scopes) {
         ObjectNode node = ZugUtils.newJSON();
-        if (isBasic(scopeList)) {
+        if (isBasic(scopes)) {
             node.put(ZugFields.AREA_ID,title).put(ZugFields.NAME,getName());
         }
-        if (hasScope(scopeList,ZugScope.msg_history,true)) {
+        if (hasScope(ZugScope.msg_history,true,scopes)) {
             node.set(ZugFields.MSG_HISTORY,messageManager.toJSONArray());
         }
-        if (hasScope(scopeList,ZugScope.occupants_basic) || hasScope(scopeList,ZugScope.occupants_all)) {
+        if (hasScope(ZugScope.occupants_basic,scopes) || hasScope(ZugScope.occupants_all,scopes)) {
             ArrayNode arrayNode = ZugUtils.newJSONArray();
-            if (hasScope(scopeList,ZugScope.occupants_basic,true)) {
-                getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON(ZugScope.basic)));
+            if (hasScope(ZugScope.occupants_basic,true,scopes)) {
+                getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON2(ZugScope.basic)));
             }
             else {
-                getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON(ZugScope.all)));
+                getOccupants().forEach(occupant -> arrayNode.add(occupant.toJSON2(ZugScope.all)));
             }
             node.set(ZugFields.OCCUPANTS,arrayNode);
         }

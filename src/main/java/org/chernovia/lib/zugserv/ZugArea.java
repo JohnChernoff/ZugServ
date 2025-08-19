@@ -19,7 +19,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         public boolean allowGuests;
         public boolean purgeDeserted;
         public boolean purgeAway; //TODO: should this drop away occupants?
-        public boolean bumpAway;
+        public boolean bumpAway; //TODO: what is this for?
         public boolean async;
         public AreaConfig(boolean allowGuests, boolean purgeDeserted, boolean purgeAway, boolean bumpAway, boolean async) {
             this.allowGuests = allowGuests;
@@ -176,8 +176,8 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         if (kicker.equals(creator)) {
             dropOccupant(occupant);
             tell(occupant,ZugServMsgType.kicked, getTitle());
-            tell(occupant,ZugServMsgType.updateArea,toJSON(ZugScope.occupants_basic));
-            spam(ZugServMsgType.updateOccupants,toJSON(ZugScope.occupants_basic));
+            tell(occupant,ZugServMsgType.updateArea, this.toJSON2(ZugScope.occupants_basic)); //TODO: use updateOccupants?
+            spam(ZugServMsgType.updateOccupants, this.toJSON2(ZugScope.occupants_basic));
         }
     }
 
@@ -386,22 +386,23 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         user.tell(ZugServMsgType.areaMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID,getTitle()));
     }
 
+    //@Override public ObjectNode toJSON() { return this.toJSON2(ZugScope.basic); }
     @Override
-    public ObjectNode toJSON(List<String> scopes) {
-        ObjectNode node = super.toJSON(scopes);
+    public ObjectNode toJSON2(Enum<?>... scopes) {
+        ObjectNode node = super.toJSON2(scopes);
         if (isBasic(scopes)) {
             node.put(ZugFields.PHASE,phaseManager.getPhase().name())
                     .put(ZugFields.PHASE_TIME_REMAINING,phaseManager.getPhaseTimeRemaining())
                     .put(ZugFields.EXISTS,exists)
                     .put(ZugFields.RUNNING,running)
-                    .set(ZugFields.CREATOR,creator != null ? creator.getUniqueName().toJSON() : null);
+                    .set(ZugFields.CREATOR,creator != null ? creator.getUniqueName().toJSON2(ZugScope.all) : null);
         }
-        if (hasScope(scopes, ZugScope.observers)) {
+        if (hasScope(ZugScope.observers,scopes)) {
             ArrayNode arrayNode = ZugUtils.newJSONArray();
             observers.forEach(obs -> arrayNode.add(obs.getID()));
             node.set(ZugFields.OBSERVERS,arrayNode);
         }
-        if (hasScope(scopes,ZugScope.options)) {
+        if (hasScope(ZugScope.options,scopes)) {
             node.set(ZugFields.OPTIONS, optionsManager.toJSON());
         }
         return node;

@@ -9,7 +9,7 @@ Maven coords:
         <dependency>
             <groupId>io.github.johnchernoff</groupId>
             <artifactId>zugserv</artifactId>
-            <version>0.9.9</version>
+            <version>0.9.9y</version>
         </dependency>
     </dependencies>
 

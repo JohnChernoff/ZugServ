@@ -38,6 +38,7 @@ public interface ZugFields {
             LOGIN_TYPE = "login_type",
             AREA_CHANGE = "area_change",
             PHASE_STAMP = "phase_stamp",
+            PHASE_CURRTIME = "phase_currtime",
             PHASE_TIME_REMAINING = "phase_time_remaining",
             EXISTS = "exists",
             RUNNING = "running",

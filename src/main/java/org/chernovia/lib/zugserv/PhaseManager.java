@@ -250,6 +250,7 @@ public class PhaseManager implements JSONifier {
     @Override
     public ObjectNode toJSON2(Enum<?>... scopes) {
         return ZugUtils.newJSON()
+                .put(ZugFields.PHASE_CURRTIME, System.currentTimeMillis())
                 .put(ZugFields.PHASE,phase.name())
                 .put(ZugFields.PHASE_STAMP,getPhaseStamp())
                 .put(ZugFields.PHASE_TIME_REMAINING,getPhaseTimeRemaining());

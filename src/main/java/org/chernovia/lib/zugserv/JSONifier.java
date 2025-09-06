@@ -54,7 +54,7 @@ public interface JSONifier {
     }
 
     default boolean hasScope(Enum<?> scope, boolean ignoreAll,  Enum<?>... scopes) {
-        if (!ignoreAll && Arrays.stream(scopes).map(Enum::name).toList().contains(excludedEnum(scope))) return false;
+        if (ignoreAll) return Arrays.stream(scopes).map(Enum::name).toList().contains(excludedEnum(scope));
         else return Arrays.stream(scopes).anyMatch(s -> s == ZugScope.all || s == scope);
     }
 

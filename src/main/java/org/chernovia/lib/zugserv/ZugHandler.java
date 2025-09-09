@@ -78,6 +78,10 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         logger.setLevel(level); log("Logging Level: " + level);
     }
 
+    public static Level getLoggingLevel() {
+        return logger.getLevel();
+    }
+
     public ConcurrentHashMap<String,ZugUser> getUsers() {
         return users;
     }

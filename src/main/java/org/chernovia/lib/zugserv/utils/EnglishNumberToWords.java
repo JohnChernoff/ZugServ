@@ -4,6 +4,8 @@ import java.text.DecimalFormat;
 
 public class EnglishNumberToWords {
 
+    public static boolean informal = false;
+
     private static final String[] tensNames = {
             "",
             " ten",
@@ -63,7 +65,7 @@ public class EnglishNumberToWords {
 
     public static String convert(long number) {
         // 0 to 999 999 999 999
-        if (number == 0) { return "zero"; }
+        if (number == 0) { return informal ? "no" : "zero"; }
 
         String snumber;
 

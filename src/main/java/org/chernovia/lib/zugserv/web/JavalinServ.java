@@ -25,8 +25,8 @@ public class JavalinServ extends ServAdapter implements ZugServ {
      * @param l the connection listener (see ConnListener)
      */
     public JavalinServ(int p, ConnListener l, String endpoint, List<String> hosts) {
-
         super(l); port = p;
+        logger.log(Level.INFO, "Starting Server, port: " + p + ", endpoint: " + endpoint + ", hosts: " + hosts);
         server = Javalin.create(config -> config.bundledPlugins.enableCors(cors ->
                 cors.addRule(it -> {
                     if (hosts.isEmpty()) it.reflectClientOrigin = true;

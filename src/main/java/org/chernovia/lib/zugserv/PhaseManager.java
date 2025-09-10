@@ -36,7 +36,6 @@ public class PhaseManager implements JSONifier {
         }
     }
 
-
     public CompletableFuture<Void> runPhaseSequence(List<PhaseStep> steps) {
         CompletableFuture<Void> result = new CompletableFuture<>();
         runPhaseStep(steps, 0, result);

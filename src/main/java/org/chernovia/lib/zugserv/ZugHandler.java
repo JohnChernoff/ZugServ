@@ -79,6 +79,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     }
 
     public static Level getLoggingLevel() {
+        if (logger.getLevel() == null) return Level.INFO;
         return logger.getLevel();
     }
 
@@ -290,6 +291,29 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         }
         for (ZugArea area : getAreas()) area.removeObserver(conn);
     }
+
+    /**
+     * Returns an Optional Enum value from a field at the top level of a JSON node.
+     * @param <T> the enum type
+     * @param node JSON container node
+     * @param enumClass the Class object of the enum type
+     * @param name name of a text field
+     * @return Optional enum value of the specified type
+     */
+    public static <T extends Enum<T>> Optional<T> getEnumNode(JsonNode node, Class<T> enumClass, String name) {
+        return getTxtNode(node, name, false)
+                .flatMap(txt -> {
+                    try {
+                        // Case-insensitive enum parsing
+                        return Arrays.stream(enumClass.getEnumConstants())
+                                .filter(e -> e.name().equalsIgnoreCase(txt))
+                                .findFirst();
+                    } catch (Exception e) {
+                        return Optional.empty();
+                    }
+                });
+    }
+
 
     /**
      * Returns an Optional String value from a field at the top level of a JSON node.

@@ -87,7 +87,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @return The departed Occupant, if successful
      */
     public boolean dropOccupant(Occupant occupant) { //occupant.setArea(null);
-        return dropOccupant(occupant.getUser());
+        return occupant != null && dropOccupant(occupant.getUser());
     }
 
     /**

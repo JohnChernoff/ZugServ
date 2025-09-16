@@ -348,7 +348,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     }
 
     @Override
-    final public boolean addOccupant(Occupant occupant) {
+    public boolean addOccupant(Occupant occupant) {
         if (super.addOccupant(occupant)) observers.remove(occupant.getUser().getConn()); else return false;
         return true;
     }

@@ -124,6 +124,10 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         return occupants.size();
     }
 
+    public final int numHumanOccupants() {
+        return (int)occupants.values().stream().filter(o -> !o.isBot()).count();
+    }
+
     public final Collection<Occupant> getOccupants() {
         return occupants.values();
     }

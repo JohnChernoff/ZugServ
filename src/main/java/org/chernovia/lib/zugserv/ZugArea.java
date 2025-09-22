@@ -30,6 +30,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         }
     }
     public final AreaConfig config;
+    boolean created = false;
     public enum OperationType {start,stop,nudge}
     final private AreaListener listener;
     private String password;
@@ -293,7 +294,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     }
 
     private boolean checkPurge() {
-        return config.purgeDeserted && isDeserted(config.purgeAway);
+        return created && config.purgeDeserted && isDeserted(config.purgeAway);
     }
 
     public void setRunning(boolean running) { this.running = running; }

@@ -733,6 +733,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         area.getCreator().ifPresent(creator ->
                 creator.tell(ZugServMsgType.createArea, area.toJSON2(ZugScope.all)));
         handleAreaListUpdate(area, ZugAreaChange.created);
+        area.created = true;
     }
 
     /**

@@ -131,13 +131,28 @@ public class ZugUser extends Timeoutable implements JSONifier {  // long lastMes
     public boolean isLoggedIn() { return loggedIn; }
     public void setLoggedIn(boolean b) { loggedIn = b; }
 
+    /**
+     * Indicates if the user is a guest.
+     * @return true if guest
+     */
+    public boolean isGuest() {
+        return getUniqueName().source.equals(ZugAuthSource.none);
+    }
+
+    /**
+     * Indicates if the user is a bot.
+     * @return true if bot
+     */
+    public boolean isBot() {
+        return getUniqueName().source.equals(ZugAuthSource.bot);
+    }
 
     /**
      * Indicates if the user used any authentication to log in.
      * @return false if unauthenticated
      */
-    public boolean isGuest() {
-        return getUniqueName().source.equals(ZugAuthSource.none);
+    public boolean isAuthenticated() {
+        return !(isGuest() || isBot());
     }
 
     /**

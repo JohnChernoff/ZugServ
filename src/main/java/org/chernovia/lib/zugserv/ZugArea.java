@@ -315,6 +315,8 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
             running = true; //spam(ZugFields.ServMsgType.startArea,toJSON(true));
             action(ActionType.start);
             areaThread.start();
+            getListener().areaStarted(this);
+            getListener().areaUpdated(this);
             future.complete(true);
         }
         else err(user,"Area already started");
@@ -350,8 +352,21 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     @Override
     public boolean addOccupant(Occupant occupant) {
-        if (super.addOccupant(occupant)) observers.remove(occupant.getUser().getConn()); else return false;
-        return true;
+        if (super.addOccupant(occupant)) {
+            observers.remove(occupant.getUser().getConn());
+            getListener().areaJoined(this, occupant);
+            return true;
+        }
+        return false;
+    }
+
+    @Override
+    public boolean dropOccupant(Occupant occupant) {
+       if (super.dropOccupant(occupant)) {
+           getListener().areaParted(this, occupant.getUser());
+           return true;
+       }
+       return false;
     }
 
     @Override

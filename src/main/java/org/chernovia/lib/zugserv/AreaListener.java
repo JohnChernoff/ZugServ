@@ -26,4 +26,8 @@ public interface AreaListener {
      * @param area the recently altered Area
      */
     public void areaUpdated(ZugArea area);
+
+    public void areaParted(ZugArea area, ZugUser user);
+
+    public void areaJoined(ZugArea area, Occupant occupant);
 }

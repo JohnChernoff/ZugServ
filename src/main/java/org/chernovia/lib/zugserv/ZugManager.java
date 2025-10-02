@@ -330,9 +330,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         a.ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
                         .ifPresentOrElse(occupant -> {
                             if (canPartArea(zugArea, occupant, dataNode)) {
-                                if (zugArea.dropOccupant(occupant)) {
-                                    areaUpdated(zugArea);
-                                    areaParted(zugArea, user);
+                                if (zugArea.dropOccupant(occupant)) { //areaUpdated(zugArea); areaParted(zugArea, user);
+                                    log(Level.FINE,"Dropping occupant " + occupant);
                                 }
                             } else {
                                 occupant.setAway(true);
@@ -481,9 +480,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     private void joinArea(ZugArea area, Occupant occupant) {
-        if (area.addOccupant(occupant)) {
-            areaUpdated(area);
-            areaJoined(area,occupant);
+        if (area.addOccupant(occupant)) { //areaUpdated(area); areaJoined(area,occupant);
+            log(Level.FINE, "Joined " +  area.getTitle() + ": " + occupant);
         }
     }
 
@@ -507,6 +505,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public void areaJoined(ZugArea area, Occupant occupant) {
         area.tell(occupant, ZugServMsgType.joinArea,area.toJSON2(ZugScope.all,ZugScope.msg_history));
+        areaUpdated(area);
     }
 
     /**
@@ -516,6 +515,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     public void areaParted(ZugArea area, ZugUser user) {
         user.tell(ZugServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.AREA_ID,area.getTitle()));
+        areaUpdated(area);
     }
 
     /* *** */
@@ -748,10 +748,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     public void areaStarted(ZugArea area) {
         log(Level.FINE, "area started: " + area.toString());
+        areaUpdated(area);
     }
 
     public void areaFinished(ZugArea area) {
         log(Level.FINE, "area finished: " + area.toString());
+        areaUpdated(area);
     }
 
     /**

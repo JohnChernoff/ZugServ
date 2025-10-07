@@ -109,8 +109,8 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * Gets the AreaListener for the area (typically a species of ZugHandler or ZugManager).
      * @return the area's AreaListener
      */
-    public AreaListener getListener() {
-        return listener;
+    public Optional<AreaListener> getListener() {
+        return Optional.ofNullable(listener);
     }
 
     public Optional<ZugUser> getCreator() {
@@ -315,8 +315,10 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
             running = true; //spam(ZugFields.ServMsgType.startArea,toJSON(true));
             action(ActionType.start);
             areaThread.start();
-            getListener().areaStarted(this);
-            getListener().areaUpdated(this);
+            getListener().ifPresent(l -> {
+                l.areaStarted(this);
+                l.areaUpdated(this);
+            });
             future.complete(true);
         }
         else err(user,"Area already started");
@@ -329,7 +331,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
             running = false;
             phaseManager.shutdownPhases();
         }
-        if (close) getListener().areaClosed(this);
+        if (close) getListener().ifPresent(l -> l.areaClosed(this));
     }
 
     public boolean nudgeArea(Occupant occupant) {
@@ -354,7 +356,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     public boolean addOccupant(Occupant occupant) {
         if (super.addOccupant(occupant)) {
             observers.remove(occupant.getUser().getConn());
-            getListener().areaJoined(this, occupant);
+            getListener().ifPresent(l -> l.areaJoined(this, occupant));
             return true;
         }
         return false;
@@ -363,7 +365,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     @Override
     public boolean dropOccupant(Occupant occupant) {
        if (super.dropOccupant(occupant)) {
-           getListener().areaParted(this, occupant.getUser());
+           getListener().ifPresent(l -> l.areaParted(this, occupant.getUser()));
            return true;
        }
        return false;

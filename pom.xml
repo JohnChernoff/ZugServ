@@ -52,6 +52,12 @@
 	  	<groupId>org.java-websocket</groupId>
 	  	<artifactId>Java-WebSocket</artifactId>
 	  	<version>1.5.1</version>
+        <exclusions>
+            <exclusion>
+                <groupId>org.slf4j</groupId>
+                <artifactId>slf4j-api</artifactId>
+            </exclusion>
+        </exclusions>
 	</dependency>
 
 	  <dependency>
@@ -65,6 +71,12 @@
           <groupId>mysql</groupId>
           <artifactId>mysql-connector-java</artifactId>
           <version>8.0.33</version>
+          <exclusions>
+              <exclusion>
+                  <groupId>org.slf4j</groupId>
+                  <artifactId>slf4j-api</artifactId>
+              </exclusion>
+          </exclusions>
       </dependency>
 
       <dependency>
@@ -87,8 +99,8 @@
 
       <dependency>
           <groupId>io.javalin</groupId>
-          <artifactId>javalin-bundle</artifactId>
-          <version>6.5.0</version>
+          <artifactId>javalin</artifactId>
+          <version>6.7.0</version>
       </dependency>
 
   </dependencies>

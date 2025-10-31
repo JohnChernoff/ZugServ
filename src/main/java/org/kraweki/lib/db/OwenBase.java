@@ -1,5 +1,7 @@
 package org.kraweki.lib.db;
 
+import com.zaxxer.hikari.HikariConfig;
+import com.zaxxer.hikari.HikariDataSource;
 import java.sql.*;
 import java.util.Optional;
 import java.util.function.Consumer;
@@ -109,44 +111,36 @@ public class OwenBase {
         }
     }
 
-    private record Credentials(String uri, String usr, String pwd, String db) {
-    }
-
-    private Connection conn;
-    private final Credentials credentials;
+    private final HikariDataSource dataSource;
 
     public OwenBase(String uri, String usr, String pwd, String db) {
-        credentials = new Credentials(uri, usr, pwd, db);
-        conn = connect(credentials);
-    }
+        HikariConfig config = new HikariConfig();
+        config.setJdbcUrl("jdbc:mysql://" + uri + "/" + db);
+        config.setUsername(usr);
+        config.setPassword(pwd);
+        config.setMaximumPoolSize(10);  // Adjust based on your needs
+        config.setMinimumIdle(2);
+        config.setConnectionTimeout(30000);  // 30 seconds
+        config.setIdleTimeout(600000);       // 10 minutes
+        config.setMaxLifetime(1800000);      // 30 minutes
 
-    private Connection connect(final Credentials credentials) {
-        try {
-            String connStr = "jdbc:mysql://" + credentials.uri +
-                    "/" + credentials.db +
-                    "?user=" + credentials.usr +
-                    "&password=" + credentials.pwd;
-            return DriverManager.getConnection(connStr);
-        } catch (SQLException ex) {
-            logSQLException(ex);
-            return null;
-        }
-    }
-
-    private Optional<Connection> getConn() {
-        if (conn != null) try {
-            if (conn.isClosed()) {
-                conn = connect(credentials);
-            }
-        } catch (SQLException e) {
-            logSQLException(e);
-            conn = null;
-        }
-        return Optional.ofNullable(conn);
+        this.dataSource = new HikariDataSource(config);
     }
 
     public Optional<SqlQuery> makeQuery(final String queryStr) {
-        return getConn().flatMap(conn -> Optional.of(new SqlQuery(queryStr, conn)));
+        try {
+            Connection conn = dataSource.getConnection();
+            return Optional.of(new SqlQuery(queryStr, conn));
+        } catch (SQLException e) {
+            logSQLException(e);
+            return Optional.empty();
+        }
+    }
+
+    public void close() {
+        if (dataSource != null && !dataSource.isClosed()) {
+            dataSource.close();
+        }
     }
 
     private static void logSQLException(SQLException e) {

@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>io.github.johnchernoff</groupId>
   <artifactId>zugserv</artifactId>
-  <version>0.9.9z</version>
+  <version>0.9.9~</version>
   <name>ZugServ</name>
   <description>Java WebServer Framework</description>
 
@@ -101,6 +101,13 @@
           <groupId>io.javalin</groupId>
           <artifactId>javalin</artifactId>
           <version>6.7.0</version>
+      </dependency>
+
+      <!-- https://mvnrepository.com/artifact/com.zaxxer/HikariCP -->
+      <dependency>
+          <groupId>com.zaxxer</groupId>
+          <artifactId>HikariCP</artifactId>
+          <version>5.1.0</version>
       </dependency>
 
   </dependencies>

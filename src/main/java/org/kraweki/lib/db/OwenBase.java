@@ -9,6 +9,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class OwenBase {
+
+    public static boolean closeQueries = true;
     private static final Logger logger = Logger.getLogger(OwenBase.class.getName());
     public static class SqlQuery {
         private final String statement;
@@ -104,6 +106,13 @@ public class OwenBase {
             if (resultSet != null) {
                 try {
                     resultSet.close();
+                } catch (SQLException e) {
+                    logSQLException(e);
+                }
+            }
+            if (closeQueries) {
+                try {
+                    conn.close();
                 } catch (SQLException e) {
                     logSQLException(e);
                 }

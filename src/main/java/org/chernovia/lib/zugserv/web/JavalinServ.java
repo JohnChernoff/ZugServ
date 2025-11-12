@@ -13,7 +13,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class JavalinServ extends ServAdapter implements ZugServ {
-
+    public int maxIncomingMessageSize = 1024;
     private final Javalin server;
     private static final Logger logger = Logger.getLogger(JavalinServ.class.getName());
     private final Map<WsContext, Connection> connections = new HashMap<>();
@@ -59,10 +59,14 @@ public class JavalinServ extends ServAdapter implements ZugServ {
                             });
                             ws.onMessage(ctx -> {
                                 String message = ctx.message();
-                                getConn(ctx).ifPresentOrElse(
-                                        conn -> getConnListener().newMsg(conn, message),
-                                        () -> logger.log(Level.WARNING, "Unknown connection message: " +
-                                                message + " at address: " + ctx.session.getRemoteAddress()));
+                                if (message.length() < maxIncomingMessageSize) {
+                                    getConn(ctx).ifPresentOrElse(
+                                            conn -> getConnListener().newMsg(conn, message),
+                                            () -> logger.log(Level.WARNING, "Unknown connection message: " +
+                                                    message + " at address: " + ctx.session.getRemoteAddress()));
+                                } else {
+                                    logger.log(Level.WARNING, "Overly long connection message: " + message.length());
+                                }
                             });
                             ws.onClose(ctx -> {
                                 logger.log(Level.INFO,"Client disconnected: " + ctx.session.getRemoteAddress());

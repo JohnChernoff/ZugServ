@@ -42,7 +42,9 @@ public class JavalinConn extends ConnAdapter {
 
     @Override
     public void tell(Enum<?> type, String msg) {
-        ObjectNode node = mapper.createObjectNode(); node.put(ZugFields.MSG, msg); tell(type,node);
+        ObjectNode node = mapper.createObjectNode();
+        node.put(ZugFields.MSG, msg);
+        tell(type,node);
     }
 
     @Override

@@ -15,6 +15,8 @@ import org.chernovia.lib.zugserv.enums.*;
  */
 abstract public class ZugManager extends ZugHandler implements AreaListener, Runnable {
 
+    public int maxMsgLen = 512;
+
     public static String
             ERR_USER_NOT_FOUND = "User not found",
             ERR_OCCUPANT_NOT_FOUND = "Occupant not found",
@@ -288,18 +290,20 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
 
     public Optional<ZugArea> handleCreateArea(ZugUser user, JsonNode dataNode) { //log(dataNode.toPrettyString());
         String title = getTxtNode(dataNode,ZugFields.AREA_ID,true).orElse(generateAreaName());
+        if (title.length() > 255) {
+            err(user, "Title too long!");
+            return Optional.empty();
+        }
         if (getArea(dataNode).isPresent()) {
             err(user, "Already exists: " + title);
             return Optional.empty();
         }
-        else {
-            Optional<ZugArea> a = handleCreateArea(user, title, dataNode);
-            user.tell("Creating: " + title);
-            log("Creating: " + title);
-            a.ifPresentOrElse(area -> handleAreaCreated(area,dataNode),
-                    () -> err(user,"Failed to create area: " + title));
-            return a;
-        }
+        Optional<ZugArea> a = handleCreateArea(user, title, dataNode);
+        user.tell("Creating: " + title);
+        log("Creating: " + title);
+        a.ifPresentOrElse(area -> handleAreaCreated(area,dataNode),
+                () -> err(user,"Failed to create area: " + title));
+        return a;
     }
 
     public String generateAreaName() {
@@ -544,9 +548,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param zugTxt the chat message
      */
     public void sendAreaChat(Occupant occupant, ZugMessage.ZugText zugTxt, ZugArea area) {
-        //ObjectNode chatNode = .set(ZugFields.OCCUPANT,occupant.toJSON(ZugScope.basic));
-        area.spam(ZugServMsgType.areaUserMsg,ZugUtils.newJSON()
-                .set(ZugFields.ZUG_MSG,new ZugMessage(zugTxt,occupant.getUser()).toJSON()));
+        if (zugTxt.getLength() > maxMsgLen) {
+            occupant.getArea().err(occupant.getUser(), "Area message overflow!");
+        } else { //ObjectNode chatNode = .set(ZugFields.OCCUPANT,occupant.toJSON(ZugScope.basic));
+            area.spam(ZugServMsgType.areaUserMsg,ZugUtils.newJSON()
+                    .set(ZugFields.ZUG_MSG,new ZugMessage(zugTxt,occupant.getUser()).toJSON()));
+        }
     }
 
     /**
@@ -567,10 +574,14 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      * @param msg the (alphanumeric) message
      */
     public void sendPrivateMsg(ZugUser user1, ZugUser.UniqueName name, String msg) { //log("Handling privMsg to: " + name);
-        getUserByUniqueName(name).ifPresentOrElse(user2 -> {
-            user2.tell(ZugServMsgType.privMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).set(ZugFields.USER,user1.toJSON2(ZugScope.basic)));
-            user1.tell(ZugServMsgType.servMsg,"Message sent to " + name + ": " + msg);
-        }, () -> err(user1,"User not found: " + name));
+        if (msg.length() > maxMsgLen) {
+            err(user1, "Private message overflow!");
+        } else {
+            getUserByUniqueName(name).ifPresentOrElse(user2 -> {
+                user2.tell(ZugServMsgType.privMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).set(ZugFields.USER,user1.toJSON2(ZugScope.basic)));
+                user1.tell(ZugServMsgType.servMsg,"Message sent to " + name + ": " + msg);
+            }, () -> err(user1,"User not found: " + name));
+        }
     }
 
 

@@ -13,12 +13,25 @@ public class ZugMessage implements JSONifier, Comparable<ZugMessage> {
 
     public static class ZugText implements JSONifier {
         List<Object> elements = new ArrayList<>();
+        private int length = 0;
 
         public ZugText(JsonNode elNode) {
             if (elNode instanceof ArrayNode elArray) {
-                elArray.forEach(el -> elements.add(el.isInt() ? el.asInt() : el.asText()));
+                elArray.forEach((el) -> {
+                    if (el.isInt()) {
+                        elements.add(el.asInt());
+                        length++;
+                    } else if (el.isTextual()) {
+                        elements.add(el.asText());
+                        length += el.asText().length();
+                    }
+                });
             }
             else elements.add(elNode.asText());
+        }
+
+        int getLength() {
+            return length;
         }
 
         public ZugText(Object... elist) {

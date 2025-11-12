@@ -13,7 +13,6 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class JavalinServ extends ServAdapter implements ZugServ {
-    public int maxIncomingMessageSize = 1024;
     private final Javalin server;
     private static final Logger logger = Logger.getLogger(JavalinServ.class.getName());
     private final Map<WsContext, Connection> connections = new HashMap<>();
@@ -59,7 +58,7 @@ public class JavalinServ extends ServAdapter implements ZugServ {
                             });
                             ws.onMessage(ctx -> {
                                 String message = ctx.message();
-                                if (message.length() < maxIncomingMessageSize) {
+                                if (message.length() < getMaxIncomingMessageSize()) {
                                     getConn(ctx).ifPresentOrElse(
                                             conn -> getConnListener().newMsg(conn, message),
                                             () -> logger.log(Level.WARNING, "Unknown connection message: " +

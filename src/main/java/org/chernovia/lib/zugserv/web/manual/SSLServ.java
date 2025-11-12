@@ -19,6 +19,7 @@ public class SSLServ implements ZugServ, Runnable {
     public Vector<Connection> connections = new Vector<>();
     SSLServerSocket serverSocket; boolean running = false;
     ConnListener connListener;
+	int maxIncomingMessageSize = 1024;
     
     public SSLServ(int p, ConnListener l) {
     	port = p; connListener = l;
@@ -104,6 +105,16 @@ public class SSLServ implements ZugServ, Runnable {
 	public void setMaxConnections(int c) {
 		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	public int getMaxIncomingMessageSize() {
+		return maxIncomingMessageSize;
+	}
+
+	@Override
+	public void setMaxIncomingMessageSize(int n) {
+		maxIncomingMessageSize = n;
 	}
 
 	@Override

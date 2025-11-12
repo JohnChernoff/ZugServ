@@ -82,6 +82,9 @@ public interface ZugServ {
 	 */
 	void setMaxConnections(int c);
 
+	int getMaxIncomingMessageSize();
+	void setMaxIncomingMessageSize(int n);
+
 	/**
 	 * Returns the listener of this server (generally a ZugHandler or ZugManager)
 	 * @return the Connection Listener Object

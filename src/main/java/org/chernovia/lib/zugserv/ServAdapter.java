@@ -1,6 +1,7 @@
 package org.chernovia.lib.zugserv;
 
 abstract public class ServAdapter implements ZugServ {
+    private int maxIncomingMessageSize = 1024;
     private int maxConnections = 127;
     protected final static boolean STACK_TRACE = true;
     private final ConnListener connListener;
@@ -36,5 +37,13 @@ abstract public class ServAdapter implements ZugServ {
         maxConnections = c;
     }
 
+    @Override
+    public int getMaxIncomingMessageSize() {
+        return maxIncomingMessageSize;
+    }
 
+    @Override
+    public void setMaxIncomingMessageSize(int maxIncomingMessageSize) {
+        this.maxIncomingMessageSize = maxIncomingMessageSize;
+    }
 }

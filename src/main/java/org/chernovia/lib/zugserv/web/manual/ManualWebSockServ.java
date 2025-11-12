@@ -13,12 +13,13 @@ import org.chernovia.lib.zugserv.web.*;
 
 public class ManualWebSockServ implements ZugServ, Runnable {
 	
-	public static final Logger logger = Logger.getLogger(WebSockServ.class.getName());
+	public static final Logger logger = Logger.getLogger(ManualWebSockServ.class.getName());
 	int port;
     public Vector<Connection> connections = new Vector<>();
     ServerSocket serverSocket; boolean running = false;
     ConnListener connListener;
-    
+	int maxIncomingMessageSize = 1024;
+
     public ManualWebSockServ(int p, ConnListener l) {
     	port = p; connListener = l;
     }
@@ -78,6 +79,16 @@ public class ManualWebSockServ implements ZugServ, Runnable {
 	public void setMaxConnections(int c) {
 		// TODO Auto-generated method stub
 		
+	}
+
+	@Override
+	public int getMaxIncomingMessageSize() {
+		return maxIncomingMessageSize;
+	}
+
+	@Override
+	public void setMaxIncomingMessageSize(int n) {
+		maxIncomingMessageSize = n;
 	}
 
 	@Override

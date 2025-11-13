@@ -38,6 +38,20 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     private boolean preserveDisconnectedUsers = true;
     ZugServ serv;
 
+    private final RateLimitManager rateLimitManager = new RateLimitManager();
+
+    public RateLimitManager getRateLimitManager() {
+        return rateLimitManager;
+    }
+
+    public void configureRateLimits(long connMsgs, long connPerSec,
+                                    long userMsgs, long userPerSec,
+                                    long ipMsgs, long ipPerSec) {
+        rateLimitManager.setConnectionLimit(connMsgs, connPerSec);
+        rateLimitManager.setUserLimit(userMsgs, userPerSec);
+        rateLimitManager.setIPLimit(ipMsgs, ipPerSec);
+    }
+
     public ZugHandler(ZugServ.ServType type, int port) {
         this(type,port,"ws",new ArrayList<>(),null);
     }
@@ -282,6 +296,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
     public void disconnected(Connection conn) {
         for (ZugUser user : getUsersByConn(conn)) {
             log("Disconnected: " + user.getName() + ", duration: " + conn.getTimeConnected()/1000 + " seconds");
+            rateLimitManager.removeUser(user);
             user.setLoggedIn(false);
             List<ZugArea> areas = areasByUserToJSON(user);
             if (!isPreservingDisconnectedUsers() || areas.isEmpty()) {
@@ -290,6 +305,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
             }
         }
         for (ZugArea area : getAreas()) area.removeObserver(conn);
+        rateLimitManager.removeConnection(conn.getID());
     }
 
     /**

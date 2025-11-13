@@ -230,6 +230,13 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public void handleMsg(Connection conn, String type, JsonNode dataNode) {
         ZugUser user = getUserByConn(conn).orElse(null);
         if (user != null) user.action(Timeoutable.ActionType.user);
+
+        if (!getRateLimitManager().allow(conn, user)) {
+            log(Level.FINE, "Rate limit exceeded for: " + (user != null ? user.getName() : conn.getAddress()));
+            tell(conn, ZugServMsgType.alertMsg, "Rate limit exceeded. Please slow down.");
+            return;
+        }
+
         log(Level.FINE,"New Message from " + (user == null ? "?" : user.getName()) + ": " + type + "," + dataNode);
         if (equalsType(type, ZugClientMsgType.login)) {
             if (user != null) err(conn,"Already logged in");

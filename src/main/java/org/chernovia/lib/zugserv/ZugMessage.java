@@ -8,6 +8,7 @@ import java.time.ZonedDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.logging.Level;
 
 public class ZugMessage implements JSONifier, Comparable<ZugMessage> {
 
@@ -16,21 +17,34 @@ public class ZugMessage implements JSONifier, Comparable<ZugMessage> {
         private int length = 0;
 
         public ZugText(JsonNode elNode) {
-            if (elNode instanceof ArrayNode elArray) {
-                elArray.forEach((el) -> {
-                    if (el.isInt()) {
-                        elements.add(el.asInt());
-                        length++;
-                    } else if (el.isTextual()) {
-                        elements.add(el.asText());
-                        length += el.asText().length();
-                    }
-                });
+            // NEW: Validate structure
+            try {
+                InputValidator.validateZugText(elNode);
+            } catch (IllegalArgumentException e) {
+                ZugHandler.log(Level.WARNING, "Invalid ZugText: " + e.getMessage());
+                // Fall back to treating as plain text
+                elements.add(elNode.toString());
+                return;
             }
-            else elements.add(elNode.asText());
+            if (elNode instanceof ArrayNode elArray) {
+                for (JsonNode el : elArray) {
+                    if (el.has(ZugFields.TXT_EMOJI) && el.get(ZugFields.TXT_EMOJI).isInt()) {
+                        elements.add(el.get(ZugFields.TXT_EMOJI).asInt());
+                        length++;
+                    } else if (el.has(ZugFields.TXT_ASCII) && el.get(ZugFields.TXT_ASCII).isTextual()) {
+                        String text = el.get(ZugFields.TXT_ASCII).asText();
+                        elements.add(text);
+                        length += text.length();
+                    }
+                }
+            } else if (elNode.isTextual()) {
+                String text = elNode.asText();
+                elements.add(text);
+                length = text.length();
+            }
         }
 
-        int getLength() {
+        int getLength() { //TODO: overflow?
             return length;
         }
 

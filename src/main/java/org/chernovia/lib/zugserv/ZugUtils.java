@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.util.*;
+import java.util.logging.Level;
 
 public class ZugUtils {
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
@@ -23,12 +24,19 @@ public class ZugUtils {
         return JSON_MAPPER.createArrayNode();
     }
 
-    public static JsonNode readTree(String content) {
+    /**
+     * Parses JSON with graceful error handling.
+     *
+     * @param content JSON string (null returns empty)
+     * @return parsed JsonNode Optional, or empty if invalid JSON or null input
+     */
+    public static Optional<JsonNode> readTree(String content) {
+        if (content == null || content.isBlank()) return Optional.empty();
         try {
-            return JSON_MAPPER.readTree(content);
+            return Optional.ofNullable(JSON_MAPPER.readTree(content));
         } catch (JsonProcessingException e) {
-            e.printStackTrace();
-            return null;
+            ZugHandler.log(Level.FINE, "JSON parse error: " + e.getMessage()); //e.printStackTrace(); // Keep for debugging
+            return Optional.empty();
         }
     }
 

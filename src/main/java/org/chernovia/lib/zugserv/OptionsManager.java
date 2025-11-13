@@ -44,32 +44,63 @@ public class OptionsManager implements JSONifier {
                     if (enumNode != null && enumNode.isArray()) {
                         List<String> elist = new ArrayList<>();
                         enumNode.elements().forEachRemaining(el -> {
-                            if (el.isTextual()) elist.add(el.asText());
+                            if (el.isTextual()) {
+                                String enumVal = el.asText();
+                                // NEW: Validate enum values are reasonable length
+                                if (enumVal.length() > 64) {
+                                    optionError("Enum value too long: " + enumVal);
+                                } else {
+                                    elist.add(enumVal);
+                                }
+                            }
                         });
+                        // NEW: Reject if no valid enums
+                        if (elist.isEmpty() && !enumNode.isEmpty()) {
+                            optionError("No valid enum values provided");
+                        }
                         init(OptionType.opt_txt,lab,desc,
                                 null,null,null,valNode.asText(),
                                 null,null,null,null,null,null,elist);
-                    }
-                    else {
-                        init(OptionType.opt_txt,lab,desc,
-                                null,null,null,valNode.asText(),
-                                null,null,null,null,null,null,null);
                     }
                 }
                 else if (valNode.isInt()) {
                     Integer min = minNode == null ? null : minNode.asInt(Integer.MIN_VALUE);
                     Integer max = maxNode == null ? null : maxNode.asInt(Integer.MAX_VALUE);
                     Integer inc = incNode == null ? null : incNode.asInt(1);
+                    Integer value = valNode.asInt();
+                    // NEW: Validate bounds
+                    if (min != null && max != null) {
+                        if (value < min || value > max) {
+                            optionError("Integer value " + value +
+                                    " out of bounds [" + min + ", " + max + "]");
+                            // Default to min value instead of accepting invalid
+                            value = min;
+                        }
+                    }
                     init(OptionType.opt_int,lab,desc,
-                            null,valNode.asInt(),null,null,
+                            null,value,null,null,
                             min,max,inc,null,null,null,null);
                 }
                 else if (valNode.isDouble()) {
                     Double min = minNode == null ? null : minNode.asDouble(Double.MIN_VALUE);
                     Double max = maxNode == null ? null : maxNode.asDouble(Double.MAX_VALUE);
                     Double inc = incNode == null ? null : incNode.asDouble(1.0);
+                    double value = valNode.asDouble();
+                    // NEW: Reject NaN/Infinity
+                    if (Double.isNaN(value) || Double.isInfinite(value)) {
+                        optionError("Invalid double value: " + value);
+                        value = 0.0;
+                    }
+                    // NEW: Validate bounds
+                    if (min != null && max != null) {
+                        if (value < min || value > max) {
+                            optionError("Double value " + value +
+                                    " out of bounds [" + min + ", " + max + "]");
+                            value = min;
+                        }
+                    }
                     init(OptionType.opt_dbl,lab,desc,
-                            null,null,valNode.asDouble(),null,
+                            null,null,value,null,
                             null,null,null,min,max,inc,null);
                 }
                 else if (valNode.isBoolean()) {

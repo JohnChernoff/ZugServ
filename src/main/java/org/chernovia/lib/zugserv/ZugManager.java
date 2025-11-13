@@ -311,15 +311,26 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     public Optional<ZugArea> handleCreateArea(ZugUser user, JsonNode dataNode) { //log(dataNode.toPrettyString());
-        String title = getTxtNode(dataNode,ZugFields.AREA_ID,true).orElse(generateAreaName());
-        if (title.length() > 255) {
-            err(user, "Title too long!");
+        String title = getTxtNode(dataNode, ZugFields.AREA_ID, true)
+                .map(rawTitle -> {
+                    try {
+                        return InputValidator.validateAreaTitle(rawTitle);
+                    } catch (IllegalArgumentException e) {
+                        err(user, "Invalid area title: " + e.getMessage());
+                        return null;
+                    }
+                })
+                .orElseGet(this::generateAreaName);
+
+        if (title == null) {
             return Optional.empty();
         }
+
         if (getArea(dataNode).isPresent()) {
             err(user, "Already exists: " + title);
             return Optional.empty();
         }
+
         Optional<ZugArea> a = handleCreateArea(user, title, dataNode);
         user.tell("Creating: " + title);
         log("Creating: " + title);
@@ -381,10 +392,29 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     public Optional<ZugArea> handleAreaMsg(ZugUser user, JsonNode dataNode) {
         Optional<ZugArea> a = getArea(dataNode);
         a.ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
-                        .ifPresentOrElse(occupant ->
-                                        sendAreaChat(occupant,
-                                                new ZugMessage.ZugText(dataNode.get(ZugFields.ZUG_TEXT)),
-                                                 zugArea),
+                        .ifPresentOrElse(occupant -> {
+                                    // NEW: Validate message content
+                                    JsonNode textNode = dataNode.get(ZugFields.ZUG_TEXT);
+                                    if (textNode == null) {
+                                        err(user, "Missing message content");
+                                        return;
+                                    }
+
+                                    try {
+                                        InputValidator.validateZugText(textNode);
+                                    } catch (IllegalArgumentException e) {
+                                        err(user, "Invalid message format: " + e.getMessage());
+                                        return;
+                                    }
+
+                                    ZugMessage.ZugText zugTxt = new ZugMessage.ZugText(textNode);
+                                    if (zugTxt.getLength() > maxMsgLen) {
+                                        zugArea.err(user, "Area message overflow!");
+                                        return;
+                                    }
+
+                                    sendAreaChat(occupant, zugTxt, zugArea);
+                                },
                                 () -> err(user, ERR_NOT_OCCUPANT)),
                 () -> err(user, ERR_TITLE_NOT_FOUND));
         return a;
@@ -456,16 +486,57 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         return occupant.map(Occupant::getArea);
     }
 
-    public Optional<ZugArea> handleResponse(ZugUser user, JsonNode dataNode) { //log("Handling Response: " + dataNode + ", " + user.getUniqueName());
+    public Optional<ZugArea> handleResponse(ZugUser user, JsonNode dataNode) {
         Optional<ZugArea> a = getArea(dataNode);
-        Optional<?> response; //TODO: should this be Object?
-        if (dataNode.get(ZugFields.RESPONSE).isBoolean()) response = getBoolNode(dataNode, ZugFields.RESPONSE);
-        else if (dataNode.get(ZugFields.RESPONSE).isInt()) response = getIntNode(dataNode, ZugFields.RESPONSE);
-        else if (dataNode.get(ZugFields.RESPONSE).isDouble()) response = getDblNode(dataNode, ZugFields.RESPONSE);
-        else response = getTxtNode(dataNode, ZugFields.RESPONSE);
-        getTxtNode(dataNode, ZugFields.RESPONSE_TYPE).ifPresent(type ->
-                a.flatMap(area -> getOccupant(user, dataNode))
-                .ifPresent(occupant -> occupant.setResponse(type, response.orElse(null))));
+
+        // NEW: Validate response type
+        String responseType = getTxtNode(dataNode, ZugFields.RESPONSE_TYPE).orElse(null);
+        if (responseType == null || !InputValidator.isValidResponseType(responseType)) {
+            err(user, "Invalid response type");
+            return a;
+        }
+
+        // NEW: Validate response value exists
+        if (!dataNode.has(ZugFields.RESPONSE)) {
+            err(user, "Missing response value");
+            return a;
+        }
+
+        Object response;
+        JsonNode responseNode = dataNode.get(ZugFields.RESPONSE);
+
+        // Determine response type and validate
+        if (responseNode.isBoolean()) {
+            response = responseNode.asBoolean();
+        } else if (responseNode.isInt()) {
+            Integer intVal = responseNode.asInt();
+            // NEW: Validate reasonable range
+            if (intVal < -1000000 || intVal > 1000000) {
+                InputValidator.logValidationFailure("INT_RESPONSE_OOB", intVal.toString());
+                err(user, "Response value out of range");
+                return a;
+            }
+            response = intVal;
+        } else if (responseNode.isDouble()) {
+            Double dblVal = responseNode.asDouble();
+            // NEW: Reject NaN/Infinity
+            if (Double.isNaN(dblVal) || Double.isInfinite(dblVal)) {
+                InputValidator.logValidationFailure("INVALID_DOUBLE", dblVal.toString());
+                err(user, "Invalid numeric response");
+                return a;
+            }
+            response = dblVal;
+        } else if (responseNode.isTextual()) {
+            response = responseNode.asText();
+        } else {
+            response = null;
+            err(user, "Unknown response type");
+            return a;
+        }
+
+        a.flatMap(area -> getOccupant(user, dataNode))
+                .ifPresent(occupant -> occupant.setResponse(responseType, response));
+
         return a;
     }
 
@@ -618,11 +689,27 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                     ZugAuthSource.valueOf(dataNode.get(ZugFields.LOGIN_TYPE).textValue().toLowerCase());
             if (source == ZugAuthSource.lichess) {
                 getTxtNode(dataNode,ZugFields.TOKEN).ifPresentOrElse(
-                        token -> handleLichessLogin(conn,token), () -> err(conn,"Empty token"));
+                        token -> {
+                            // NEW: Validate token format
+                            if (token.isEmpty() || token.length() > 1000) {
+                                err(conn, "Login failure: Invalid token format");
+                                return;
+                            }
+                            handleLichessLogin(conn, token);
+                        },
+                        () -> err(conn,"Empty token"));
             }
             else if (source == ZugAuthSource.google) {
                 getTxtNode(dataNode,ZugFields.TOKEN).ifPresentOrElse(
-                        token -> handleGoogleLogin(conn,token), () -> err(conn,"Empty token"));
+                        token -> {
+                            // NEW: Validate token format
+                            if (token.isEmpty() || token.length() > 2000) {
+                                err(conn, "Login failure: Invalid token format");
+                                return;
+                            }
+                            handleGoogleLogin(conn, token);
+                        },
+                        () -> err(conn,"Empty token"));
             }
             else if (source == ZugAuthSource.none) {
                 if (allowGuests) handleLogin(

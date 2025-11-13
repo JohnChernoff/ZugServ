@@ -387,20 +387,34 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
      */
     @Override
     public void newMsg(Connection conn, String msg) { //log("New Conn Message: " + msg);
-        JsonNode msgNode = ZugUtils.readTree(msg);
-        if (msgNode == null) {
-            log(Level.WARNING,"Bad JSON message: " + msg); return;
+        if (msg.length() > getServ().getMaxIncomingMessageSize()) {
+            log(Level.WARNING, "Message exceeds size limit: " + msg.length() +
+                    " from " + conn.getAddress());
+            err(conn, "Message too large");
+            return;
         }
-        JsonNode typeNode = msgNode.get("type"), dataNode = msgNode.get("data");
-        if (typeNode == null || dataNode == null) {
-            err(conn,"Error: Bad Data(null)"); //return;
+        try {
+            JsonNode msgNode = ZugUtils.readTree(msg).orElseThrow(() -> new ZugException("Bad JSON message: " + msg));
+            // NEW: Check required fields exist
+            if (!InputValidator.hasRequiredFields(msgNode, "type", "data")) {
+                InputValidator.logValidationFailure("REQUIRED_FIELDS", msgNode.toString());
+                err(conn, "Error: Bad Data(null)");
+                return;
+            }
+            JsonNode typeNode = msgNode.get("type"), dataNode = msgNode.get("data");
+            if (typeNode == null || dataNode == null) { //redundant, but keep for now
+                err(conn,"Error: Bad Data(null)"); //return;
+            }
+            else if (equalsType(typeNode.asText(), ZugClientMsgType.pong)) {
+                log(Level.FINE,"Pong from: " + conn.getID());
+                conn.setLatency(System.currentTimeMillis() - conn.lastPing());
+            }
+            else {
+                handleMsg(conn,typeNode.asText(),dataNode);
+            }
         }
-        else if (equalsType(typeNode.asText(), ZugClientMsgType.pong)) {
-            log(Level.FINE,"Pong from: " + conn.getID());
-            conn.setLatency(System.currentTimeMillis() - conn.lastPing());
-        }
-        else {
-            handleMsg(conn,typeNode.asText(),dataNode);
+        catch (ZugException e) {
+            log(Level.WARNING,e.getMessage());
         }
     }
 

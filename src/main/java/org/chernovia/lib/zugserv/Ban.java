@@ -88,10 +88,6 @@ public class Ban {
 		return true;
 	}
 
-	private boolean addressMatch(String a) {
-		return addressMatch(a, -1);
-	}
-
 	/**
 	 * Indicates if the current ban affects a specific Connection ID.
 	 * @param id the Connection's ID

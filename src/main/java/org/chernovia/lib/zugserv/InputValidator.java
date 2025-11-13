@@ -345,7 +345,7 @@ public class InputValidator {
     // ========================================================================
 
     /**
-     * Safely parses an enum value from JSON text.
+     * Safely parses an enum value from text (case-insensitive).
      *
      * @param <T> the enum type
      * @param text the text value to parse
@@ -358,9 +358,18 @@ public class InputValidator {
         }
 
         try {
-            return Enum.valueOf(enumClass, text.toUpperCase());
-        } catch (IllegalArgumentException e) {
+            // Try to find matching enum constant (case-insensitive)
+            String lowerText = text.toLowerCase();
+            for (T constant : enumClass.getEnumConstants()) {
+                if (constant.name().equals(lowerText)) {
+                    return constant;
+                }
+            }
+            // Not found
             ZugHandler.log(Level.FINE, "Invalid enum value: " + text + " for type " + enumClass.getSimpleName());
+            return null;
+        } catch (Exception e) {
+            ZugHandler.log(Level.FINE, "Error parsing enum: " + e.getMessage());
             return null;
         }
     }

@@ -8,6 +8,7 @@ import org.chernovia.lib.zugserv.enums.ZugAuthSource;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Test suite for InputValidator.
@@ -89,6 +90,32 @@ public class InputValidatorTest {
         } else {
             testsFailed++;
             String msg = "✗ " + testName + " - Expected null but got '" + value + "'";
+            System.out.println(msg);
+            failureLog.add(msg);
+        }
+    }
+
+    private static void assertPresent(String testName, Optional<?> optional) {
+        testsRun++;
+        if (optional != null && optional.isPresent()) {
+            testsPassed++;
+            System.out.println("✓ " + testName);
+        } else {
+            testsFailed++;
+            String msg = "✗ " + testName + " - Expected Optional.isPresent() but got " + optional;
+            System.out.println(msg);
+            failureLog.add(msg);
+        }
+    }
+
+    private static void assertEmpty(String testName, Optional<?> optional) {
+        testsRun++;
+        if (optional != null && optional.isEmpty()) {
+            testsPassed++;
+            System.out.println("✓ " + testName);
+        } else {
+            testsFailed++;
+            String msg = "✗ " + testName + " - Expected Optional.isEmpty() but got " + optional;
             System.out.println(msg);
             failureLog.add(msg);
         }
@@ -297,8 +324,19 @@ public class InputValidatorTest {
         System.out.println("\n=== Testing ZugText Validation (throws) ===");
 
         JsonNode valid = mapper.readTree("[{\"txt_emoji\": 42}]");
-        assertThrows("ZugText validation: valid does not throw", "NoException",
-                () -> InputValidator.validateZugText(valid));
+        // Valid should not throw - no exception type passed, so we just verify no exception
+        try {
+            InputValidator.validateZugText(valid);
+            testsPassed++;
+            System.out.println("✓ ZugText validation: valid does not throw");
+            testsRun++;
+        } catch (Exception e) {
+            testsFailed++;
+            String msg = "✗ ZugText validation: valid does not throw - Got exception: " + e.getClass().getSimpleName();
+            System.out.println(msg);
+            failureLog.add(msg);
+            testsRun++;
+        }
 
         JsonNode invalid = mapper.readTree("[{\"txt_emoji\": \"not_int\"}]");
         assertThrows("ZugText validation: invalid throws", "IllegalArgumentException",
@@ -327,8 +365,8 @@ public class InputValidatorTest {
         assertNull("Read int: null node",
                 InputValidator.readValidatedInt(null, "value", 0, 100));
 
-        // Boundary tests
-        assertEquals("Read int: exactly at min", 0,
+        // Boundary tests - note: value 50 is at min when min=50
+        assertEquals("Read int: exactly at min", 50,
                 InputValidator.readValidatedInt(node, "value", 50, 100));
         assertEquals("Read int: exactly at max", 50,
                 InputValidator.readValidatedInt(node, "value", 0, 50));
@@ -374,7 +412,9 @@ public class InputValidatorTest {
                 InputValidator.readValidatedText(node, "number", 100));
         assertNull("Read text: null node",
                 InputValidator.readValidatedText(null, "value", 100));
-        assertNull("Read text: no max length limit",
+        // maxLength of 0 means no limit
+        assertEquals("Read text: no max length limit",
+                "hello",
                 InputValidator.readValidatedText(node, "value", 0));
     }
 
@@ -476,26 +516,26 @@ public class InputValidatorTest {
     }
 
     // ========================================================================
-    // TEST METHODS - JSON PARSING
+    // TEST METHODS - JSON PARSING (WITH OPTIONAL)
     // ========================================================================
 
     private static void testSafeParseJSON() {
         System.out.println("\n=== Testing Safe JSON Parsing ===");
 
-        assertNotNull("Parse JSON: valid object",
+        assertPresent("Parse JSON: valid object",
                 InputValidator.safeParseJSON("{}"));
-        assertNotNull("Parse JSON: valid array",
+        assertPresent("Parse JSON: valid array",
                 InputValidator.safeParseJSON("[]"));
-        assertNotNull("Parse JSON: valid data",
+        assertPresent("Parse JSON: valid data",
                 InputValidator.safeParseJSON("{\"key\": \"value\"}"));
 
-        assertNull("Parse JSON: invalid syntax",
+        assertEmpty("Parse JSON: invalid syntax",
                 InputValidator.safeParseJSON("{invalid json"));
-        assertNull("Parse JSON: empty string",
+        assertEmpty("Parse JSON: empty string",
                 InputValidator.safeParseJSON(""));
-        assertNull("Parse JSON: null input",
+        assertEmpty("Parse JSON: null input",
                 InputValidator.safeParseJSON(null));
-        assertNull("Parse JSON: whitespace only",
+        assertEmpty("Parse JSON: whitespace only",
                 InputValidator.safeParseJSON("   "));
     }
 
@@ -588,7 +628,7 @@ public class InputValidatorTest {
             testValidResponseType();
             testValidResponseValue();
 
-            // JSON parsing tests
+            // JSON parsing tests (updated for Optional)
             testSafeParseJSON();
             testRequiredFields();
 

@@ -18,6 +18,7 @@ public class ZugUser extends Timeoutable implements JSONifier {  // long lastMes
      * Unique Name is combination of a ZugUser's alphanumeric name/handle and their authentication source, if any.
      */
     public static class UniqueName implements JSONifier {
+        private static int maxNameLength = 24;
         public String name;
         public ZugAuthSource source;
 
@@ -27,17 +28,29 @@ public class ZugUser extends Timeoutable implements JSONifier {  // long lastMes
          *  @param src the authentication type (such as ZugFields.AuthSource.lichess)
          */
         public UniqueName(String n, ZugAuthSource src) {
-            name = n; source = src;
+            name = trimmedName(n); source = src;
         }
 
         public UniqueName(JsonNode dataNode) {
-            name = ZugManager.getTxtNode(dataNode,ZugFields.NAME).orElse("");
+            name = trimmedName(ZugManager.getTxtNode(dataNode,ZugFields.NAME).orElse(""));
             try {
                 source = ZugAuthSource.valueOf(ZugManager.getTxtNode(dataNode,ZugFields.SOURCE).orElse(ZugAuthSource.none.name()));
             }
             catch (IllegalArgumentException oops) {
                 source = ZugAuthSource.none;
             }
+        }
+
+        String trimmedName(String name) {
+            return name.length() > maxNameLength ? name.substring(0, maxNameLength) : name;
+        }
+
+        void setMaxNameLength(int max) {
+            maxNameLength = max;
+        }
+
+        int getMaxNameLength() {
+            return maxNameLength;
         }
 
         @Override

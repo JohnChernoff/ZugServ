@@ -238,15 +238,14 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
             getTxtNode(dataNode, ZugFields.ADDRESS).ifPresentOrElse(
                     addressStr -> {
                         // Attempt to set and validate the client-reported address
-                        if (conn instanceof ConnAdapter adapter) {
-                            boolean success = adapter.setClientReportedAddress(addressStr);
-                            if (success) {
-                                ZugHandler.log(java.util.logging.Level.FINE,
-                                        "Client address set for connection " + conn.getID() + ": " + addressStr);
-                            } else {
-                                ZugHandler.log(java.util.logging.Level.WARNING,
-                                        "Invalid client address for connection " + conn.getID() + ": " + addressStr);
-                            }
+                        boolean success = conn.setClientReportedAddress(addressStr);
+                        if (success) {
+                            ZugHandler.log(java.util.logging.Level.FINE,
+                                    "Client address set for connection " + conn.getID() + ": " + addressStr);
+                            conn.lockAddress();
+                        } else {
+                            ZugHandler.log(java.util.logging.Level.WARNING,
+                                    "Invalid client address for connection " + conn.getID() + ": " + addressStr);
                         }
                         tell(conn, ZugServMsgType.ip,
                                 ZugUtils.newJSON().put(ZugFields.ADDRESS, conn.getAddress()));
@@ -639,8 +638,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                 .findFirst()
                 .ifPresentOrElse(
                         prevUser -> {
-                            swapConnection(prevUser, conn);
-                            conn.lockAddress(); // Lock after login
+                            swapConnection(prevUser, conn); //conn.lockAddress(); // Lock after login
                         },
                         () -> handleCreateUser(conn, uName, dataNode)
                                 .ifPresentOrElse(
@@ -648,8 +646,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                                                 .ifPresentOrElse(
                                                         wtf -> err(conn, "Error: duplicate user!"),
                                                         () -> {
-                                                            handleLoggedIn(newUser);
-                                                            conn.lockAddress(); // Lock after login
+                                                            handleLoggedIn(newUser); //conn.lockAddress(); // Lock after login
                                                         }
                                                 ),
                                         () -> err(conn, "Login error")

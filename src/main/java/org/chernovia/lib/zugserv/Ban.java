@@ -70,20 +70,26 @@ public class Ban {
 		return inEffect() && bannedUser.equals(user);
 	}
 
-	private boolean addressMatch(String a) {
-		return addressMatch(a,-1);
-	}
 	private boolean addressMatch(String a, int level) {
 		if (bannedUser.getConn().getAddress() == null || a == null) return false;
-		if (level == -1) return a.equals(bannedUser.getConn().getAddress());
-		else {
-			String[] a1 = a.split("\\.");
-			String[] a2 = bannedUser.getConn().getAddress().split("\\.");
-			for (int i=0;i<level;i++) {
-				if (!Objects.equals(a1[i], a2[i])) return false;
-			}
-			return true;
+
+		String[] a1 = a.split("\\.");
+		String[] a2 = bannedUser.getConn().getAddress().split("\\.");
+
+		// FIX: Bounds checking - only match up to the minimum array length
+		int matchLevel = Math.min(level, Math.min(a1.length, a2.length));
+
+		// Require at least one segment to match
+		if (matchLevel <= 0) return false;
+
+		for (int i = 0; i < matchLevel; i++) {
+			if (!Objects.equals(a1[i], a2[i])) return false;
 		}
+		return true;
+	}
+
+	private boolean addressMatch(String a) {
+		return addressMatch(a, -1);
 	}
 
 	/**

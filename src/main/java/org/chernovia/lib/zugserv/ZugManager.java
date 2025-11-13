@@ -235,12 +235,28 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
             if (user != null) err(conn,"Already logged in");
             else handleLoginRequest(conn,dataNode);
         } else if (equalsType(type, ZugClientMsgType.ip)) {
-            getTxtNode(dataNode, ZugFields.ADDRESS).ifPresent(addressStr -> {
-                    conn.setAddress(addressStr);
-                    log("Incoming address: " + conn.getAddress());
-                }
+            getTxtNode(dataNode, ZugFields.ADDRESS).ifPresentOrElse(
+                    addressStr -> {
+                        // Attempt to set and validate the client-reported address
+                        if (conn instanceof ConnAdapter adapter) {
+                            boolean success = adapter.setClientReportedAddress(addressStr);
+                            if (success) {
+                                ZugHandler.log(java.util.logging.Level.FINE,
+                                        "Client address set for connection " + conn.getID() + ": " + addressStr);
+                            } else {
+                                ZugHandler.log(java.util.logging.Level.WARNING,
+                                        "Invalid client address for connection " + conn.getID() + ": " + addressStr);
+                            }
+                        }
+                        tell(conn, ZugServMsgType.ip,
+                                ZugUtils.newJSON().put(ZugFields.ADDRESS, conn.getAddress()));
+                    },
+                    () -> {
+                        // No address provided by client, use server-captured address
+                        tell(conn, ZugServMsgType.ip,
+                                ZugUtils.newJSON().put(ZugFields.ADDRESS, conn.getAddress()));
+                    }
             );
-            tell(conn, ZugServMsgType.ip,ZugUtils.newJSON().put(ZugFields.ADDRESS,conn.getAddress().toString()));
         } else if (equalsType(type, ZugClientMsgType.obs)) { log(Level.FINE,"Obs requested from: " + conn.getID());
             getArea(dataNode).ifPresent(area -> area.addObserver(conn));
         } else if (equalsType(type, ZugClientMsgType.unObs)) {  log(Level.FINE,"UnObs requested from: " + conn.getID());
@@ -617,15 +633,28 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
     }
 
     @Override
-    public void handleLogin(Connection conn, ZugUser.UniqueName uName, JsonNode dataNode) { //log("Handling Login: " + uName);
+    public void handleLogin(Connection conn, ZugUser.UniqueName uName, JsonNode dataNode) {
         getUsers().values().stream()
-                .filter(user -> user.sameUser(uName,conn)).findFirst()
-                .ifPresentOrElse(prevUser -> swapConnection(prevUser,conn),
-                () -> handleCreateUser(conn,uName,dataNode)
-                        .ifPresentOrElse(newUser -> addOrGetUser(newUser)
-                                        .ifPresentOrElse(wtf -> err(conn,"Error: duplicate user!"),
-                                                () -> handleLoggedIn(newUser)),
-                        () -> err(conn,"Login error")));
+                .filter(user -> user.sameUser(uName, conn))
+                .findFirst()
+                .ifPresentOrElse(
+                        prevUser -> {
+                            swapConnection(prevUser, conn);
+                            conn.lockAddress(); // Lock after login
+                        },
+                        () -> handleCreateUser(conn, uName, dataNode)
+                                .ifPresentOrElse(
+                                        newUser -> addOrGetUser(newUser)
+                                                .ifPresentOrElse(
+                                                        wtf -> err(conn, "Error: duplicate user!"),
+                                                        () -> {
+                                                            handleLoggedIn(newUser);
+                                                            conn.lockAddress(); // Lock after login
+                                                        }
+                                                ),
+                                        () -> err(conn, "Login error")
+                                )
+                );
     }
 
 

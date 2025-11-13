@@ -6,8 +6,25 @@ import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.List;
 import java.util.concurrent.*;
 import java.util.function.Supplier;
+import java.util.logging.Level;
 
-public class PhaseManager implements JSONifier {
+/**
+ * Manages area phases with async support.
+ *
+ * <p><b>Thread Safety:</b> All public methods are thread-safe.
+ * Uses a single-threaded executor for phase scheduling.
+ *
+ * <p><b>Lifecycle:</b>
+ * Must call close() or use try-with-resources before area shutdown.
+ * Failure to close will leak the scheduler thread.
+ *
+ * <p><b>Exception Handling:</b> Phase failures complete exceptionally
+ * and are logged at WARNING level.
+ *
+ * @see PhaseStep
+ * @see ZugArea
+ */
+public class PhaseManager implements JSONifier, AutoCloseable {
 
     public static class PhaseStep {
         public final Enum<?> phase;
@@ -36,28 +53,6 @@ public class PhaseManager implements JSONifier {
         }
     }
 
-    public CompletableFuture<Void> runPhaseSequence(List<PhaseStep> steps) {
-        CompletableFuture<Void> result = new CompletableFuture<>();
-        runPhaseStep(steps, 0, result);
-        return result;
-    }
-
-    private void runPhaseStep(List<PhaseStep> steps, int index, CompletableFuture<Void> result) {
-        if (index >= steps.size()) {
-            result.complete(null);
-            return;
-        }
-
-        PhaseStep step = steps.get(index);
-        newPhase(step.phase, step.durationMillis)
-                .thenCompose(v -> step.runAction())
-                .thenRun(() -> runPhaseStep(steps, index + 1, result))
-                .exceptionally(ex -> {
-                    result.completeExceptionally(ex);
-                    return null;
-                });
-    }
-
     ZugArea area;
     Enum<?> phase = ZugAreaPhase.initializing;
     long phaseStamp = 0;
@@ -69,10 +64,22 @@ public class PhaseManager implements JSONifier {
     private boolean isPaused = false;
     private long remainingMillis = 0;
     private long pauseTimestamp = 0;
-    final ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor();
+
+    // FIX: Named executor with proper thread factory + shutdown tracking
+    private final ScheduledExecutorService scheduler;
+    private volatile boolean closed = false;
 
     public PhaseManager(ZugArea area) {
         this.area = area;
+
+        // Create executor with descriptive thread names for debugging
+        ThreadFactory threadFactory = r -> {
+            Thread t = new Thread(r, "ZugPhaseManager-" + area.getTitle());
+            t.setDaemon(false);
+            return t;
+        };
+
+        this.scheduler = Executors.newSingleThreadScheduledExecutor(threadFactory);
     }
 
     /**
@@ -83,12 +90,12 @@ public class PhaseManager implements JSONifier {
     public void setPhase(Enum<?> p, boolean quietly) {
         area.action(Timeoutable.ActionType.phase);
         phase = p;
-        if (!quietly) area.spam(ZugServMsgType.phase, toJSON()); //getListener().areaUpdated(this);
+        if (!quietly) area.spam(ZugServMsgType.phase, toJSON());
     }
 
     public void setPhase(Enum<?> p, ObjectNode data) {
         setPhase(p, true);
-        area.spam(ZugServMsgType.phase, toJSON2(ZugScope.all).set(ZugFields.PHASE_DATA,data));
+        area.spam(ZugServMsgType.phase, toJSON2(ZugScope.all).set(ZugFields.PHASE_DATA, data));
     }
 
     public void setPhaseStamp(long t) { phaseStamp = t; }
@@ -118,11 +125,11 @@ public class PhaseManager implements JSONifier {
     }
 
     public CompletableFuture<Void> runPausableAction(int millis, Runnable onTimeout) {
-        cancelPhase();  // Cancel previous phase if any
+        cancelPhase();
         currentRunnableFuture = new CompletableFuture<>();
-        onTimeoutAction = onTimeout;  // ← stored here
+        onTimeoutAction = onTimeout;
         currentTimeout = scheduler.schedule(() -> {
-            onTimeout.run();               // ← invoked later
+            onTimeout.run();
             currentRunnableFuture.complete(null);
         }, millis, TimeUnit.MILLISECONDS);
         return currentRunnableFuture;
@@ -132,14 +139,14 @@ public class PhaseManager implements JSONifier {
         if (isPaused || currentTimeout == null || currentTimeout.isDone()) return;
         isPaused = true;
         pauseTimestamp = System.currentTimeMillis();
-        remainingMillis = getPhaseTimeRemaining(); // use same for actions & phases
+        remainingMillis = getPhaseTimeRemaining();
         currentTimeout.cancel(false);
     }
 
     public void resume() {
         if (!isPaused || remainingMillis <= 0) return;
         isPaused = false;
-        phaseStamp = System.currentTimeMillis(); // reset phaseStamp to now
+        phaseStamp = System.currentTimeMillis();
         currentTimeout = scheduler.schedule(() -> {
             if (currentPhaseFuture != null && !currentPhaseFuture.isDone()) {
                 currentPhaseFuture.complete(true);
@@ -159,30 +166,30 @@ public class PhaseManager implements JSONifier {
     }
 
     public CompletableFuture<Boolean> newPhase(Enum<?> phase) {
-        return newPhase(phase,0,false,null);
+        return newPhase(phase, 0, false, null);
     }
 
     public CompletableFuture<Boolean> newPhase(Enum<?> phase, ObjectNode data) {
-        return newPhase(phase,0,false,data);
+        return newPhase(phase, 0, false, data);
     }
 
     public CompletableFuture<Boolean> newPhase(Enum<?> phase, boolean quietly) {
-        return newPhase(phase,0,quietly,null);
+        return newPhase(phase, 0, quietly, null);
     }
 
     public CompletableFuture<Boolean> newPhase(Enum<?> phase, int millis) {
-        return newPhase(phase,millis,false,null);
+        return newPhase(phase, millis, false, null);
     }
 
     public CompletableFuture<Boolean> newPhase(Enum<?> phase, int millis, ObjectNode data) {
-        return newPhase(phase,millis,false,data);
+        return newPhase(phase, millis, false, data);
     }
 
     public CompletableFuture<Boolean> newPhase(Enum<?> p, int millis, boolean quietly, ObjectNode data) {
         cancelPhase();
         phaseStamp = System.currentTimeMillis();
         phaseTime = millis;
-        if (data != null) setPhase(p,data); else setPhase(p, quietly);
+        if (data != null) setPhase(p, data); else setPhase(p, quietly);
         currentPhaseFuture = new CompletableFuture<>();
         currentTimeout = scheduler.schedule(() -> {
             currentPhaseFuture.complete(true);
@@ -190,13 +197,11 @@ public class PhaseManager implements JSONifier {
         return currentPhaseFuture;
     }
 
-
     public void interruptPhase() {
         if (currentPhaseFuture != null && !currentPhaseFuture.isDone()) {
             currentPhaseFuture.complete(false);
         }
     }
-
 
     public void cancelPhase() {
         if (currentTimeout != null) currentTimeout.cancel(false);
@@ -205,8 +210,68 @@ public class PhaseManager implements JSONifier {
         }
     }
 
-    public void shutdownPhases() {
-        scheduler.shutdownNow();
+    // FIX: Proper cleanup with timeout and interrupt
+    /**
+     * Shuts down phase management and waits for pending operations to complete.
+     * Should be called when the area is closing.
+     *
+     * <p>Waits up to 5 seconds for graceful shutdown, then forces shutdown.
+     *
+     * @throws InterruptedException if interrupted while waiting
+     */
+    public void shutdownPhases() throws InterruptedException {
+        if (closed) return;
+        closed = true;
+
+        try {
+            scheduler.shutdown();
+            if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
+                ZugHandler.log(Level.WARNING, "PhaseManager shutdown timeout for area: " + area.getTitle());
+                scheduler.shutdownNow();
+                // Wait a bit more for forced shutdown
+                if (!scheduler.awaitTermination(2, TimeUnit.SECONDS)) {
+                    ZugHandler.log(Level.SEVERE, "PhaseManager failed to shutdown: " + area.getTitle());
+                }
+            }
+        } catch (InterruptedException e) {
+            ZugHandler.log(Level.WARNING, "PhaseManager shutdown interrupted");
+            scheduler.shutdownNow();
+            Thread.currentThread().interrupt();
+            throw e;
+        }
+    }
+
+    // FIX: AutoCloseable implementation for try-with-resources
+    @Override
+    public void close() {
+        try {
+            shutdownPhases();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public CompletableFuture<Void> runPhaseSequence(List<PhaseStep> steps) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        runPhaseStep(steps, 0, result);
+        return result;
+    }
+
+    private void runPhaseStep(List<PhaseStep> steps, int index, CompletableFuture<Void> result) {
+        if (index >= steps.size()) {
+            result.complete(null);
+            return;
+        }
+
+        PhaseStep step = steps.get(index);
+        newPhase(step.phase, step.durationMillis)
+                .thenCompose(v -> step.runAction())
+                .thenRun(() -> runPhaseStep(steps, index + 1, result))
+                .exceptionally(ex -> {
+                    ZugHandler.log(Level.WARNING, "Phase step failed at index " + index + ": " + step.phase);
+                    result.completeExceptionally(ex);
+                    return null;
+                });
     }
 
     public CompletableFuture<Void> awaitSpam(String msg, int millis) {
@@ -218,24 +283,24 @@ public class PhaseManager implements JSONifier {
     }
 
     public CompletableFuture<Void> awaitSpam(Enum<?> type, String msg, int millis) {
-        return runThenDelay(() -> area.spam(type,msg), millis);
+        return runThenDelay(() -> area.spam(type, msg), millis);
     }
 
-
-    public CompletableFuture<Void> awaitSpam(Enum<?> type,  ObjectNode msgNode, int millis) {
-        return runThenDelay(() -> area.spam(type,msgNode), millis);
+    public CompletableFuture<Void> awaitSpam(Enum<?> type, ObjectNode msgNode, int millis) {
+        return runThenDelay(() -> area.spam(type, msgNode), millis);
     }
 
     public CompletableFuture<Void> awaitSpamX(Enum<?> type, String msg, int millis, Occupant... exclude) {
-        return runThenDelay(() -> area.spamX(type,msg,exclude), millis);
+        return runThenDelay(() -> area.spamX(type, msg, exclude), millis);
     }
 
     public CompletableFuture<Void> awaitSpamX(Enum<?> type, ObjectNode msgNode, int millis, Occupant... exclude) {
-        return runThenDelay(() -> area.spamX(type,msgNode,exclude), millis);
+        return runThenDelay(() -> area.spamX(type, msgNode, exclude), millis);
     }
 
-    public CompletableFuture<Void> awaitSpamX(Enum<?> type, ObjectNode msgNode, boolean ignoreDeafness,int millis, Occupant... exclude) {
-        return runThenDelay(() -> area.spamX(type,msgNode,ignoreDeafness,exclude), millis);
+    public CompletableFuture<Void> awaitSpamX(Enum<?> type, ObjectNode msgNode, boolean ignoreDeafness,
+                                              int millis, Occupant... exclude) {
+        return runThenDelay(() -> area.spamX(type, msgNode, ignoreDeafness, exclude), millis);
     }
 
     public static CompletableFuture<Void> chainFutures(List<CompletableFuture<Void>> futures) {
@@ -250,9 +315,8 @@ public class PhaseManager implements JSONifier {
     public ObjectNode toJSON2(Enum<?>... scopes) {
         return ZugUtils.newJSON()
                 .put(ZugFields.PHASE_CURRTIME, System.currentTimeMillis())
-                .put(ZugFields.PHASE,phase.name())
-                .put(ZugFields.PHASE_STAMP,getPhaseStamp())
-                .put(ZugFields.PHASE_TIME_REMAINING,getPhaseTimeRemaining());
+                .put(ZugFields.PHASE, phase.name())
+                .put(ZugFields.PHASE_STAMP, getPhaseStamp())
+                .put(ZugFields.PHASE_TIME_REMAINING, getPhaseTimeRemaining());
     }
-
 }

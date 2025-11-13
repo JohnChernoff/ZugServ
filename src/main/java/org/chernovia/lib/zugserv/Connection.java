@@ -1,8 +1,5 @@
 package org.chernovia.lib.zugserv;
 
-import java.net.InetAddress;
-import java.util.List;
-
 import com.fasterxml.jackson.databind.JsonNode;
 
 /**
@@ -137,4 +134,44 @@ public interface Connection {
 	void setLatency(long t);
 
 	long getTimeConnected();
+
+	/**
+	 * Sets the server-captured remote address (the address the connection appears to come from).
+	 * Called during connection setup in the WebSocket adapter.
+	 *
+	 * @param address the remote address from the server's perspective
+	 */
+	void setRemoteAddress(String address);
+
+	/**
+	 * Gets the server-captured remote address.
+	 *
+	 * @return remote address, or null if not captured
+	 */
+	String getRemoteAddress();
+
+	/**
+	 * Sets the client-reported address (typically the client's public IP address).
+	 * Called when the client sends an IP message to the server.
+	 *
+	 * <p>Implementations should validate the address format and reject changes
+	 * after the user logs in to prevent spoofing.
+	 *
+	 * @param address the client-reported address to set
+	 * @return true if successfully set, false if invalid format or address is locked
+	 */
+	boolean setClientReportedAddress(String address);
+
+	/**
+	 * Gets the client-reported address.
+	 *
+	 * @return client-reported address, or null if not set
+	 */
+	String getClientReportedAddress();
+
+	/**
+	 * Locks the address after user login to prevent mid-session address spoofing.
+	 * After this is called, attempts to change the address should fail.
+	 */
+	void lockAddress();
 }

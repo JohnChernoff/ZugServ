@@ -1,124 +1,278 @@
+// ============================================================================
+// ISSUE #2: ResponseManager Memory Leak
+// ============================================================================
+// Problem: Responses accumulate in responseCheckerMap and are never cleaned up
+//          when they timeout or complete, causing unbounded memory growth
+// Solution: Properly cleanup responses in checkResponse() and ensure
+//          cleanup happens even on timeout
+
 package org.chernovia.lib.zugserv;
 
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 
+/**
+ * Manages request/response exchanges between server and occupants.
+ *
+ * <p><b>Thread Safety:</b> All public methods are thread-safe via synchronized
+ * access to responseCheckerMap.
+ *
+ * <p><b>Memory Management:</b> Responses are automatically cleaned up when:
+ * <ul>
+ *   <li>All occupants have responded
+ *   <li>A cancel value is received
+ *   <li>The timeout expires
+ * </ul>
+ *
+ * Failure to cleanup would cause unbounded memory growth in long-running servers.
+ */
 public class ResponseManager {
 
     ZugArea area;
+
     public record OccupantResponse(Optional<Object> response, Occupant occupant) {}
-    public record BoolResponse (Optional<Boolean> response, Occupant occupant) {}
-    public record IntResponse (Optional<Integer> response, Occupant occupant) {}
-    public record DoubleResponse (Optional<Double> response, Occupant occupant) {}
-    public record StringResponse (Optional<String> response, Occupant occupant) {}
+    public record BoolResponse(Optional<Boolean> response, Occupant occupant) {}
+    public record IntResponse(Optional<Integer> response, Occupant occupant) {}
+    public record DoubleResponse(Optional<Double> response, Occupant occupant) {}
+    public record StringResponse(Optional<String> response, Occupant occupant) {}
 
     public static class ZugResponse {
         CompletableFuture<List<OccupantResponse>> futureResponse;
         Object cancelValue;
+
         public ZugResponse(CompletableFuture<List<OccupantResponse>> futureResponse, Object cancelValue) {
             this.futureResponse = futureResponse;
             this.cancelValue = cancelValue;
         }
     }
 
-    private final Map<String, ZugResponse> responseCheckerMap = new HashMap<>();
+    // FIX: Use synchronized map to prevent concurrent modification and NPE
+    private final Map<String, ZugResponse> responseCheckerMap = Collections
+            .synchronizedMap(new HashMap<>());
 
     public ResponseManager(ZugArea area) {
         this.area = area;
     }
 
-    public void checkResponse(String responseType) { //log("Checking response: " + responseType);
+    /**
+     * Checks if a response is complete and notifies clients if so.
+     * Called by Occupant.setResponse() whenever a response is submitted.
+     *
+     * <p><b>FIX:</b> Now properly cleans up responses from the map after
+     * completion or cancellation to prevent memory leaks.
+     *
+     * @param responseType the type of response to check
+     */
+    public void checkResponse(String responseType) {
+        // FIX: Synchronized access and null-safety check
         ZugResponse response = responseCheckerMap.get(responseType);
-        List<OccupantResponse> responseMap = area.getOccupants().stream()
-                .filter(occupant -> !occupant.isBot())
-                .map(occupant -> new OccupantResponse(occupant.getResponse(responseType),occupant)).toList();
-        //TODO: how can occupantResponse.response() be null?!
+        if (response == null) {
+            ZugHandler.log(Level.FINE, "Orphaned response type (already completed): " + responseType);
+            return;
+        }
+
+        List<OccupantResponse> responseMap = getResponses(responseType);
+
+        // Check if ALL occupants have responded
         if (responseMap.stream().allMatch(occupantResponse -> occupantResponse.response().isPresent())) {
-            area.spam(ZugServMsgType.completedResponse,ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE,responseType));
+            area.spam(ZugServMsgType.completedResponse,
+                    ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
             response.futureResponse.complete(responseMap);
+            // FIX: CLEANUP - Remove from map to prevent memory leak
+            responseCheckerMap.remove(responseType);
         }
+        // Check if any occupant submitted a cancel value
         else if (responseMap.stream()
-                .map(r -> r.response).filter(Optional::isPresent)
+                .map(r -> r.response)
+                .filter(Optional::isPresent)
                 .anyMatch(optVal -> optVal.get().equals(response.cancelValue))) {
-            area.spam(ZugServMsgType.cancelledResponse,ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE,responseType));
+            area.spam(ZugServMsgType.cancelledResponse,
+                    ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
             response.futureResponse.complete(responseMap);
+            // FIX: CLEANUP - Remove from map to prevent memory leak
+            responseCheckerMap.remove(responseType);
         }
+    }
+
+    /**
+     * Gets current responses from all non-bot occupants for a given type.
+     * Extracted to improve readability and performance (single loop instead of stream).
+     *
+     * @param responseType the response type to query
+     * @return list of occupant responses
+     */
+    private List<OccupantResponse> getResponses(String responseType) {
+        List<OccupantResponse> responses = new ArrayList<>();
+        for (Occupant occupant : area.getOccupants()) {
+            if (!occupant.isBot()) {
+                responses.add(new OccupantResponse(occupant.getResponse(responseType), occupant));
+            }
+        }
+        return responses;
     }
 
     public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, int timeout) {
-        return requestResponse(responseType,null,timeout);
-    }
-    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, Object cancelValue, int timeout) {
-        //ZugManager.log("Requesting response " + responseType + "," + timeout + "," + cancelValue);
-        CompletableFuture<List<OccupantResponse>> future = new CompletableFuture<>();
-        responseCheckerMap.put(responseType, new ZugResponse(future,cancelValue));
-        area.getOccupants().forEach(occupant -> occupant.setResponse(responseType,null));
-        area.spam(ZugServMsgType.reqResponse, ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE,responseType));
-        return future.completeOnTimeout(
-                area.getOccupants().stream().filter(occupant -> !occupant.isBot())
-                        .map(occupant -> new OccupantResponse(occupant.getResponse(responseType),occupant))
-                        .toList()
-                ,timeout, TimeUnit.SECONDS);
+        return requestResponse(responseType, null, timeout);
     }
 
-    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, int timeout, Class<?> classFilter) {
-        return requestResponse(responseType,null,timeout,classFilter);
+    /**
+     * Requests responses from all occupants with timeout handling.
+     *
+     * <p><b>FIX:</b> Now ensures cleanup happens even on timeout via
+     * whenComplete() handler.
+     *
+     * @param responseType identifier for this response request
+     * @param cancelValue optional value that triggers immediate cancellation
+     * @param timeout timeout in seconds
+     * @return future that completes when all respond, one cancels, or timeout expires
+     */
+    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType,
+                                                                     Object cancelValue,
+                                                                     int timeout) {
+        CompletableFuture<List<OccupantResponse>> future = new CompletableFuture<>();
+        responseCheckerMap.put(responseType, new ZugResponse(future, cancelValue));
+
+        // Clear any existing responses
+        area.getOccupants().forEach(occupant -> occupant.setResponse(responseType, null));
+
+        area.spam(ZugServMsgType.reqResponse,
+                ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
+
+        // FIX: Ensure cleanup happens on timeout or completion
+        return future
+                .completeOnTimeout(
+                        getResponses(responseType),
+                        timeout, TimeUnit.SECONDS)
+                .whenComplete((result, ex) -> {
+                    // This handler ALWAYS runs, whether completed normally, by timeout, or by exception
+                    responseCheckerMap.remove(responseType);
+
+                    if (ex != null) {
+                        ZugHandler.log(Level.WARNING,
+                                "Response request failed: " + responseType + ", error: " + ex.getMessage());
+                    }
+                });
     }
-    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, Object cancelValue, int timeout, Class<?> classFilter) {
-        //ZugManager.log(Level.FINE,"Requesting response " + responseType + "," + timeout + "," + classFilter);
-        return requestResponse(responseType,cancelValue,timeout).thenApplyAsync(response ->
+
+    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType,
+                                                                     int timeout,
+                                                                     Class<?> classFilter) {
+        return requestResponse(responseType, null, timeout, classFilter);
+    }
+
+    /**
+     * Requests responses and filters by type.
+     *
+     * <p><b>FIX:</b> Cleanup guaranteed by parent requestResponse() call.
+     *
+     * @param responseType identifier for this response request
+     * @param cancelValue optional value that triggers immediate cancellation
+     * @param timeout timeout in seconds
+     * @param classFilter only include responses matching this class
+     * @return future with filtered responses
+     */
+    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType,
+                                                                     Object cancelValue,
+                                                                     int timeout,
+                                                                     Class<?> classFilter) {
+        return requestResponse(responseType, cancelValue, timeout).thenApplyAsync(response ->
                 response.stream().map(occupantResponse ->
-                        (occupantResponse.response.isEmpty() || !classFilter.isAssignableFrom(occupantResponse.response.get().getClass()))
-                                ? new OccupantResponse(Optional.empty(), occupantResponse.occupant) : occupantResponse
+                        (occupantResponse.response.isEmpty() ||
+                                !classFilter.isAssignableFrom(occupantResponse.response.get().getClass()))
+                                ? new OccupantResponse(Optional.empty(), occupantResponse.occupant)
+                                : occupantResponse
                 ).toList()
         );
     }
 
     public CompletableFuture<List<BoolResponse>> requestBoolResponse(String responseType, int timeout) {
-        return requestBoolResponse(responseType,null,timeout);
+        return requestBoolResponse(responseType, null, timeout);
     }
-    public CompletableFuture<List<BoolResponse>> requestBoolResponse(String responseType, Object cancelValue, int timeout) { //log("Requesting boolean response ");
-        return requestResponse(responseType,cancelValue,timeout,Boolean.class).thenApplyAsync(response -> { //log("Received boolean response");
-            return response.stream().map(occupantResponse ->
-                    new BoolResponse(Optional.ofNullable((Boolean)occupantResponse.response.orElse(null)),occupantResponse.occupant)).toList();
-        });
+
+    public CompletableFuture<List<BoolResponse>> requestBoolResponse(String responseType,
+                                                                     Object cancelValue,
+                                                                     int timeout) {
+        return requestResponse(responseType, cancelValue, timeout, Boolean.class)
+                .thenApplyAsync(response ->
+                        response.stream().map(occupantResponse ->
+                                        new BoolResponse(
+                                                Optional.ofNullable((Boolean) occupantResponse.response.orElse(null)),
+                                                occupantResponse.occupant))
+                                .toList()
+                );
     }
 
     public CompletableFuture<List<IntResponse>> requestIntResponse(String responseType, int timeout) {
-        return requestIntResponse(responseType,null,timeout);
+        return requestIntResponse(responseType, null, timeout);
     }
-    public CompletableFuture<List<IntResponse>> requestIntResponse(String responseType, Object cancelValue, int timeout) {
-        return requestResponse(responseType,cancelValue,timeout,Integer.class).thenApplyAsync(response ->
-                response.stream().map(occupantResponse ->
-                        new IntResponse(Optional.ofNullable((Integer)occupantResponse.response.orElse(null)),occupantResponse.occupant)).toList());
+
+    public CompletableFuture<List<IntResponse>> requestIntResponse(String responseType,
+                                                                   Object cancelValue,
+                                                                   int timeout) {
+        return requestResponse(responseType, cancelValue, timeout, Integer.class)
+                .thenApplyAsync(response ->
+                        response.stream().map(occupantResponse ->
+                                        new IntResponse(
+                                                Optional.ofNullable((Integer) occupantResponse.response.orElse(null)),
+                                                occupantResponse.occupant))
+                                .toList()
+                );
     }
 
     public CompletableFuture<List<DoubleResponse>> requestDoubleResponse(String responseType, int timeout) {
-        return requestDoubleResponse(responseType,null,timeout);
+        return requestDoubleResponse(responseType, null, timeout);
     }
-    public CompletableFuture<List<DoubleResponse>> requestDoubleResponse(String responseType, Object cancelValue, int timeout) {
-        return requestResponse(responseType,cancelValue,timeout,Double.class).thenApplyAsync(response ->
-                response.stream().map(occupantResponse ->
-                        new DoubleResponse(Optional.ofNullable((Double)occupantResponse.response.orElse(null)),occupantResponse.occupant)).toList());
+
+    public CompletableFuture<List<DoubleResponse>> requestDoubleResponse(String responseType,
+                                                                         Object cancelValue,
+                                                                         int timeout) {
+        return requestResponse(responseType, cancelValue, timeout, Double.class)
+                .thenApplyAsync(response ->
+                        response.stream().map(occupantResponse ->
+                                        new DoubleResponse(
+                                                Optional.ofNullable((Double) occupantResponse.response.orElse(null)),
+                                                occupantResponse.occupant))
+                                .toList()
+                );
     }
 
     public CompletableFuture<List<StringResponse>> requestStringResponse(String responseType, int timeout) {
-        return requestStringResponse(responseType,null,timeout);
-    }
-    public CompletableFuture<List<StringResponse>> requestStringResponse(String responseType, Object cancelValue, int timeout) {
-        return requestResponse(responseType,cancelValue,timeout,String.class).thenApplyAsync(response ->
-                response.stream().map(occupantResponse ->
-                        new StringResponse(Optional.ofNullable((String)occupantResponse.response.orElse(null)),occupantResponse.occupant)).toList());
+        return requestStringResponse(responseType, null, timeout);
     }
 
-    public CompletableFuture<Boolean> getConfirmation(String responseType, int timeout) { //log("Confirming...");
-        return requestBoolResponse(responseType,false,timeout).thenApplyAsync(response -> { //log("Confirmation Response: " + response);
-            return response.stream().allMatch(boolResponse -> boolResponse.response.orElse(false));
-        });
+    public CompletableFuture<List<StringResponse>> requestStringResponse(String responseType,
+                                                                         Object cancelValue,
+                                                                         int timeout) {
+        return requestResponse(responseType, cancelValue, timeout, String.class)
+                .thenApplyAsync(response ->
+                        response.stream().map(occupantResponse ->
+                                        new StringResponse(
+                                                Optional.ofNullable((String) occupantResponse.response.orElse(null)),
+                                                occupantResponse.occupant))
+                                .toList()
+                );
+    }
+
+    /**
+     * Requests boolean confirmation from all occupants.
+     * Returns true only if ALL occupants respond with true.
+     *
+     * @param responseType identifier for this confirmation request
+     * @param timeout timeout in seconds
+     * @return future completing with true if all confirm, false otherwise
+     */
+    public CompletableFuture<Boolean> getConfirmation(String responseType, int timeout) {
+        return requestBoolResponse(responseType, false, timeout)
+                .thenApplyAsync(response ->
+                        response.stream().allMatch(boolResponse -> boolResponse.response.orElse(false))
+                );
     }
 }

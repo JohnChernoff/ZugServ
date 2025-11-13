@@ -1,11 +1,16 @@
+package org.chernovia.lib.zugserv.tests;
+
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.*;
+import org.chernovia.lib.zugserv.enums.ZugAuthSource;
+
 import java.util.Optional;
 
 public class ZugServDemo extends ZugManager {
 
     public static void main(String[] args) {
-        new ZugServDemo(ZugServ.ServType.WEBSOCK,9999).getServ().startSrv();
+        new ZugServDemo(ZugServ.ServType.WEBSOCK_JAVALIN,9999).getServ().startSrv();
     }
 
     public ZugServDemo(ZugServ.ServType type, int port) {
@@ -13,8 +18,9 @@ public class ZugServDemo extends ZugManager {
     }
 
     @Override
-    public Optional<ZugUser> handleCreateUser(Connection conn, String name, ZugFields.AuthSource source, JsonNode dataNode) {
-        return Optional.of(new DemoUser(conn,name,source));
+    public Optional<ZugUser> handleCreateUser(Connection conn, ZugUser.UniqueName name, JsonNode dataNode) {
+        return Optional.of(new DemoUser(conn,name));
+
     }
 
     @Override
@@ -32,9 +38,14 @@ public class ZugServDemo extends ZugManager {
 
     }
 
+    @Override
+    public ObjectNode toJSON() {
+        return super.toJSON();
+    }
+
     class DemoUser extends ZugUser {
-        public DemoUser(Connection c, String name, ZugFields.AuthSource source) {
-            super(c, name, source);
+        public DemoUser(Connection c, UniqueName name) {
+            super(c, name);
         }
     }
 
@@ -47,6 +58,11 @@ public class ZugServDemo extends ZugManager {
     class DemoArea extends ZugArea {
         public DemoArea(String t, ZugUser c, AreaListener l) {
             super(t, c, l);
+        }
+
+        @Override
+        public String getName() {
+            return "DemoArea";
         }
     }
 }

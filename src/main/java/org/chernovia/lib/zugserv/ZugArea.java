@@ -329,7 +329,10 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     public void stopArea(boolean close) {
         if (areaThread != null) {
             running = false;
-            phaseManager.shutdownPhases();
+            try {
+                phaseManager.shutdownPhases();
+            } catch (InterruptedException ignore) {} //handled by phaseManager
+
         }
         if (close) getListener().ifPresent(l -> l.areaClosed(this));
     }

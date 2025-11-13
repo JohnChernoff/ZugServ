@@ -20,13 +20,13 @@ import com.fasterxml.jackson.databind.JsonNode;
 import org.chernovia.lib.zugserv.*;
 import java.util.Optional;
 
-public class ZugServDemo extends ZugManager {
+public class org.chernovia.lib.zugserv.tests.ZugServDemo extends ZugManager {
 
     public static void main(String[] args) {
-        new ZugServDemo(ZugServ.ServType.WEBSOCK,9999).getServ().startSrv();
+        new org.chernovia.lib.zugserv.tests.ZugServDemo(ZugServ.ServType.WEBSOCK,9999).getServ().startSrv();
     }
 
-    public ZugServDemo(ZugServ.ServType type, int port) {
+    public org.chernovia.lib.zugserv.tests.ZugServDemo(ZugServ.ServType type, int port) {
         super(type, port);
     }
 

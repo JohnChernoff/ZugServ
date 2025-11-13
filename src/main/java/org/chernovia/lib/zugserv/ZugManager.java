@@ -834,6 +834,18 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
      */
     @Override
     public void connected(Connection conn) {
+        if (getActiveConnectionCount() >= getServ().getMaxConnections()) {
+            log(Level.WARNING,
+                    "Connection rejected: limit reached (" + getServ().getMaxConnections() +
+                            " active). From: " + conn.getAddress());
+            tell(conn, ZugServMsgType.errMsg, "Server is at capacity. Try again later.");
+            conn.close("Server at capacity");
+            return;
+        }
+
+        log(Level.FINE,
+                "Connection accepted. Active: " + getActiveConnectionCount() +
+                        "/" + getServ().getMaxConnections());
         tell(conn, ZugServMsgType.reqLogin,ZugUtils.newJSON().put(ZugFields.USER_ID,conn.getID()));
     }
 

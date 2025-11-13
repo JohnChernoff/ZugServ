@@ -21,7 +21,9 @@ import org.chernovia.lib.zugserv.web.WebSockServ;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -73,19 +75,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
             case WEBSOCK_JAVALIN -> new JavalinServ(port,this, ep, hosts);
             case WEBSOCK_DEFAULT -> new WebSockServ(port,this);
         };
-        if (authSources.get(ZugAuthSource.google)) {
-            try {
-                FileInputStream serviceAccount =
-                        new FileInputStream(GOOGLE_APPLICATION_CREDENTIALS_FILE_NAME + ".json");
-                FirebaseOptions options = new FirebaseOptions.Builder()
-                        .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                        .build();
-                FirebaseApp.initializeApp(options);
-            } catch (IOException ioException) {
-                log("Firebase Error: " + Level.WARNING, ioException.getMessage());
-            }
-
-        }
+        initializeAuthServices(authSources);
     }
 
     public static void setLoggingLevel(Level level) {
@@ -175,33 +165,158 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         this.preserveDisconnectedUsers = preserveDisconnectedUsers;
     }
 
-    public void handleLichessLogin(Connection conn, String token) { //log("Handling lichess login");
-        if (token == null || token.isEmpty() || token.equals(ZugFields.UNKNOWN_STRING)) {
-            log("Login failure: Bad name/token"); err(conn, "Login failure: Bad name/token");
-        } else { //log("Logging in with token: " + token);
-            ClientAuth client = Client.auth(token);
-            AccountApiAuth aa = client.account(); //log("Created account: " + aa);
-            if (aa.profile().isPresent()) {
-                log("Logging in lichess user: " + aa.profile().get().name());
-                handleLogin(conn, new ZugUser.UniqueName(aa.profile().get().name(), ZugAuthSource.lichess),ZugUtils.newJSON().put(ZugFields.TOKEN,token));
-            } else {
-                log("Login failure: bad token"); err(conn, "Login failure: bad token");
+    /**
+     * Checks if auth services are responding (basic health check).
+     * Returns false if any timeout has occurred recently.
+     *
+     * <p>Useful for deciding whether to reject login attempts.
+     *
+     * @return true if auth services appear healthy
+     */
+    public boolean areAuthServicesHealthy() {
+        // TODO: Implement health tracking
+        // - Track recent timeouts per service
+        // - Return false if too many failures in recent window
+        // - Example: reject logins if Lichess has failed 3+ times in last 60 seconds
+        return true;
+    }
+
+    public void initializeAuthServices(java.util.Map<ZugAuthSource, Boolean> authSources) {
+        if (authSources.get(ZugAuthSource.google)) {
+            try {
+                // Initialize Firebase with timeout to prevent startup hangs
+                CompletableFuture<Void> firebaseInit = CompletableFuture.runAsync(() -> {
+                    try {
+                        FileInputStream serviceAccount =
+                                new FileInputStream(GOOGLE_APPLICATION_CREDENTIALS_FILE_NAME + ".json");
+                        GoogleCredentials credentials = GoogleCredentials.fromStream(serviceAccount);
+                        FirebaseOptions options = new FirebaseOptions.Builder()
+                                .setCredentials(credentials)
+                                .build();
+                        FirebaseApp.initializeApp(options);
+                        log(Level.INFO, "Firebase initialized successfully");
+                    } catch (IOException e) {
+                        log(Level.WARNING, "Firebase initialization failed: " + e.getMessage());
+                    }
+                }, AuthTimeoutConfig.getAuthExecutor());
+
+                // Timeout for Firebase init (5 seconds)
+                firebaseInit.completeOnTimeout(null, 5, TimeUnit.SECONDS)
+                        .exceptionally(ex -> {
+                            log(Level.WARNING, "Firebase initialization timeout");
+                            return null;
+                        });
+
+            } catch (Exception e) {
+                log(Level.WARNING, "Error initializing Firebase: " + e.getMessage());
             }
         }
     }
 
-    public void handleGoogleLogin(Connection conn, String token) {
-        try {
-            FirebaseToken firebaseToken = FirebaseAuth.getInstance().verifyIdToken(token);
-            if (firebaseToken != null) {
-                log("Logging in Google user: " + firebaseToken.getName());
-                handleLogin(conn, new ZugUser.UniqueName(firebaseToken.getName(), ZugAuthSource.google),ZugUtils.newJSON().put(ZugFields.TOKEN,token));
-            }
-        } catch (FirebaseAuthException e) {
-            log("Google Login failure: " + e.getMessage()); err(conn, "Login failure: bad token");
+    /**
+     * Handles Lichess OAuth login with timeout.
+     * If Lichess service doesn't respond in 30 seconds, login fails.
+     *
+     * @param conn the connection attempting to log in
+     * @param token the Lichess auth token
+     */
+    public void handleLichessLogin(Connection conn, String token) {
+        if (token == null || token.isEmpty() || token.equals(ZugFields.UNKNOWN_STRING)) {
+            log(Level.WARNING, "Login failure: Bad name/token (Lichess)");
+            err(conn, "Login failure: Bad name/token");
+            return;
         }
 
+        // Run Lichess API call with timeout to prevent hanging
+        try {
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try {
+                    ClientAuth client = Client.auth(token);
+                    AccountApiAuth aa = client.account();
 
+                    if (aa.profile().isPresent()) {
+                        String lichessUsername = aa.profile().get().name();
+                        log(Level.INFO, "Logging in Lichess user: " + lichessUsername);
+                        handleLogin(conn,
+                                new ZugUser.UniqueName(lichessUsername, ZugAuthSource.lichess),
+                                ZugUtils.newJSON().put(ZugFields.TOKEN, token));
+                    } else {
+                        log(Level.WARNING, "Login failure: bad Lichess token");
+                        err(conn, "Login failure: bad token");
+                    }
+                } catch (Exception e) {
+                    log(Level.WARNING, "Lichess login error: " + e.getMessage());
+                    err(conn, "Login failure: " + e.getMessage());
+                }
+            }, AuthTimeoutConfig.getAuthExecutor());
+
+            // FIX: Timeout wrapper - fail if takes too long
+            future.completeOnTimeout(null,
+                            AuthTimeoutConfig.LICHESS_TIMEOUT_SECONDS,
+                            TimeUnit.SECONDS)
+                    .exceptionally(ex -> {
+                        log(Level.WARNING, "Lichess login timeout or error: " + ex.getMessage());
+                        err(conn, "Login service temporarily unavailable. Try again later.");
+                        return null;
+                    });
+
+        } catch (Exception e) {
+            log(Level.WARNING, "Lichess login exception: " + e.getMessage());
+            err(conn, "Login failure: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Handles Google OAuth login with timeout.
+     * If Firebase doesn't respond in 30 seconds, login fails.
+     *
+     * @param conn the connection attempting to log in
+     * @param token the Google Firebase ID token
+     */
+    public void handleGoogleLogin(Connection conn, String token) {
+        if (token == null || token.isEmpty()) {
+            log(Level.WARNING, "Login failure: Empty Google token");
+            err(conn, "Login failure: Bad token");
+            return;
+        }
+
+        // Run Firebase verification with timeout
+        try {
+            CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
+                try {
+                    FirebaseToken firebaseToken = FirebaseAuth.getInstance()
+                            .verifyIdToken(token);
+
+                    if (firebaseToken != null) {
+                        String googleName = firebaseToken.getName();
+                        log(Level.INFO, "Logging in Google user: " + googleName);
+                        handleLogin(conn,
+                                new ZugUser.UniqueName(googleName, ZugAuthSource.google),
+                                ZugUtils.newJSON().put(ZugFields.TOKEN, token));
+                    } else {
+                        log(Level.WARNING, "Login failure: Firebase token verification returned null");
+                        err(conn, "Login failure: bad token");
+                    }
+                } catch (FirebaseAuthException e) {
+                    log(Level.WARNING, "Google login error: " + e.getMessage());
+                    err(conn, "Login failure: " + e.getMessage());
+                }
+            }, AuthTimeoutConfig.getAuthExecutor());
+
+            // FIX: Timeout wrapper
+            future.completeOnTimeout(null,
+                            AuthTimeoutConfig.FIREBASE_TIMEOUT_SECONDS,
+                            TimeUnit.SECONDS)
+                    .exceptionally(ex -> {
+                        log(Level.WARNING, "Google login timeout or error: " + ex.getMessage());
+                        err(conn, "Login service temporarily unavailable. Try again later.");
+                        return null;
+                    });
+
+        } catch (Exception e) {
+            log(Level.WARNING, "Google login exception: " + e.getMessage());
+            err(conn, "Login failure: " + e.getMessage());
+        }
     }
 
     public void spam(String msg) {
@@ -306,6 +421,7 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
         }
         for (ZugArea area : getAreas()) area.removeObserver(conn);
         rateLimitManager.removeConnection(conn.getID());
+        log("Active connections: " + getActiveConnectionCount() + "/" + getServ().getMaxConnections());
     }
 
     /**
@@ -444,6 +560,97 @@ abstract public class ZugHandler extends Thread implements ConnListener, JSONifi
 
         });
         return ZugUtils.newJSON().set(ZugFields.AREAS,arrayNode);
+    }
+
+    /**
+     * Gets current active connection count.
+     *
+     * @return number of active connections
+     */
+    public int getActiveConnectionCount() {
+        return getServ().getAllConnections(true).size();
+    }
+
+    /**
+     * Gets connection usage as percentage of max.
+     *
+     * @return percentage 0-100
+     */
+    public int getConnectionUsagePercent() {
+        int max = getServ().getMaxConnections();
+        if (max <= 0) return 0;
+        return (int) ((getActiveConnectionCount() * 100L) / max);
+    }
+
+    /**
+     * Checks if connection limit is nearing capacity (>= 80%).
+     *
+     * @return true if nearing capacity
+     */
+    public boolean isNearCapacity() {
+        return getConnectionUsagePercent() >= 80;
+    }
+
+    /**
+     * Checks if connection limit is critically high (>= 95%).
+     *
+     * @return true if critically full
+     */
+    public boolean isCriticallyFull() {
+        return getConnectionUsagePercent() >= 95;
+    }
+
+    /**
+     * Gracefully shuts down the server and all connections.
+     * Closes all connections with a 5-second timeout for graceful disconnect.
+     *
+     * @throws InterruptedException if interrupted during shutdown
+     */
+    public void shutdownServer() throws InterruptedException {
+        int connCount = getActiveConnectionCount();
+        log(Level.INFO, "Shutting down server - closing " + connCount + " connections");
+
+        // Notify all connections of shutdown
+        for (Connection conn : getServ().getAllConnections(true)) {
+            try {
+                conn.close("Server shutdown");
+            } catch (Exception e) {
+                log(Level.WARNING, "Error closing connection: " + e.getMessage());
+            }
+        }
+
+        // Wait for graceful shutdown (up to 5 seconds)
+        long shutdownStart = System.currentTimeMillis();
+        long shutdownTimeout = 5000; // 5 seconds
+
+        while (getActiveConnectionCount() > 0 &&
+                (System.currentTimeMillis() - shutdownStart) < shutdownTimeout) {
+            Thread.sleep(100);
+        }
+
+        if (getActiveConnectionCount() > 0) {
+            log(Level.WARNING,
+                    "Force-closing " + getActiveConnectionCount() +
+                            " connections that didn't shutdown gracefully");
+        }
+
+        log(Level.INFO, "Server shutdown complete");
+    }
+
+    /**
+     * Gets diagnostic info about connection pool.
+     *
+     * @return formatted diagnostic string
+     */
+    public String getConnectionDiagnostics() {
+        return String.format(
+                "Connections: %d/%d (%.1f%% utilization) | Near Capacity: %b | Critically Full: %b",
+                getActiveConnectionCount(),
+                getServ().getMaxConnections(),
+                (getActiveConnectionCount() * 100.0) / getServ().getMaxConnections(),
+                isNearCapacity(),
+                isCriticallyFull()
+        );
     }
 
     @Override

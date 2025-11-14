@@ -118,7 +118,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
      * Pings all users.
      */
     public synchronized void pingAll() {
-        getUsers().values().stream().filter(ZugUser::isLoggedIn).forEach(user -> user.tell(ZugServMsgType.ping));
+        serv.getAllConnections(true).forEach(conn -> conn.tell(ZugServMsgType.ping,""));
+        //getUsers().values().stream().filter(ZugUser::isLoggedIn).forEach(user -> user.tell(ZugServMsgType.ping));
     }
 
     private final MessageManager messageManager = new MessageManager();

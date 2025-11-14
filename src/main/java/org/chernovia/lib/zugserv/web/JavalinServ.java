@@ -26,13 +26,20 @@ public class JavalinServ extends ServAdapter implements ZugServ {
     public JavalinServ(int p, ConnListener l, String endpoint, List<String> hosts) {
         super(l); port = p;
         logger.log(Level.INFO, "Starting Server, port: " + p + ", endpoint: " + endpoint + ", hosts: " + hosts);
-        server = Javalin.create(config -> config.bundledPlugins.enableCors(cors ->
-                cors.addRule(it -> {
-                    if (hosts.isEmpty()) it.reflectClientOrigin = true;
-                    else for (String host : hosts) it.allowHost(host);
-                    it.allowCredentials = true;
-                    it.exposeHeader("Authorization");
-                })))
+        server = Javalin.create(config ->
+                        {
+                            config.jetty.modifyHttpConfiguration(httpConfig -> {
+                                httpConfig.setIdleTimeout(30000); // 30 seconds in milliseconds
+                            });
+                            //config.http.asyncTimeout = 30_000L;
+                            config.bundledPlugins.enableCors(cors ->
+                                    cors.addRule(it -> {
+                                        if (hosts.isEmpty()) it.reflectClientOrigin = true;
+                                        else for (String host : hosts) it.allowHost(host);
+                                        it.allowCredentials = true;
+                                        it.exposeHeader("Authorization"); }));
+
+                        })
                 .post("/twitchsrv/shutdown", this::handleShutdown)
                 .before(ctx -> {
                     String origin = ctx.header("Origin");

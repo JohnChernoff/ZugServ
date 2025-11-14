@@ -45,6 +45,7 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
 
     public static String GOOGLE_APPLICATION_CREDENTIALS_FILE_NAME = "google_app_credentials";
     private static boolean VERBOSE = true; //for enum names vs ordinal
+    public static boolean CONN_MSG_DEBUG = false;
     static final Logger logger = Logger.getLogger("ZugServLog");
     ConcurrentHashMap<String,ZugUser> users = new ConcurrentHashMap<>();
     ConcurrentHashMap<String,ZugArea> areas = new ConcurrentHashMap<>();
@@ -403,7 +404,8 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
      * @param msg the message (typically but not necessarily in JSON format)
      */
     @Override
-    public void newMsg(Connection conn, String msg) { //log("New Conn Message: " + msg);
+    public void newMsg(Connection conn, String msg) {
+        if (CONN_MSG_DEBUG) log("New Conn Message: " + msg);
         if (msg.length() > getServ().getMaxIncomingMessageSize()) {
             log(Level.WARNING, "Message exceeds size limit: " + msg.length() +
                     " from " + conn.getAddress());

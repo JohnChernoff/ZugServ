@@ -41,7 +41,7 @@ public class ManualWebSockConn extends ConnAdapter implements Runnable {
 			in = sock.getInputStream(); out = sock.getOutputStream(); 
 			reader = new BufferedReader(new InputStreamReader(in));
 		}
-		catch (IOException argh) { argh.printStackTrace(); }
+		catch (IOException argh) { ZugServ.printStackTrace(argh); }
 	}
 	
 	public boolean handshake() { if (noshake) return true;
@@ -63,7 +63,7 @@ public class ManualWebSockConn extends ConnAdapter implements Runnable {
 				return true;
 			}
 		}
-		catch (Exception argh) { argh.printStackTrace(); }
+		catch (Exception argh) { ZugServ.printStackTrace(argh); }
 		return false;
 	}
 	
@@ -153,7 +153,7 @@ public class ManualWebSockConn extends ConnAdapter implements Runnable {
 	@Override
 	public void close(String reason) {
 		logger.log(Level.WARNING,"Closing socket: " + reason);
-		try { socket.close(); } catch (IOException e) { e.printStackTrace(); }
+		try { socket.close(); } catch (IOException e) { ZugServ.printStackTrace(e); }
 		running = false;
 	}
 

@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.Queue;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.logging.Level;
 
 /**
  * Manages message history for a room/area.
@@ -75,11 +76,18 @@ public class MessageManager implements JSONifier {
      */
     public ArrayNode toJSONArray() {
         ArrayNode historyNode = ZugUtils.newJSONArray();
-        // ConcurrentLinkedQueue provides a consistent iterator snapshot
-        messages.forEach(historyNode::add);
-        return historyNode;
+        try {
+            // ConcurrentLinkedQueue provides a consistent iterator snapshot
+            // This is already thread-safe, but document it
+            messages.forEach(historyNode::add);
+            return historyNode;
+        } catch (Exception e) {
+            ZugHandler.log(Level.SEVERE,
+                    "Error serializing message history: " + e.getMessage());
+            ZugServ.printStackTrace(e);
+            return historyNode; // Return partial results
+        }
     }
-
     /**
      * Gets the current size of the message history.
      *

@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 
+import org.chernovia.lib.zugserv.ZugServ;
 import org.java_websocket.client.WebSocketClient;
 import org.java_websocket.handshake.ServerHandshake;
 
@@ -35,7 +36,7 @@ public class ZugTestClient extends WebSocketClient {
 
         } catch (Exception e) {
             logger.log(Level.SEVERE, "Failed to connect: " + e.getMessage());
-            e.printStackTrace();
+            ZugServ.printStackTrace(e);
         }
     }
 
@@ -99,7 +100,7 @@ public class ZugTestClient extends WebSocketClient {
     @Override
     public void onError(Exception ex) {
         logger.log(Level.SEVERE, "✗ WebSocket error: " + ex.getMessage());
-        ex.printStackTrace();
+        ZugServ.printStackTrace(ex);
         closeLatch.countDown();
     }
 

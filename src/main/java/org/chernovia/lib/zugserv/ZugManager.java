@@ -41,33 +41,47 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
         private final ChronJob job;
         private long interval;
         private boolean running = false;
-        public long getInterval() { return interval; }
-        public void setInterval(long interval) { this.interval = interval; }
-        public boolean isRunning() { return running; }
-        public void setRunning(boolean running) { this.running = running; }
+        private volatile Throwable lastError = null;
 
-        /**
-         * Creates a worker process with an interval (in millis) and a job to repeatedly execute.
-         * @param i the interval (in millis)
-         * @param task the task to perform
-         */
+        public Throwable getLastError() { return lastError; }
+
         public WorkerProc(Long i, ChronJob task) {
-            interval = i; job = task; //new Thread(this).start();
+            interval = i;
+            job = task;
+            setName("WorkerProc-" + System.nanoTime());  // Aid debugging
+            setUncaughtExceptionHandler((t, e) -> {
+                ZugHandler.log(Level.SEVERE,
+                        "Worker thread " + t.getName() + " crashed: " + e.getMessage());
+                ZugServ.printStackTrace(e);
+                lastError = e;
+            });
         }
 
-        /**
-         * Begins the worker process.
-         */
         public void run() {
             running = true;
+            ZugHandler.log(Level.INFO, "Worker started: " + getName());
+
             while (running) {
                 try {
                     Thread.sleep(interval);
+                    try {
+                        job.begin();
+                    } catch (Exception e) {
+                        ZugHandler.log(Level.SEVERE,
+                                "Job " + getName() + " failed: " + e.getMessage());
+                        ZugServ.printStackTrace(e);
+                        lastError = e;
+                        // Don't stop - let job recover for next cycle
+                    }
                 } catch (InterruptedException e) {
-                    log(e.getMessage()); running = false;
+                    if (running) {  // Only log if not intentional shutdown
+                        ZugHandler.log(Level.WARNING, "Worker interrupted: " + getName());
+                    }
+                    running = false;
                 }
-                job.begin();
             }
+
+            ZugHandler.log(Level.INFO, "Worker stopped: " + getName());
         }
     }
 
@@ -320,13 +334,21 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
         String title = getTxtNode(dataNode, ZugFields.AREA_ID, true)
                 .map(rawTitle -> {
                     try {
-                        return InputValidator.validateAreaTitle(rawTitle);
+                        String validated = InputValidator.validateAreaTitle(rawTitle);
+                        log(Level.FINE, "Area title validated: " + validated);
+                        return validated;
                     } catch (IllegalArgumentException e) {
+                        log(Level.WARNING,
+                                "Area title validation failed for user " + user.getName() +
+                                        ": '" + rawTitle + "' - " + e.getMessage());
                         err(user, "Invalid area title: " + e.getMessage());
                         return null;
                     }
                 })
-                .orElseGet(this::generateAreaName);
+                .orElseGet(() -> {
+                    log(Level.FINE, "No title provided, generating...");
+                    return generateAreaName();
+                });
 
         if (title == null) {
             return Optional.empty();
@@ -468,12 +490,37 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
         getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.DEAFENED).ifPresent(occupant::setDeafened));
     }
 
-    public Optional<ZugArea> handleBan(ZugUser user, JsonNode dataNode) { //TODO: use UNAME (see below)
-        Optional<ZugArea> a = getArea(dataNode);
-        a.ifPresent(area -> getOccupant(user, dataNode)
-                .flatMap(occupant -> getUniqueName(dataNode.get(ZugFields.NAME)))
-                .ifPresent(name -> area.banOccupant(user, name, 15 * 60 * 1000,true)));
-        return a;
+    public Optional<ZugArea> handleBan(ZugUser user, JsonNode dataNode) {
+        Optional<ZugArea> areaOpt = getArea(dataNode);
+
+        if (areaOpt.isEmpty()) {
+            err(user, ERR_AREA_NOT_FOUND);
+            return areaOpt;
+        }
+
+        ZugArea area = areaOpt.get();
+
+        Optional<Occupant> occupantOpt = getOccupant(user, dataNode);
+        if (occupantOpt.isEmpty()) {
+            err(user, "You are not in that area");
+            return areaOpt;
+        }
+
+        Optional<ZugUser.UniqueName> nameOpt = getUniqueName(dataNode.get(ZugFields.NAME));
+        if (nameOpt.isEmpty()) {
+            err(user, "Invalid target username");
+            return areaOpt;
+        }
+
+        try {
+            area.banOccupant(user, nameOpt.get(), 15 * 60 * 1000, true);
+            log(Level.FINE, "Banned user: " + nameOpt.get());
+        } catch (Exception e) {
+            log(Level.SEVERE, "Ban failed for " + user.getName() + ": " + e.getMessage());
+            err(user, "Ban operation failed");
+        }
+
+        return areaOpt;
     }
 
     public Optional<ZugArea> handleKick(ZugUser kicker, JsonNode dataNode) {
@@ -497,7 +544,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
 
         // NEW: Validate response type
         String responseType = getTxtNode(dataNode, ZugFields.RESPONSE_TYPE).orElse(null);
-        if (responseType == null || !InputValidator.isValidResponseType(responseType)) {
+        if (!InputValidator.isValidResponseType(responseType)) {
             err(user, "Invalid response type");
             return a;
         }
@@ -515,19 +562,19 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
         if (responseNode.isBoolean()) {
             response = responseNode.asBoolean();
         } else if (responseNode.isInt()) {
-            Integer intVal = responseNode.asInt();
+            int intVal = responseNode.asInt();
             // NEW: Validate reasonable range
             if (intVal < -1000000 || intVal > 1000000) {
-                InputValidator.logValidationFailure("INT_RESPONSE_OOB", intVal.toString());
+                InputValidator.logValidationFailure("INT_RESPONSE_OOB", Integer.toString(intVal));
                 err(user, "Response value out of range");
                 return a;
             }
             response = intVal;
         } else if (responseNode.isDouble()) {
-            Double dblVal = responseNode.asDouble();
+            double dblVal = responseNode.asDouble();
             // NEW: Reject NaN/Infinity
             if (Double.isNaN(dblVal) || Double.isInfinite(dblVal)) {
-                InputValidator.logValidationFailure("INVALID_DOUBLE", dblVal.toString());
+                InputValidator.logValidationFailure("INVALID_DOUBLE", Double.toString(dblVal));
                 err(user, "Invalid numeric response");
                 return a;
             }
@@ -540,8 +587,22 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
             return a;
         }
 
-        a.flatMap(area -> getOccupant(user, dataNode))
-                .ifPresent(occupant -> occupant.setResponse(responseType, response));
+        Optional<Occupant> occupantOpt = a.flatMap(area -> area.getOccupant(user));
+
+        if (occupantOpt.isEmpty()) {
+            log(Level.WARNING, "User " + user.getName() + " not in area for response");
+            err(user, ERR_NOT_OCCUPANT);
+            return a;
+        }
+
+        try {
+            occupantOpt.get().setResponse(responseType, response);
+            log(Level.FINE, "Response set for " + user.getName());
+        } catch (Exception e) {
+            log(Level.SEVERE, "Error setting response: " + e.getMessage());
+            err(user, "Response processing error");
+            ZugServ.printStackTrace(e);
+        }
 
         return a;
     }
@@ -571,15 +632,39 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
     }
 
     private void createOccupantAndJoin(ZugArea area, ZugUser user, JsonNode dataNode) {
-        area.getOccupant(user).ifPresentOrElse(area::rejoin, () -> {
-            if (!area.config.allowGuests && user.isGuest()) {
-                err(user,"Sorry, guests are not allowed in this area");
-            }
-            else if (area.numOccupants() < area.getMaxOccupants()) {
-                handleCreateOccupant(user, area, dataNode).ifPresent(occupant -> joinArea(area,occupant));
-            }
-            else handleMaxOccupancy(user, area, dataNode);
-        });
+        Optional<Occupant> existingOccupant = area.getOccupant(user);
+        existingOccupant.ifPresentOrElse(
+                existing -> {
+                    area.rejoin(existing);
+                    log(Level.FINE, "User rejoining: " + user.getName());
+                },
+                () -> {
+                    // Occupant doesn't exist - create new one
+                    if (!area.config.allowGuests && user.isGuest()) {
+                        log(Level.INFO, "Guest rejected from area: " + area.getTitle());
+                        err(user, "Sorry, guests are not allowed in this area");
+                        return;  // Exit early with error
+                    }
+
+                    if (area.numOccupants() >= area.getMaxOccupants()) {
+                        log(Level.INFO, "Area full: " + area.getTitle());
+                        handleMaxOccupancy(user, area, dataNode);
+                        return;  // Exit early with error
+                    }
+
+                    Optional<Occupant> newOccupantOpt = handleCreateOccupant(user, area, dataNode);
+                    newOccupantOpt.ifPresentOrElse(
+                            occupant -> {
+                                joinArea(area, occupant);
+                                log(Level.FINE, "User joined: " + user.getName() + " in " + area.getTitle());
+                            },
+                            () -> {
+                                log(Level.WARNING, "Failed to create occupant for " + user.getName());
+                                err(user, "Failed to join area");
+                            }
+                    );
+                }
+        );
     }
 
     private void joinArea(ZugArea area, Occupant occupant) {
@@ -724,11 +809,9 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
                             generateGuestName(getTxtNode(dataNode,ZugFields.NAME).orElse(ZugFields.GUEST)),
                             dataNode);
                 } catch (Exception e) {
-                    logger.log(Level.SEVERE, "Exception in handleLoggedIn: " + e.getMessage());
-                    e.printStackTrace();
-                    throw e;
+                    ErrorContext.logError("Guest Login", "generateGuestName", String.valueOf(conn.getID()), e);
+                    err(conn, "Login processing error. Please try again.");
                 }
-
                 else err(conn,"Login error: guests not allowed");
             }
             else err(conn,"Login error: source not found");

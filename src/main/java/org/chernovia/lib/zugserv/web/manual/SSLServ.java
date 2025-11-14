@@ -44,7 +44,7 @@ public class SSLServ implements ZugServ, Runnable {
 			serverSocket = ((SSLServerSocket)factory.createServerSocket(port));
 		}
         catch (IOException e) { logger.log(Level.SEVERE,"Error starting on port " + port); return; }
-		catch (Exception fuck) { fuck.printStackTrace(); }
+		catch (Exception fuck) { ZugServ.printStackTrace(fuck); }
 		
 		running = true;
 
@@ -56,7 +56,7 @@ public class SSLServ implements ZugServ, Runnable {
                 logger.log(Level.INFO,"New socket creation at: " + newSocket.getInetAddress());
             } catch (IOException e) {
                 logger.log(Level.WARNING,"IO EXCEPTION OCCURED WHEN LISTENING FOR CHAT CLIENTS!");
-                e.printStackTrace();
+				ZugServ.printStackTrace(e);
             }
         }
     }
@@ -65,7 +65,7 @@ public class SSLServ implements ZugServ, Runnable {
 		try {
 			String myaddr = InetAddress.getLocalHost().getHostAddress();
 			logger.log(Level.INFO,"Server started at address [ " + myaddr + ":" + port + " ]");
-		} catch (UnknownHostException e) { logger.log(Level.SEVERE,e.getMessage()); e.printStackTrace();
+		} catch (UnknownHostException e) { logger.log(Level.SEVERE,e.getMessage()); ZugServ.printStackTrace(e);
 			return true;
 		}
 		return false;

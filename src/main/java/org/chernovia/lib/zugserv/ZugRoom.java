@@ -6,11 +6,15 @@ import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * A ZugRoom represents an area that can contain and rudimentarily manage an arbitrarily defined number of Occupants.
  */
 abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>, JSONifier {
+
+    static final Logger logger = Logger.getLogger("RoomLog");
 
     private final String title;
 
@@ -306,7 +310,27 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @param ignoreDeafness it true, message is sent regardless of isDeafened()
      */
     public final void tell(Occupant occupant, Enum<?> type, ObjectNode node,boolean ignoreDeafness) {
-        if (!occupant.isDeafened() || ignoreDeafness) occupant.getUser().tell(type, node.put(ZugFields.AREA_ID,getTitle()));
+        if (occupant == null) {
+            logger.log(Level.WARNING, "tell() called with null occupant");
+            return;
+        }
+
+        if (occupant.getUser() == null) {
+            logger.log(Level.WARNING, "Occupant has no user: " + occupant);
+            return;
+        }
+
+        if (!occupant.isDeafened() || ignoreDeafness) {
+            try {
+                occupant.getUser().tell(type, node.put(ZugFields.AREA_ID, getTitle()));
+            } catch (NullPointerException e) {
+                logger.log(Level.SEVERE, "NPE in tell(): user=" + occupant.getUser() +
+                        ", conn=" + occupant.getUser().getConn());
+                ZugServ.printStackTrace(e);
+            } catch (Exception e) {
+                logger.log(Level.WARNING, "Error telling occupant: " + e.getMessage());
+            }
+        }
     }
 
     //@Override public ObjectNode toJSON() { return toJSON2(ZugScope.basic); }

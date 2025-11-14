@@ -8,6 +8,7 @@ import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.*;
 import java.util.concurrent.*;
+import java.util.logging.Level;
 
 enum ZugAreaPhase {initializing,running,finalizing}
 
@@ -306,13 +307,21 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * @param initData initialization data (in JSON format)
      * @return true upon success
      */
-    public CompletableFuture<Boolean> startArea(ZugUser user, JsonNode initData) { //ZugManager.log("Starting: " + getTitle());
+    public CompletableFuture<Boolean> startArea(ZugUser user, JsonNode initData) {
         CompletableFuture<Boolean> future = new CompletableFuture<>();
-        if (!allowed(user,OperationType.start)) {
-            err(user,"Permission denied");
-        }
-        else if (areaThread.getState() == Thread.State.NEW) { //areaThread = new Thread(this);
-            running = true; //spam(ZugFields.ServMsgType.startArea,toJSON(true));
+        try {
+            if (!allowed(user, OperationType.start)) {
+                future.complete(false);
+                err(user, "Permission denied");
+                return future;
+            }
+            if (areaThread.getState() != Thread.State.NEW) {
+                future.complete(false);
+                err(user, "Area already started");
+                return future;  // Return early instead of completing twice
+            }
+
+            running = true;
             action(ActionType.start);
             areaThread.start();
             getListener().ifPresent(l -> {
@@ -320,9 +329,11 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
                 l.areaUpdated(this);
             });
             future.complete(true);
+        } catch (Exception e) {
+            ZugHandler.log(Level.SEVERE, "Error starting area: " + e.getMessage());
+            ZugServ.printStackTrace(e);
+            future.completeExceptionally(e);
         }
-        else err(user,"Area already started");
-        future.complete(false);
         return future;
     }
 
@@ -376,20 +387,29 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     @Override
     final public void spamX(Enum<?> t, String msg, Occupant... ignoreList) {
-        super.spamX(t,msg,ignoreList);
-        for (Connection conn : observers) {
-            if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID,getTitle()));
-        }
+        spamX(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID,getTitle()),ignoreList);
     }
 
     @Override
     final public void spamX(Enum<?> t, ObjectNode msgNode, Occupant... ignoreList) {
-        super.spamX(t,msgNode,ignoreList);
+        super.spamX(t, msgNode, ignoreList);
+        List<Connection> deadConnections = new ArrayList<>();
         for (Connection conn : observers) {
-            if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) removeObserver(conn);
-            else conn.tell(t,msgNode.put(ZugFields.AREA_ID,getTitle()));
+            try {
+                if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) {
+                    deadConnections.add(conn);
+                } else {
+                    conn.tell(t, msgNode.put(ZugFields.AREA_ID, getTitle()));
+                }
+            } catch (Exception e) {
+                ZugHandler.log(Level.WARNING,
+                        "Error sending to observer " + conn.getID() + " in area " +
+                                getTitle() + ": " + e.getMessage());
+                deadConnections.add(conn);
+            }
         }
+        // Clean up dead connections
+        deadConnections.forEach(this::removeObserver);
     }
 
     /**

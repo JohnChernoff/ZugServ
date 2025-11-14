@@ -40,7 +40,7 @@ public class ManualWebSockServ implements ZugServ, Runnable {
                 new Thread(conn).start();
             } catch (IOException e) {
                 logger.log(Level.WARNING,"IO EXCEPTION OCCURED WHEN LISTENING FOR CHAT CLIENTS!");
-                e.printStackTrace();
+				ZugServ.printStackTrace(e);
             }
         }
     }

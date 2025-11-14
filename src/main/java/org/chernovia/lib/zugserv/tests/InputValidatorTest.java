@@ -3,6 +3,8 @@ package org.chernovia.lib.zugserv.tests;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.chernovia.lib.zugserv.InputValidator;
+import org.chernovia.lib.zugserv.ZugServ;
+import org.chernovia.lib.zugserv.ZugUtils;
 import org.chernovia.lib.zugserv.enums.ZugAuthSource;
 
 import java.util.ArrayList;
@@ -523,20 +525,20 @@ public class InputValidatorTest {
         System.out.println("\n=== Testing Safe JSON Parsing ===");
 
         assertPresent("Parse JSON: valid object",
-                InputValidator.safeParseJSON("{}"));
+                ZugUtils.readTree("{}","Test"));
         assertPresent("Parse JSON: valid array",
-                InputValidator.safeParseJSON("[]"));
+                ZugUtils.readTree("[]","Test"));
         assertPresent("Parse JSON: valid data",
-                InputValidator.safeParseJSON("{\"key\": \"value\"}"));
+                ZugUtils.readTree("{\"key\": \"value\"}","Test"));
 
         assertEmpty("Parse JSON: invalid syntax",
-                InputValidator.safeParseJSON("{invalid json"));
+                ZugUtils.readTree("{invalid json","Test"));
         assertEmpty("Parse JSON: empty string",
-                InputValidator.safeParseJSON(""));
+                ZugUtils.readTree("","Test"));
         assertEmpty("Parse JSON: null input",
-                InputValidator.safeParseJSON(null));
+                ZugUtils.readTree(null,"Test"));
         assertEmpty("Parse JSON: whitespace only",
-                InputValidator.safeParseJSON("   "));
+                ZugUtils.readTree("   ","Test"));
     }
 
     private static void testRequiredFields() throws Exception {
@@ -637,7 +639,7 @@ public class InputValidatorTest {
 
         } catch (Exception e) {
             System.err.println("\n✗ FATAL ERROR: " + e.getMessage());
-            e.printStackTrace();
+            ZugServ.printStackTrace(e);
             testsFailed++;
         }
 

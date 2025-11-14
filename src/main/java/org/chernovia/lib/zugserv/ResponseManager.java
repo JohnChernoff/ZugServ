@@ -72,7 +72,6 @@ public class ResponseManager {
      * @param responseType the type of response to check
      */
     public void checkResponse(String responseType) {
-        // FIX: Synchronized access and null-safety check
         ZugResponse response = responseCheckerMap.get(responseType);
         if (response == null) {
             ZugHandler.log(Level.FINE, "Orphaned response type (already completed): " + responseType);
@@ -81,23 +80,32 @@ public class ResponseManager {
 
         List<OccupantResponse> responseMap = getResponses(responseType);
 
-        // Check if ALL occupants have responded
-        if (responseMap.stream().allMatch(occupantResponse -> occupantResponse.response().isPresent())) {
-            area.spam(ZugServMsgType.completedResponse,
-                    ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
-            response.futureResponse.complete(responseMap);
-            // FIX: CLEANUP - Remove from map to prevent memory leak
-            responseCheckerMap.remove(responseType);
-        }
-        // Check if any occupant submitted a cancel value
-        else if (responseMap.stream()
-                .map(r -> r.response)
-                .filter(Optional::isPresent)
-                .anyMatch(optVal -> optVal.get().equals(response.cancelValue))) {
-            area.spam(ZugServMsgType.cancelledResponse,
-                    ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
-            response.futureResponse.complete(responseMap);
-            // FIX: CLEANUP - Remove from map to prevent memory leak
+        try {
+            // Check if ALL occupants have responded
+            if (responseMap.stream().allMatch(occupantResponse -> occupantResponse.response().isPresent())) {
+                area.spam(ZugServMsgType.completedResponse,
+                        ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
+                response.futureResponse.complete(responseMap);
+                ZugHandler.log(Level.FINE, "Response completed: " + responseType);
+            }
+            // Check if any occupant submitted a cancel value
+            else if (responseMap.stream()
+                    .map(r -> r.response)
+                    .filter(Optional::isPresent)
+                    .anyMatch(optVal -> optVal.get().equals(response.cancelValue))) {
+                area.spam(ZugServMsgType.cancelledResponse,
+                        ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
+                response.futureResponse.complete(responseMap);
+                ZugHandler.log(Level.FINE, "Response cancelled: " + responseType);
+            }
+            // Response not yet complete - DON'T clean up yet
+            else { return; }
+        } catch (Exception e) {
+            ZugHandler.log(Level.SEVERE, "Error checking response " + responseType + ": " + e.getMessage());
+            ZugServ.printStackTrace(e);
+            response.futureResponse.completeExceptionally(e);
+        } finally {
+            // ALWAYS cleanup on completion or error
             responseCheckerMap.remove(responseType);
         }
     }
@@ -111,10 +119,18 @@ public class ResponseManager {
      */
     private List<OccupantResponse> getResponses(String responseType) {
         List<OccupantResponse> responses = new ArrayList<>();
-        for (Occupant occupant : area.getOccupants()) {
-            if (!occupant.isBot()) {
-                responses.add(new OccupantResponse(occupant.getResponse(responseType), occupant));
+        try {
+            // Create snapshot to prevent ConcurrentModificationException
+            List<Occupant> occupantSnapshot = new ArrayList<>(area.getOccupants());
+
+            for (Occupant occupant : occupantSnapshot) {
+                if (!occupant.isBot()) {
+                    responses.add(new OccupantResponse(occupant.getResponse(responseType), occupant));
+                }
             }
+        } catch (Exception e) {
+            ZugHandler.log(Level.WARNING,
+                    "Error getting responses for " + responseType + ": " + e.getMessage());
         }
         return responses;
     }
@@ -138,7 +154,18 @@ public class ResponseManager {
                                                                      Object cancelValue,
                                                                      int timeout) {
         CompletableFuture<List<OccupantResponse>> future = new CompletableFuture<>();
-        responseCheckerMap.put(responseType, new ZugResponse(future, cancelValue));
+
+        // Use computeIfAbsent for atomic put to prevent duplicates
+        ZugResponse existingResponse = responseCheckerMap.putIfAbsent(responseType,
+                new ZugResponse(future, cancelValue));
+
+        if (existingResponse != null) {
+            ZugHandler.log(Level.WARNING,
+                    "Duplicate response request: " + responseType + " - request rejected");
+            future.completeExceptionally(new IllegalStateException(
+                    "Response type " + responseType + " already pending"));
+            return future;
+        }
 
         // Clear any existing responses
         area.getOccupants().forEach(occupant -> occupant.setResponse(responseType, null));
@@ -146,18 +173,20 @@ public class ResponseManager {
         area.spam(ZugServMsgType.reqResponse,
                 ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
 
-        // FIX: Ensure cleanup happens on timeout or completion
+        // Guaranteed cleanup on ALL completion paths
         return future
-                .completeOnTimeout(
-                        getResponses(responseType),
-                        timeout, TimeUnit.SECONDS)
+                .completeOnTimeout(getResponses(responseType), timeout, TimeUnit.SECONDS)
                 .whenComplete((result, ex) -> {
-                    // This handler ALWAYS runs, whether completed normally, by timeout, or by exception
-                    responseCheckerMap.remove(responseType);
-
-                    if (ex != null) {
-                        ZugHandler.log(Level.WARNING,
-                                "Response request failed: " + responseType + ", error: " + ex.getMessage());
+                    try {
+                        if (ex != null) {
+                            ZugHandler.log(Level.WARNING,
+                                    "Response request failed: " + responseType + ", error: " + ex.getMessage());
+                        } else if (result != null && result.isEmpty()) {
+                            ZugHandler.log(Level.FINE, "Response timeout: " + responseType);
+                        }
+                    } finally {
+                        // THIS ALWAYS RUNS - cleanup guaranteed
+                        responseCheckerMap.remove(responseType);
                     }
                 });
     }

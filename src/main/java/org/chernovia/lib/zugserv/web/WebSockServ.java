@@ -79,7 +79,7 @@ public class WebSockServ extends ServAdapter implements ZugServ {
 		@Override
 		public void onError(org.java_websocket.WebSocket socket, Exception ex) {
 			logger.log(Level.INFO,"Error: '" + ex.getMessage() + "' at " + socket.getRemoteSocketAddress());
-			if (STACK_TRACE) ex.printStackTrace();
+			ZugServ.printStackTrace(ex);
 		}
 
 		/**
@@ -142,7 +142,7 @@ public class WebSockServ extends ServAdapter implements ZugServ {
 	@Override
 	public void stopSrv() {
 		try { server.stop(); }
-		catch (IOException | InterruptedException e) { e.printStackTrace(); }
+		catch (IOException | InterruptedException e) { ZugServ.printStackTrace(e); }
 		setRunning(false);
 	}
 

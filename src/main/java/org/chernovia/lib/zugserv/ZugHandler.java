@@ -21,9 +21,7 @@ import org.chernovia.lib.zugserv.web.WebSockServ;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -31,6 +29,20 @@ import java.util.logging.Logger;
  * ZugHandler extends ConnListener and encapsulates ZugServ to provide basic server functionality.
  */
 abstract public class ZugHandler implements ConnListener, JSONifier {
+
+    public static class ErrorContext {
+        public static void logError(String component, String operation,
+                                    String userId, Exception e) {
+            log(Level.SEVERE, String.format(
+                    "[%s] %s failed for user %s: %s | Cause: %s",
+                    component, operation, userId,
+                    e.getMessage(), e.getCause() != null ? e.getCause().getMessage() : "N/A"
+            ));
+            ZugServ.printStackTrace(e);
+            //if (ZugServ.stackTrace) log(Level.FINE, "Stack trace: ", Arrays.toString(e.getStackTrace()));
+        }
+    }
+
     public static String GOOGLE_APPLICATION_CREDENTIALS_FILE_NAME = "google_app_credentials";
     private static boolean VERBOSE = true; //for enum names vs ordinal
     static final Logger logger = Logger.getLogger("ZugServLog");
@@ -226,8 +238,6 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
             err(conn, "Login failure: Bad name/token");
             return;
         }
-
-        // Run Lichess API call with timeout to prevent hanging
         try {
             CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
                 try {
@@ -245,24 +255,31 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
                         err(conn, "Login failure: bad token");
                     }
                 } catch (Exception e) {
-                    log(Level.WARNING, "Lichess login error: " + e.getMessage());
-                    err(conn, "Login failure: " + e.getMessage());
+                    log(Level.SEVERE, "Lichess API error: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+                    ZugServ.printStackTrace(e);  // Add stack trace for debugging
+                    err(conn, "Login service error. Try again later.");
                 }
             }, AuthTimeoutConfig.getAuthExecutor());
 
-            // FIX: Timeout wrapper - fail if takes too long
-            future.completeOnTimeout(null,
-                            AuthTimeoutConfig.LICHESS_TIMEOUT_SECONDS,
-                            TimeUnit.SECONDS)
+            future.orTimeout(AuthTimeoutConfig.LICHESS_TIMEOUT_SECONDS, TimeUnit.SECONDS)
                     .exceptionally(ex -> {
-                        log(Level.WARNING, "Lichess login timeout or error: " + ex.getMessage());
-                        err(conn, "Login service temporarily unavailable. Try again later.");
+                        if (ex instanceof TimeoutException) {
+                            log(Level.SEVERE, "Lichess login TIMEOUT after " +
+                                    AuthTimeoutConfig.LICHESS_TIMEOUT_SECONDS + "s");
+                        } else {
+                            log(Level.SEVERE, "Lichess login failed: " + ex.getMessage());
+                            ZugServ.printStackTrace(ex);
+                        }
+                        err(conn, "Login service unavailable. Try again later.");
                         return null;
                     });
-
+        } catch (RejectedExecutionException e) {
+            log(Level.SEVERE, "Auth executor overloaded: " + e.getMessage());
+            err(conn, "Server too busy. Try again later.");
         } catch (Exception e) {
-            log(Level.WARNING, "Lichess login exception: " + e.getMessage());
-            err(conn, "Login failure: " + e.getMessage());
+            log(Level.SEVERE, "Unexpected error in handleLichessLogin: " + e.getMessage());
+            ZugServ.printStackTrace(e);
+            err(conn, "Login error. Please try again.");
         }
     }
 
@@ -394,11 +411,14 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
             return;
         }
         try {
-            JsonNode msgNode = ZugUtils.readTree(msg).orElseThrow(() -> new ZugException("Bad JSON message: " + msg));
-            // NEW: Check required fields exist
+            JsonNode msgNode = ZugUtils.readTree(msg, "conn:" + conn.getID())
+                    .orElseThrow(() -> new ZugException("Bad JSON: " + msg.substring(0, 50)));
+
             if (!InputValidator.hasRequiredFields(msgNode, "type", "data")) {
-                InputValidator.logValidationFailure("REQUIRED_FIELDS", msgNode.toString());
-                err(conn, "Error: Bad Data(null)");
+                log(Level.WARNING,
+                        "Missing required fields from " + conn.getAddress() + ": " + msg);
+                InputValidator.logValidationFailure("REQUIRED_FIELDS", msg);
+                err(conn, "Error: Bad Data");
                 return;
             }
             JsonNode typeNode = msgNode.get("type"), dataNode = msgNode.get("data");
@@ -415,6 +435,9 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
         }
         catch (ZugException e) {
             log(Level.WARNING,e.getMessage());
+        } catch (Exception e) {
+            log(Level.SEVERE, "Unexpected error processing message from " + conn.getAddress(), e.getMessage());
+            err(conn, "Message processing error");
         }
     }
 

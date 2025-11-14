@@ -8,6 +8,13 @@ import java.util.List;
  * ZugServ is a transport independent framework for managing internet connections, i.e., a general purpose server.
  */
 public interface ZugServ {
+
+	boolean stackTrace = true;
+
+	static void printStackTrace(Throwable e) {
+		if (stackTrace) e.printStackTrace();
+	}
+
 	/**
 	 * The server transport type.  Currently only WEBSOCK is supported.
 	 */

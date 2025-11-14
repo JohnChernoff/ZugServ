@@ -27,7 +27,6 @@ public interface JSONifier {
     default ObjectNode toJSON() {
         return toJSON2(ZugScope.all);
     };
-    //default ObjectNode toJSON() { ZugManager.log("Warning: use of depreciated toJson()"); new Exception().printStackTrace(); return toJSON(ZugScope.all); };
 
     /**
      * Incidates if a given scope is "basic", i.e., part of the base ZugServ framework

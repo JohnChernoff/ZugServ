@@ -34,7 +34,7 @@ public class SSLConn extends ConnAdapter implements Runnable {
 			reader = new BufferedReader(new InputStreamReader(in));
 			writer = new BufferedWriter(new OutputStreamWriter(out));
 		}
-		catch (IOException argh) { argh.printStackTrace(); }
+		catch (IOException argh) { ZugServ.printStackTrace(argh); }
 	}
 
 
@@ -50,7 +50,7 @@ public class SSLConn extends ConnAdapter implements Runnable {
 
 	@Override
 	public void close(String reason) {
-		try { socket.close(); } catch (IOException e) { e.printStackTrace(); }
+		try { socket.close(); } catch (IOException e) { ZugServ.printStackTrace(e); }
 		running = false;
 	}
 

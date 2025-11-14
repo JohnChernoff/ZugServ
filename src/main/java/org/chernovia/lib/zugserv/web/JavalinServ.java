@@ -61,7 +61,7 @@ public class JavalinServ extends ServAdapter implements ZugServ {
                             }
                         } catch (Exception e) {
                             logger.log(Level.SEVERE, "Error in onConnect: " + e.getMessage());
-                            e.printStackTrace();
+                            ZugServ.printStackTrace(e);
                             ctx.session.close();
                         }
                     });
@@ -78,7 +78,7 @@ public class JavalinServ extends ServAdapter implements ZugServ {
                             }
                         } catch (Exception e) {
                             logger.log(Level.SEVERE, "Error in onMessage: " + e.getMessage());
-                            e.printStackTrace();
+                            ZugServ.printStackTrace(e);
                         }
                     });
 
@@ -95,7 +95,7 @@ public class JavalinServ extends ServAdapter implements ZugServ {
                             }
                         } catch (Exception e) {
                             logger.log(Level.SEVERE, "Error in onClose: " + e.getMessage());
-                            e.printStackTrace();
+                            ZugServ.printStackTrace(e);
                         }
                     });
                         }

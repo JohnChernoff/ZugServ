@@ -419,16 +419,6 @@ public class InputValidator {
     // ========================================================================
 
     /**
-     * Safely parses JSON with consistent error handling.
-     *
-     * @param jsonString the JSON string
-     * @return the parsed node Optional, or empty if parsing fails
-     */
-    public static Optional<JsonNode> safeParseJSON(String jsonString) {
-        return ZugUtils.readTree(jsonString); //already does this safely
-    }
-
-    /**
      * Validates that required fields are present in JSON object.
      *
      * @param node the JSON object

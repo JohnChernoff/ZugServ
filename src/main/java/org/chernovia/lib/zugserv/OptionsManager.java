@@ -3,8 +3,6 @@ package org.chernovia.lib.zugserv;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import org.chernovia.lib.zugserv.enums.ZugScope;
-
 import java.util.*;
 import java.util.logging.Level;
 
@@ -207,12 +205,60 @@ public class OptionsManager implements JSONifier {
         }
 
         public boolean setValue(Object o) {
-            if (type == OptionType.opt_int && o instanceof Integer i && i >= intMin && i <= intMax) intVal = i;
-            else if (type == OptionType.opt_dbl && o instanceof Double d && d >= dblMin && d <= dblMax) dblVal = d;
-            else if (type == OptionType.opt_bool && o instanceof Boolean b) boolVal = b;
-            else if (type == OptionType.opt_txt && o instanceof String s) text = s; //TODO: enums
-            else return false;
-            return true;
+            try {
+                if (type == OptionType.opt_int && o instanceof Integer i) {
+                    if (i >= intMin && i <= intMax) {
+                        intVal = i;
+                        return true;
+                    } else {
+                        ZugManager.log(Level.WARNING,
+                                "Integer " + i + " out of bounds [" + intMin + ", " + intMax + "]");
+                        return false;
+                    }
+                }
+                else if (type == OptionType.opt_dbl && o instanceof Double d) {
+                    // Reject NaN/Infinity
+                    if (Double.isNaN(d) || Double.isInfinite(d)) {
+                        ZugManager.log(Level.WARNING, "Invalid double value: " + d);
+                        return false;
+                    }
+                    if (d >= dblMin && d <= dblMax) {
+                        dblVal = d;
+                        return true;
+                    } else {
+                        ZugManager.log(Level.WARNING,
+                                "Double " + d + " out of bounds [" + dblMin + ", " + dblMax + "]");
+                        return false;
+                    }
+                }
+                else if (type == OptionType.opt_bool && o instanceof Boolean b) {
+                    boolVal = b;
+                    return true;
+                }
+                else if (type == OptionType.opt_txt && o instanceof String s) {
+                    // NEW: Validate enum constraint if present
+                    if (!enums.isEmpty() && !enums.contains(s)) {
+                        ZugManager.log(Level.WARNING,
+                                "Text value '" + s + "' not in allowed enum: " + enums);
+                        return false;
+                    }
+                    // NEW: Validate length
+                    if (s.length() > 256) {
+                        ZugManager.log(Level.WARNING, "Text value too long: " + s.length());
+                        return false;
+                    }
+                    text = s;
+                    return true;
+                }
+                else {
+                    ZugManager.log(Level.WARNING, "Type mismatch: expected " + type + ", got " + o.getClass());
+                    return false;
+                }
+            } catch (Exception e) {
+                ZugManager.log(Level.SEVERE, "Error setting option value: " + e.getMessage());
+                ZugServ.printStackTrace(e);
+                return false;
+            }
         }
 
         @Override

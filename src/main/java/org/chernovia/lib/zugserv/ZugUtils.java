@@ -30,12 +30,23 @@ public class ZugUtils {
      * @param content JSON string (null returns empty)
      * @return parsed JsonNode Optional, or empty if invalid JSON or null input
      */
-    public static Optional<JsonNode> readTree(String content) {
-        if (content == null || content.isBlank()) return Optional.empty();
+    public static Optional<JsonNode> readTree(String content, String source) {
+        if (content == null || content.isBlank()) {
+            ZugHandler.log(Level.FINE, "Empty JSON from " + source);
+            return Optional.empty();
+        }
         try {
+            if (content.length() > 10000) {  // Reasonable limit
+                ZugHandler.log(Level.WARNING,
+                        "Oversized JSON from " + source + ": " + content.length() + " bytes");
+                return Optional.empty();
+            }
             return Optional.ofNullable(JSON_MAPPER.readTree(content));
         } catch (JsonProcessingException e) {
-            ZugHandler.log(Level.FINE, "JSON parse error: " + e.getMessage()); //e.printStackTrace(); // Keep for debugging
+            ZugHandler.log(Level.WARNING,  // Upgrade to WARNING
+                    String.format("JSON parse error from %s: %s | Content preview: %s",
+                            source, e.getMessage(),
+                            content.substring(0, Math.min(100, content.length()))));
             return Optional.empty();
         }
     }

@@ -15,7 +15,7 @@ import java.util.logging.Logger;
 public class JavalinServ extends ServAdapter implements ZugServ {
     private final Javalin server;
     private static final Logger logger = Logger.getLogger(JavalinServ.class.getName());
-    private final Map<WsContext, Connection> connections = new HashMap<>();
+    private final Map<WsContext, JavalinConn> connections = new HashMap<>();
     int port;
 
     /**
@@ -46,39 +46,65 @@ public class JavalinServ extends ServAdapter implements ZugServ {
                     ctx.status(200); // Respond to preflight CORS requests
                 })
                 .ws("/" + endpoint, ws -> {
-                            ws.onConnect(ctx -> {
-                                System.out.println("Client connected: " + ctx.session.getRemoteAddress());
-                                if (getConn(ctx).isEmpty()) {
-                                    JavalinConn conn = new JavalinConn(ctx);
-                                    logger.log(Level.INFO,"Incoming Connection at address: " + conn.getAddress());
-                                    connections.put(ctx,conn);
-                                    getConnListener().connected(conn);
-                                }
-                                else logger.log(Level.INFO,"Already connected at address: " + ctx.session.getRemoteAddress());
-                            });
-                            ws.onMessage(ctx -> {
-                                String message = ctx.message();
-                                if (message.length() < getMaxIncomingMessageSize()) {
-                                    getConn(ctx).ifPresentOrElse(
-                                            conn -> getConnListener().newMsg(conn, message),
-                                            () -> logger.log(Level.WARNING, "Unknown connection message: " +
-                                                    message + " at address: " + ctx.session.getRemoteAddress()));
-                                } else {
-                                    logger.log(Level.WARNING, "Overly long connection message: " + message.length());
-                                }
-                            });
-                            ws.onClose(ctx -> {
-                                logger.log(Level.INFO,"Client disconnected: " + ctx.session.getRemoteAddress());
-                                getConn(ctx).ifPresentOrElse(conn -> getConnListener().disconnected(conn),
-                                        () -> logger.warning("Unknown client"));
-                            });
+
+
+                    ws.onConnect(ctx -> {
+                        try {
+                            System.out.println("Client connected: " + ctx.session.getRemoteAddress());
+                            if (getConn(ctx).isEmpty()) {
+                                JavalinConn conn = new JavalinConn(ctx);
+                                logger.log(Level.INFO,"Incoming Connection at address: " + conn.getAddress());
+                                connections.put(ctx, conn);
+                                getConnListener().connected(conn);
+                            } else {
+                                logger.log(Level.INFO,"Already connected at address: " + ctx.session.getRemoteAddress());
+                            }
+                        } catch (Exception e) {
+                            logger.log(Level.SEVERE, "Error in onConnect: " + e.getMessage());
+                            e.printStackTrace();
+                            ctx.session.close();
+                        }
+                    });
+                    ws.onMessage(ctx -> {
+                        try {
+                            String message = ctx.message();
+                            if (message.length() < getMaxIncomingMessageSize()) {
+                                getConn(ctx).ifPresentOrElse(
+                                        conn -> getConnListener().newMsg(conn, message),
+                                        () -> logger.log(Level.WARNING, "Unknown connection message: " +
+                                                message + " at address: " + ctx.session.getRemoteAddress()));
+                            } else {
+                                logger.log(Level.WARNING, "Overly long connection message: " + message.length());
+                            }
+                        } catch (Exception e) {
+                            logger.log(Level.SEVERE, "Error in onMessage: " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                    });
+
+                    ws.onClose(ctx -> {
+                        try {
+                            logger.log(Level.INFO,"Client disconnecting...");
+                            // IMPORTANT: Remove from map FIRST, then notify listener
+                            Connection conn = connections.remove(ctx);
+                            if (conn != null) {
+                                logger.log(Level.INFO,"Client disconnected: " + conn.getAddress());
+                                getConnListener().disconnected(conn);
+                            } else {
+                                logger.log(Level.WARNING, "Unknown client disconnected");
+                            }
+                        } catch (Exception e) {
+                            logger.log(Level.SEVERE, "Error in onClose: " + e.getMessage());
+                            e.printStackTrace();
+                        }
+                    });
                         }
                 );
     }
 
     /**
      * Gets the Connection associated with the provided Session id.
-     * @param id the Session id
+     * @param ctx the Session id
      * @return the Connection
      */
     public Optional<Connection> getConn(WsContext ctx) {
@@ -93,8 +119,10 @@ public class JavalinServ extends ServAdapter implements ZugServ {
      */
     @Override
     public List<Connection> getAllConnections(boolean active) {
-        if (active) return connections.values().stream().filter(connection -> connection.getStatus().equals(Connection.Status.STATUS_OK)).toList();
-        else return connections.values().stream().toList();
+        return connections.values().stream()
+                .filter(conn -> !active || conn.getStatus().equals(Connection.Status.STATUS_CONNECTED))
+                .map(conn -> (Connection) conn)
+                .toList();
     }
 
     /**
@@ -120,19 +148,19 @@ public class JavalinServ extends ServAdapter implements ZugServ {
      * @return the tyoe of server (in this case ZugServ.ServType.WEBSOCK)
      */
     @Override
-    public ServType getType() { return ZugServ.ServType.WEBSOCK_DEFAULT; }
+    public ServType getType() { return ServType.WEBSOCK_JAVALIN; }
 
     @Override
     public void broadcast(Enum<?> type, String msg, boolean active) {
         connections.values().forEach(conn -> {
-            if (active || conn.getStatus() == Connection.Status.STATUS_OK) conn.tell(type,msg);
+            if (active || conn.getStatus() == Connection.Status.STATUS_CONNECTED) conn.tell(type,msg);
         });
     }
 
     @Override
     public void broadcast(Enum<?> type, JsonNode msg, boolean active) {
         connections.values().forEach(conn -> {
-            if (active || conn.getStatus() == Connection.Status.STATUS_OK) conn.tell(type,msg);
+            if (active || conn.getStatus() == Connection.Status.STATUS_CONNECTED) conn.tell(type,msg);
         });
     }
 

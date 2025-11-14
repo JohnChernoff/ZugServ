@@ -19,14 +19,22 @@ public class JavalinConn extends ConnAdapter {
 
     public JavalinConn(WsConnectContext ctx) {
         this.ctx = ctx;
-        setAddress(ctx.session.getRemoteAddress().toString());
-        setID(getAddress().hashCode());
+        String addr = ctx.session.getRemoteAddress().toString();
+        setAddress(addr);
+
+        // Generate a proper unique ID instead of using hashCode
+        long uniqueId = System.nanoTime();  // Use timestamp for uniqueness
+        setID(uniqueId);
+
+        setStatus(Status.STATUS_CONNECTED);
     }
 
     public WsConnectContext getCtx() { return ctx; }
 
     @Override
-    public void close(String reason) { close(CloseFrame.NORMAL,reason); }
+    public void close(String reason) {
+        close(CloseFrame.NORMAL,reason);
+    }
 
     public void close(int code, String reason) {
         ctx.session.close(code,reason);
@@ -48,11 +56,13 @@ public class JavalinConn extends ConnAdapter {
     }
 
     @Override
-    public void tell(Enum<?> type, JsonNode data) { //logger.log(Level.INFO,"Sending: " + data);
+    public void tell(Enum<?> type, JsonNode data) {
         ObjectNode node = mapper.createObjectNode();
-        node.put(ZugFields.TYPE, type.name()); node.set(ZugFields.DATA, data);
+        node.put(ZugFields.TYPE, type.name());
+        node.set(ZugFields.DATA, data);
         try {
             if (ctx.session.isOpen()) {
+                logger.log(Level.INFO, "SENDING: " + type.name() + " to " + getAddress());  // ADD THIS
                 ctx.send(node.toString());
             }
             else logger.log(Level.WARNING,"Sending to closed session: " + getAddress() + " ,data: " + data.toString());

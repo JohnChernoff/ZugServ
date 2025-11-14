@@ -3,18 +3,17 @@ package org.chernovia.lib.zugserv.tests;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.*;
-import org.chernovia.lib.zugserv.enums.ZugAuthSource;
-
+import java.util.List;
 import java.util.Optional;
 
 public class ZugServDemo extends ZugManager {
 
     public static void main(String[] args) {
-        new ZugServDemo(ZugServ.ServType.WEBSOCK_JAVALIN,9999).getServ().startSrv();
+        new ZugServDemo().start();
     }
 
-    public ZugServDemo(ZugServ.ServType type, int port) {
-        super(type, port);
+    public ZugServDemo() {
+        super(ZugServ.ServType.WEBSOCK_JAVALIN, 2345, "ws", List.of("localhost"),null);
     }
 
     @Override

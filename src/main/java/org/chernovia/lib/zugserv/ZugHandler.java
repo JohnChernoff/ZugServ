@@ -30,7 +30,7 @@ import java.util.logging.Logger;
 /**
  * ZugHandler extends ConnListener and encapsulates ZugServ to provide basic server functionality.
  */
-abstract public class ZugHandler extends Thread implements ConnListener, JSONifier {
+abstract public class ZugHandler implements ConnListener, JSONifier {
     public static String GOOGLE_APPLICATION_CREDENTIALS_FILE_NAME = "google_app_credentials";
     private static boolean VERBOSE = true; //for enum names vs ordinal
     static final Logger logger = Logger.getLogger("ZugServLog");

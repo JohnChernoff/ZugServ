@@ -123,7 +123,7 @@ public class WebSockServ extends ServAdapter implements ZugServ {
 	 */
 	@Override
 	public List<Connection> getAllConnections(boolean active) {
-		if (active) return connections.values().stream().filter(connection -> connection.getStatus().equals(Connection.Status.STATUS_OK)).toList();
+		if (active) return connections.values().stream().filter(connection -> connection.getStatus().equals(Connection.Status.STATUS_CONNECTED)).toList();
 		else return connections.values().stream().toList();
 	}
 
@@ -156,14 +156,14 @@ public class WebSockServ extends ServAdapter implements ZugServ {
 	@Override
 	public void broadcast(Enum<?> type, String msg, boolean active) {
 		connections.values().forEach(conn -> {
-			if (active || conn.getStatus() == Connection.Status.STATUS_OK) conn.tell(type,msg);
+			if (active || conn.getStatus() == Connection.Status.STATUS_CONNECTED) conn.tell(type,msg);
 		});
 	}
 
 	@Override
 	public void broadcast(Enum<?> type, JsonNode msg, boolean active) {
 		connections.values().forEach(conn -> {
-			if (active || conn.getStatus() == Connection.Status.STATUS_OK) conn.tell(type,msg);
+			if (active || conn.getStatus() == Connection.Status.STATUS_CONNECTED) conn.tell(type,msg);
 		});
 	}
 

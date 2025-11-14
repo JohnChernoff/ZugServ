@@ -15,7 +15,7 @@ abstract public class ConnAdapter implements Connection {
 
 	private ZugServ server;
 	private boolean auto;
-	private Status status;
+	private Status status = Status.STATUS_UNINIALIZED;
 	private long userID;
 	long connectionTimeStamp = System.currentTimeMillis();
 	private long latency = 0;

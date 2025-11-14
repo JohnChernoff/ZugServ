@@ -13,7 +13,7 @@ import org.chernovia.lib.zugserv.enums.*;
 /**
  * ZugManager extends ZugHandler to handle a variety of common server functions and user interactions.
  */
-abstract public class ZugManager extends ZugHandler implements AreaListener, Runnable {
+abstract public class ZugManager extends ZugHandler implements AreaListener {
 
     public int maxMsgLen = 512;
 
@@ -182,6 +182,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         addHandler(ZugClientMsgType.response,this::handleResponse);
         addHandler(ZugClientMsgType.getOptions,this::handleUpdateOptions);
         addHandler(ZugClientMsgType.setOptions,this::handleSetOptions);
+    }
+
+    public void start() {
+        serv.startSrv();
+        startPings(20000);
+        startCleaner(999999);
     }
 
     public boolean requiringPassword() {
@@ -712,10 +718,17 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
                         () -> err(conn,"Empty token"));
             }
             else if (source == ZugAuthSource.none) {
-                if (allowGuests) handleLogin(
-                        conn,
-                        generateGuestName(getTxtNode(dataNode,ZugFields.NAME).orElse(ZugFields.GUEST)),
-                        dataNode);
+                if (allowGuests) try {
+                    handleLogin(
+                            conn,
+                            generateGuestName(getTxtNode(dataNode,ZugFields.NAME).orElse(ZugFields.GUEST)),
+                            dataNode);
+                } catch (Exception e) {
+                    logger.log(Level.SEVERE, "Exception in handleLoggedIn: " + e.getMessage());
+                    e.printStackTrace();
+                    throw e;
+                }
+
                 else err(conn,"Login error: guests not allowed");
             }
             else err(conn,"Login error: source not found");
@@ -933,6 +946,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener, Run
         log(Level.FINE,
                 "Connection accepted. Active: " + getActiveConnectionCount() +
                         "/" + getServ().getMaxConnections());
+        log(Level.INFO,"Connection accepted. ID: " + conn.getID());
         tell(conn, ZugServMsgType.reqLogin,ZugUtils.newJSON().put(ZugFields.USER_ID,conn.getID()));
     }
 

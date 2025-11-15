@@ -35,9 +35,12 @@ public class ZugMessage implements JSONifier, Comparable<ZugMessage> {
                         String text = el.get(ZugFields.TXT_ASCII).asText();
                         elements.add(text);
                         length += text.length();
+                    } else if (el.isTextual()) { //fallback
+                        elements.add(el.asText());
+                        length += el.asText().length();
                     }
                 }
-            } else if (elNode.isTextual()) {
+            } else if (elNode.isTextual()) { //also fallback
                 String text = elNode.asText();
                 elements.add(text);
                 length = text.length();

@@ -164,7 +164,7 @@ public class InputValidator {
     /**
      * Validates a ZugText JsonNode (emoji/text array).
      *
-     * <p>Expected format: array of objects with either "txt_emoji" (int) or "txt_ascii" (string)
+     * <p>Expected format: array of objects with "txt_emoji" (int) and/or "txt_ascii" (string)
      *
      * @param textNode the ZugText node to validate
      * @return true if valid structure
@@ -180,20 +180,16 @@ public class InputValidator {
         }
 
         for (JsonNode element : textNode) {
-            if (element == null || !element.isObject()) {
+            if (element == null) {  //|| !element.isObject()) {
                 return false;
             }
 
-            // Must have EITHER emoji or ascii, not both, not neither
             boolean hasEmoji = element.has(ZugFields.TXT_EMOJI);
             boolean hasAscii = element.has(ZugFields.TXT_ASCII);
+            boolean plainTxt = element.isTextual();
 
-            if (!hasEmoji && !hasAscii) {
-                return false; // Neither field present
-            }
-
-            if (hasEmoji && hasAscii) {
-                return false; // Both fields present
+            if (!hasEmoji && !hasAscii && !plainTxt) {
+                return false;
             }
 
             if (hasEmoji && !element.get(ZugFields.TXT_EMOJI).isInt()) {
@@ -203,6 +199,12 @@ public class InputValidator {
             if (hasAscii) {
                 JsonNode ascii = element.get(ZugFields.TXT_ASCII);
                 if (!ascii.isTextual() || ascii.asText().length() > 256) {
+                    return false; // ASCII must be string, reasonable length
+                }
+            }
+
+            if (plainTxt) {
+                if (element.asText().length() > 256) {
                     return false; // ASCII must be string, reasonable length
                 }
             }
@@ -220,7 +222,7 @@ public class InputValidator {
     public static void validateZugText(JsonNode textNode) {
         if (!isValidZugText(textNode)) {
             throw new IllegalArgumentException(
-                    "Invalid ZugText format - expected array of {txt_emoji: int} or {txt_ascii: string}");
+                    "Invalid ZugText format - expected array of {txt_emoji: int} or {txt_ascii: string} or plain text");
         }
     }
 

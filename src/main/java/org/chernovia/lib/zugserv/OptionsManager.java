@@ -409,6 +409,20 @@ public class OptionsManager implements JSONifier {
         else { handleNoOption(field); return Optional.empty(); }
     }
 
+    public Optional<Enum<?>> getOptEnum(Enum<?> field, Class<?> clazz) {
+        if (optionsMap.containsKey(field.name())) {
+            for (Enum<?> e : (Enum<?>[]) clazz.getEnumConstants()) {
+                if (Objects.equals(optionsMap.get(field.name()).text, e.name())) return Optional.of(e);
+            }
+        }
+        handleNoOption(field);
+        return Optional.empty();
+    }
+
+    public boolean isOptEnum(Enum<?> field, Enum<?> e) {
+        return (Objects.equals(getOptEnum(field, e.getClass()).orElse(null), e));
+    }
+
     /**
      * Called upon attempted access of a nonexistent Option default value.
      * @param field the Option's descriptor field
@@ -436,6 +450,23 @@ public class OptionsManager implements JSONifier {
      */
     public static Map.Entry<Enum<?>,Option> createOption(Enum<?> e, String txt, String label, String desc, List<String> elist) {
         return Map.entry(e, new Option(txt, label, desc, elist));
+    }
+
+    /**
+     * Creates a new String Option entry as part of a list of enumated values.
+     * @param e the Option enumeration
+     * @param v the Enumerated value
+     * @param desc the field description
+     */
+    public static Map.Entry<Enum<?>,Option> createOption(Enum<?> e, Enum<?> v, String label, String desc) {
+
+        // Get all enum values - returns Object[] but contains the actual enum type
+        Object[] allValues = v.getClass().getEnumConstants();
+
+        // Cast to Enum<?>[] instead
+        Enum<?>[] enumValues = (Enum<?>[]) allValues;
+
+        return Map.entry(e, new Option(v.name(), label, desc, Arrays.stream(enumValues).map(Enum::name).toList()));
     }
 
     /**

@@ -409,13 +409,16 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
 
     public Optional<ZugArea> handleStartArea(ZugUser user, JsonNode dataNode) {
         Optional<ZugArea> a = getArea(dataNode);
-        a.ifPresentOrElse(area -> area.startArea(user,dataNode)
-                .thenAccept(starting -> { if (starting) {
-                    areaStarted(area);
-                    areaUpdated(area);
-                }}),
-                () -> err(user,"Area not found"));
+        a.ifPresentOrElse(area -> startArea(area,user,dataNode), () -> err(user,"Area not found"));
         return a;
+    }
+
+    public void startArea(ZugArea area, ZugUser user, JsonNode dataNode) {
+        area.startArea(user,dataNode)
+                        .thenAccept(starting -> { if (starting) {
+                            areaStarted(area);
+                            areaUpdated(area);
+                        }});
     }
 
     public Optional<ZugArea> handleAreaMsg(ZugUser user, JsonNode dataNode) {

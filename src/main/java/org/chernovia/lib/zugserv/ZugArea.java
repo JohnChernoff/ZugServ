@@ -118,6 +118,15 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         return Optional.of(creator);
     }
 
+    public ZugUser getCreator(boolean deputize) {
+        if (getCreator().isEmpty() && deputize) {
+            Occupant deputy = getOccupants().stream().filter(o -> !o.isBot())
+                    .findFirst().orElse(getOccupants().stream().findFirst().orElse(null));
+            setCreator(deputy != null ? deputy.getUser() : null);
+        }
+        return getCreator().orElse(null);
+    }
+
     public boolean isCreator(ZugUser user) {
         return Objects.equals(user,creator);
     }

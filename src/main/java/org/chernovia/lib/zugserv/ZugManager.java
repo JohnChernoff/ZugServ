@@ -623,15 +623,19 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
         return a;
     }
 
-    /* *** */
-
-    private void handleAreaCreated(ZugArea area, JsonNode dataNode) {
+    public void addArea(ZugArea area, boolean autoJoin, JsonNode dataNode) {
         addOrGetArea(area);
-        Optional<Boolean> join = getBoolNode(dataNode, ZugFields.AUTO_JOIN);
-        if (join.isEmpty() || join.get()) {
+        if (autoJoin) {
             area.getCreator().ifPresent(creator -> createOccupantAndJoin(area,creator,dataNode));
         }
         areaCreated(area);
+    }
+
+    /* *** */
+
+    private void handleAreaCreated(ZugArea area, JsonNode dataNode) {
+        Optional<Boolean> join = getBoolNode(dataNode, ZugFields.AUTO_JOIN);
+        addArea(area,join.isEmpty() || join.get(),dataNode);
     }
 
     private void createOccupantAndJoin(ZugArea area, ZugUser user, JsonNode dataNode) {

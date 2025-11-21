@@ -22,6 +22,8 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
 
     private boolean isPrivate = false;
 
+    //private int id; //TODO: use
+
     private final ConcurrentHashMap<String,Occupant> occupants = new ConcurrentHashMap<>();
 
     private final MessageManager messageManager = new MessageManager();

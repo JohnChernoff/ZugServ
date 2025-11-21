@@ -86,7 +86,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         password = p; creator = c; listener = l;
         areaThread = new Thread(this);
         responseManager = new ResponseManager(this);
-        phaseManager = config.async ? new PhaseManager(this) : new PhaseManagerSimple(this);
+        phaseManager = new PhaseManager(this);
         action(ActionType.creation);
     }
 
@@ -326,7 +326,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
             areaThread.start();
             getListener().ifPresent(l -> {
                 l.areaStarted(this);
-                l.areaUpdated(this);
+                //l.areaUpdated(this);
             });
             future.complete(true);
         } catch (Exception e) {

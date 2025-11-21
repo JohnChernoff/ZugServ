@@ -379,7 +379,7 @@ public class ZugServCriticalFixesTest {
         @Override public void areaStarted(ZugArea area) { }
         @Override public void areaFinished(ZugArea area) { }
         @Override public void areaCreated(ZugArea area) { }
-        @Override public void areaUpdated(ZugArea area) { }
+        @Override public void areaUpdated(ZugArea area, String updateType) { }
         @Override public void areaParted(ZugArea area, ZugUser user) { }
         @Override public void areaJoined(ZugArea area, Occupant occupant) { }
     }

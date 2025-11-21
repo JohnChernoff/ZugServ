@@ -114,6 +114,7 @@ abstract public class Occupant implements JSONifier {
             node.set(ZugFields.USER,user.toJSON());
             node.put("away",away);
             node.put("banned", area.isBanned(getUser()));
+            node.put("creator", getArea().isCreator(getUser()));
         }
         return node;
     }

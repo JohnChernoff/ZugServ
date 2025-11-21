@@ -417,7 +417,6 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
         area.startArea(user,dataNode)
                         .thenAccept(starting -> { if (starting) {
                             areaStarted(area);
-                            areaUpdated(area);
                         }});
     }
 
@@ -697,7 +696,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
      */
     public void areaJoined(ZugArea area, Occupant occupant) {
         area.tell(occupant, ZugServMsgType.joinArea,area.toJSON2(ZugScope.all,ZugScope.msg_history));
-        areaUpdated(area);
+        areaUpdated(area,"joined");
     }
 
     /**
@@ -707,7 +706,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
      */
     public void areaParted(ZugArea area, ZugUser user) {
         user.tell(ZugServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.AREA_ID,area.getTitle()));
-        areaUpdated(area);
+        areaUpdated(area,"parted");
     }
 
     /* *** */
@@ -949,10 +948,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
      * @param area the changed area
      * @param change the enumerated type of change (e.g., ZugFields.AreaChange.created, etc.)
      */
-    public void handleAreaListUpdate(ZugArea area, ZugAreaChange change) {
+    public void handleAreaListUpdate(ZugArea area, ZugAreaChange change, String updateType) {
         if (!isCrowded() && area.exists()) {
             spam(ZugServMsgType.updateAreaList,ZugUtils.newJSON()
-                    .put(ZugFields.AREA_CHANGE,change.name()).set(ZugFields.AREA,area.toJSON2(ZugScope.basic,ZugScope.occupants_basic)));
+                    .put(ZugFields.AREA_CHANGE,change.name())
+                    .put(ZugFields.UPDATE_TYPE,updateType)
+                    .set(ZugFields.AREA,area.toJSON2(ZugScope.basic,ZugScope.occupants_basic)));
         }
     }
 
@@ -963,7 +964,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
     public void areaCreated(ZugArea area) {
         area.getCreator().ifPresent(creator ->
                 creator.tell(ZugServMsgType.createArea, area.toJSON2(ZugScope.all)));
-        handleAreaListUpdate(area, ZugAreaChange.created);
+        handleAreaListUpdate(area, ZugAreaChange.created,"creating");
         area.created = true;
     }
 
@@ -972,27 +973,27 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
      * @param area the completed Area
      */
     public void areaClosed(ZugArea area) {
-        handleAreaListUpdate(area, ZugAreaChange.deleted);
+        handleAreaListUpdate(area, ZugAreaChange.deleted,"deleting");
         area.setExistence(false);
         removeArea(area);
     }
 
     public void areaStarted(ZugArea area) {
         log(Level.FINE, "area started: " + area.toString());
-        areaUpdated(area);
+        areaUpdated(area,"started");
     }
 
     public void areaFinished(ZugArea area) {
         log(Level.FINE, "area finished: " + area.toString());
-        areaUpdated(area);
+        areaUpdated(area,"finished");
     }
 
     /**
      * Called upon alteration of an area.
      * @param area the changed Area
      */
-    public void areaUpdated(ZugArea area) {
-        handleAreaListUpdate(area, ZugAreaChange.updated);
+    public void areaUpdated(ZugArea area, String updateType) {
+        handleAreaListUpdate(area, ZugAreaChange.updated,updateType);
     }
 
     public boolean requiresPassword() {

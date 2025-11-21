@@ -25,7 +25,7 @@ public interface AreaListener {
      * Called whenever the server considers an Area to have notably changed.
      * @param area the recently altered Area
      */
-    public void areaUpdated(ZugArea area);
+    public void areaUpdated(ZugArea area, String updateType);
 
     public void areaParted(ZugArea area, ZugUser user);
 

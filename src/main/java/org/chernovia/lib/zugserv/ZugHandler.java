@@ -440,6 +440,7 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
         } catch (Exception e) {
             log(Level.SEVERE, "Unexpected error processing message from " + conn.getAddress(), e.getMessage());
             err(conn, "Message processing error");
+            ZugServ.printStackTrace(e);
         }
     }
 

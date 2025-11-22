@@ -115,7 +115,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     }
 
     public Optional<ZugUser> getCreator() {
-        return Optional.of(creator);
+        return Optional.ofNullable(creator);
     }
 
     public ZugUser getCreator(boolean deputize) {

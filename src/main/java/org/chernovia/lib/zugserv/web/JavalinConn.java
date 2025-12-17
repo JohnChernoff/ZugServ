@@ -62,7 +62,7 @@ public class JavalinConn extends ConnAdapter {
         node.set(ZugFields.DATA, data);
         try {
             if (ctx.session.isOpen()) {
-                logger.log(Level.INFO, "SENDING: " + type.name() + " to " + getAddress());  // ADD THIS
+                logger.log(Level.FINER, "SENDING: " + type.name() + " to " + getAddress());
                 ctx.send(node.toString());
             }
             else logger.log(Level.WARNING,"Sending to closed session: " + getAddress() + " ,data: " + data.toString());

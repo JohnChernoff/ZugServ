@@ -405,7 +405,7 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
      */
     @Override
     public void newMsg(Connection conn, String msg) {
-        if (CONN_MSG_DEBUG) log("New Conn Message: " + msg);
+        log(CONN_MSG_DEBUG ? Level.INFO : Level.FINER, "New Conn Message: " + msg);
         if (msg.length() > getServ().getMaxIncomingMessageSize()) {
             log(Level.WARNING, "Message exceeds size limit: " + msg.length() +
                     " from " + conn.getAddress());

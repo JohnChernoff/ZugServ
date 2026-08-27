@@ -74,7 +74,7 @@ public class PhaseManager implements JSONifier, AutoCloseable {
 
         // Create executor with descriptive thread names for debugging
         ThreadFactory threadFactory = r -> {
-            Thread t = new Thread(r, "ZugPhaseManager-" + area.getTitle());
+            Thread t = new Thread(r, "ZugPhaseManager-" + area.getDesc());
             t.setDaemon(false);
             return t;
         };
@@ -226,11 +226,11 @@ public class PhaseManager implements JSONifier, AutoCloseable {
         try {
             scheduler.shutdown();
             if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {
-                ZugHandler.log(Level.WARNING, "PhaseManager shutdown timeout for area: " + area.getTitle());
+                ZugHandler.log(Level.WARNING, "PhaseManager shutdown timeout for area: " + area.getDesc());
                 scheduler.shutdownNow();
                 // Wait a bit more for forced shutdown
                 if (!scheduler.awaitTermination(2, TimeUnit.SECONDS)) {
-                    ZugHandler.log(Level.SEVERE, "PhaseManager failed to shutdown: " + area.getTitle());
+                    ZugHandler.log(Level.SEVERE, "PhaseManager failed to shutdown: " + area.getDesc());
                 }
             }
         } catch (InterruptedException e) {

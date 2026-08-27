@@ -340,7 +340,7 @@ public class ZugServCriticalFixesTest {
         }
 
         @Override
-        public String getName() { return getTitle(); }
+        public String getName() { return getID(); }
     }
 
     static class MockOccupant extends Occupant {

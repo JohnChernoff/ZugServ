@@ -113,11 +113,11 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
     }
 
     public Optional<ZugArea> addOrGetArea(ZugArea area) {
-        return Optional.ofNullable(areas.putIfAbsent(area.getTitle(), area));
+        return Optional.ofNullable(areas.putIfAbsent(area.getID(), area));
     }
 
     public Optional<ZugArea> removeArea(ZugArea area) {
-        return Optional.ofNullable(areas.remove(area.getTitle()));
+        return Optional.ofNullable(areas.remove(area.getID()));
     }
 
     public Collection<ZugArea> getAreas() {
@@ -132,8 +132,12 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
         this.serv = serv;
     }
 
+    public Optional<ZugArea> getAreaById(String id) {
+        return Optional.ofNullable(areas.get(id));
+    }
+
     public Optional<ZugArea> getAreaByTitle(String title) {
-        return Optional.ofNullable(areas.get(title));
+        return areas.values().stream().filter(a -> a.getTitle().equals(title)).findFirst();
     }
 
     /**

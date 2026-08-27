@@ -97,7 +97,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
      */
     public synchronized void cleanup() {
         areas.values().stream().filter(Timeoutable::timedOut).forEach(area -> { //handle rooms?
-            area.spam(ZugServMsgType.servMsg,"Closing " + area.getTitle() + " (reason: timeout)");
+            area.spam(ZugServMsgType.servMsg,"Closing " + area.getDesc() + " (reason: timeout)");
             areaClosed(area);
         });
         users.values().stream().filter(user -> user.timedOut() && areasByUserToJSON(user).isEmpty()).forEach(user -> {
@@ -370,7 +370,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
 
     public String generateAreaName() {
         String name = new Faker().chess().opening().replace(" ","").replace("'","");
-        if (getAreaByTitle(name).isPresent()) return name + createID(); else return name;
+        if (getAreaByTitle(name).isPresent()) return name + createID(); else return name; //TODO: something less wonky
     }
 
     public Optional<ZugArea> handleJoinArea(ZugUser user, JsonNode dataNode) {
@@ -648,13 +648,13 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
                 () -> {
                     // Occupant doesn't exist - create new one
                     if (!area.config.allowGuests && user.isGuest()) {
-                        log(Level.INFO, "Guest rejected from area: " + area.getTitle());
+                        log(Level.INFO, "Guest rejected from area: " + area.getDesc());
                         err(user, "Sorry, guests are not allowed in this area");
                         return;  // Exit early with error
                     }
 
                     if (area.numOccupants() >= area.getMaxOccupants()) {
-                        log(Level.INFO, "Area full: " + area.getTitle());
+                        log(Level.INFO, "Area full: " + area.getDesc());
                         handleMaxOccupancy(user, area, dataNode);
                         return;  // Exit early with error
                     }
@@ -663,7 +663,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
                     newOccupantOpt.ifPresentOrElse(
                             occupant -> {
                                 joinArea(area, occupant);
-                                log(Level.FINE, "User joined: " + user.getName() + " in " + area.getTitle());
+                                log(Level.FINE, "User joined: " + user.getName() + " in " + area.getDesc());
                             },
                             () -> {
                                 log(Level.WARNING, "Failed to create occupant for " + user.getName());
@@ -676,7 +676,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
 
     private void joinArea(ZugArea area, Occupant occupant) {
         if (area.addOccupant(occupant)) { //areaUpdated(area); areaJoined(area,occupant);
-            log(Level.FINE, "Joined " +  area.getTitle() + ": " + occupant);
+            log(Level.FINE, "Joined " +  area.getDesc() + ": " + occupant);
         }
     }
 
@@ -689,7 +689,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
                     if (area.dropOccupant(occupant)) createOccupantAndJoin(area,user,dataNode);
                 });
         } else {
-            err(user,"Game full: " + area.getTitle());
+            err(user,"Game full: " + area.getDesc());
         }
     }
 
@@ -709,7 +709,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
      * @param user a ZugUser (not an occupant, since just left)
      */
     public void areaParted(ZugArea area, ZugUser user) {
-        user.tell(ZugServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.AREA_ID,area.getTitle()));
+        user.tell(ZugServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.AREA_ID,area.getID()));
         areaUpdated(area,"parted");
     }
 
@@ -1044,7 +1044,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
 
     @Override
     public void err(Connection conn, String msg) {
-        tell(conn, ZugServMsgType.errMsg, msg);
+        tell(conn, ZugServMsgType.errServMsg, msg);
     }
 
     @Override
@@ -1071,12 +1071,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
     }
 
     /**
-     * Looks for and returns a ZugArea with the title (ZugFields.TITLE) specified from the top level of a JsonNode.
+     * Looks for and returns a ZugArea with the id (ZugFields.AREA_ID) specified from the top level of a JsonNode.
      * @param dataNode the JSON-formatted data
      * @return an (Optional) ZugArea
      */
     public Optional<ZugArea> getArea(JsonNode dataNode) {
-        return getTxtNode(dataNode, ZugFields.AREA_ID).flatMap(this::getAreaByTitle);
+        return getTxtNode(dataNode, ZugFields.AREA_ID).flatMap(this::getAreaById);
     }
 
     /**

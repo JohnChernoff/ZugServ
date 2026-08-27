@@ -56,7 +56,7 @@ public class PhaseManagerSimple extends PhaseManager {
         super(area);
         ZugHandler.log(Level.WARNING,
                 "PhaseManagerSimple is deprecated and will be removed in a future version. " +
-                        "Use PhaseManager instead for area: " + area.getTitle());
+                        "Use PhaseManager instead for area: " + area.getDesc());
     }
 
     /**

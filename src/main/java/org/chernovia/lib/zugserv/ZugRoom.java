@@ -17,6 +17,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     static final Logger logger = Logger.getLogger("RoomLog");
 
     private final String title;
+    private final String id;
 
     private int maxOccupants = 99;
 
@@ -30,6 +31,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
 
     public ZugRoom(String title) {
         this.title = title;
+        this.id = UUID.randomUUID().toString();
     }
 
     /**
@@ -158,8 +160,16 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         return Optional.ofNullable(occupants.get(name.toString()));
     }
 
+    public final String getID() {
+        return id;
+    }
+
     public final String getTitle() {
         return title;
+    }
+
+    public final String getDesc() {
+        return id + ":" + title;
     }
 
     abstract public String getName();
@@ -253,7 +263,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      */
     public void msg(ZugUser user, String msg) {
         user.tell(ZugServMsgType.roomMsg,
-                ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID,getTitle()));
+                ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID, getID()));
     }
 
     /**
@@ -262,8 +272,8 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @param msg the alphanumeric error message
      */
     public void err(ZugUser user, String msg) {
-        user.tell(ZugServMsgType.errMsg,
-                ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID,getTitle()));
+        user.tell(ZugServMsgType.errServMsg,
+                ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID, getID()));
     }
 
     /**
@@ -324,7 +334,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
 
         if (!occupant.isDeafened() || ignoreDeafness) {
             try {
-                occupant.getUser().tell(type, node.put(ZugFields.AREA_ID, getTitle()));
+                occupant.getUser().tell(type, node.put(ZugFields.AREA_ID, getID()));
             } catch (NullPointerException e) {
                 logger.log(Level.SEVERE, "NPE in tell(): user=" + occupant.getUser() +
                         ", conn=" + occupant.getUser().getConn());
@@ -339,7 +349,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     public ObjectNode toJSON2(Enum<?>... scopes) {
         ObjectNode node = ZugUtils.newJSON();
         if (isBasic(scopes)) {
-            node.put(ZugFields.AREA_ID,title).put(ZugFields.NAME,getName());
+            node.put(ZugFields.AREA_ID,id).put(ZugFields.AREA_TITLE,title).put(ZugFields.NAME,getName());
         }
         if (hasScope(ZugScope.msg_history,true,scopes)) {
             node.set(ZugFields.MSG_HISTORY,messageManager.toJSONArray());

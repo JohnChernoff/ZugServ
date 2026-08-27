@@ -14,6 +14,7 @@ public interface ZugFields {
             JSON = "json",
             USER_ID = "user_id",
             AREA_ID = "area_id",
+            AREA_TITLE = "area_title",
             PHASE = "phase",
             ROOM = "room",
             AREA = "area",

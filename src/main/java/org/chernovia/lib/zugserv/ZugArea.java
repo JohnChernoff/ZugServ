@@ -196,7 +196,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     public void kick(Occupant occupant, ZugUser kicker) {
         if (kicker.equals(creator)) {
             dropOccupant(occupant);
-            tell(occupant,ZugServMsgType.kicked, getTitle());
+            tell(occupant,ZugServMsgType.kicked, getID());
             tell(occupant,ZugServMsgType.updateArea, this.toJSON2(ZugScope.occupants_basic)); //TODO: use updateOccupants?
             spam(ZugServMsgType.updateOccupants, this.toJSON2(ZugScope.occupants_basic));
         }
@@ -209,7 +209,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      */
     public boolean addObserver(Connection conn) {  //(isOccupant(conn,true))
         if (conn == null || isOccupant(conn,false)) return false; else action(ActionType.obs);
-        conn.tell(ZugServMsgType.obs,ZugUtils.newJSON().put(ZugFields.AREA_ID,getTitle()));
+        conn.tell(ZugServMsgType.obs,ZugUtils.newJSON().put(ZugFields.AREA_ID, getID()));
         return observers.add(conn);
     }
 
@@ -219,7 +219,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * @return true if successful
      */
     public boolean removeObserver(Connection conn) {
-        if (conn != null) conn.tell(ZugServMsgType.unObs,ZugUtils.newJSON().put(ZugFields.AREA_ID,getTitle()));
+        if (conn != null) conn.tell(ZugServMsgType.unObs,ZugUtils.newJSON().put(ZugFields.AREA_ID, getID()));
         return observers.remove(conn);
     }
 
@@ -284,7 +284,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * @param user the ZugUser to update
      */
     public void updateOptions(ZugUser user) {
-        user.tell(ZugServMsgType.updateOptions,ZugUtils.newJSON().put(ZugFields.AREA_ID,getTitle()).set(ZugFields.OPTIONS, optionsManager.toJSON()));
+        user.tell(ZugServMsgType.updateOptions,ZugUtils.newJSON().put(ZugFields.AREA_ID, getID()).set(ZugFields.OPTIONS, optionsManager.toJSON()));
     }
 
     /**
@@ -382,7 +382,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     @Override
     public void run() {
-        spam("Running " + getTitle());
+        spam("Running " + getDesc());
     }
 
     @Override
@@ -406,7 +406,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     @Override
     final public void spamX(Enum<?> t, String msg, Occupant... ignoreList) {
-        spamX(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID,getTitle()),ignoreList);
+        spamX(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID, getID()),ignoreList);
     }
 
     @Override
@@ -418,12 +418,12 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
                 if (conn.getStatus() == Connection.Status.STATUS_DISCONNECTED) {
                     deadConnections.add(conn);
                 } else {
-                    conn.tell(t, msgNode.put(ZugFields.AREA_ID, getTitle()));
+                    conn.tell(t, msgNode.put(ZugFields.AREA_ID, getID()));
                 }
             } catch (Exception e) {
                 ZugHandler.log(Level.WARNING,
                         "Error sending to observer " + conn.getID() + " in area " +
-                                getTitle() + ": " + e.getMessage());
+                                getDesc() + ": " + e.getMessage());
                 deadConnections.add(conn);
             }
         }
@@ -443,7 +443,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     @Override
     final public void msg(ZugUser user, String msg) {
-        user.tell(ZugServMsgType.areaMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID,getTitle()));
+        user.tell(ZugServMsgType.areaMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID, getID()));
     }
 
     //@Override public ObjectNode toJSON() { return this.toJSON2(ZugScope.basic); }

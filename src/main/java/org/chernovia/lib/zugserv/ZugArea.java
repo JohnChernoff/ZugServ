@@ -19,15 +19,17 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     public static class AreaConfig {
         public boolean allowGuests;
         public boolean purgeDeserted;
+        public boolean autoStart;
         public boolean purgeAway; //TODO: should this drop away occupants?
         public boolean bumpAway; //TODO: what is this for?
         public boolean async;
-        public AreaConfig(boolean allowGuests, boolean purgeDeserted, boolean purgeAway, boolean bumpAway, boolean async) {
+        public AreaConfig(boolean allowGuests, boolean purgeDeserted, boolean purgeAway, boolean bumpAway, boolean async, boolean autoStart) {
             this.allowGuests = allowGuests;
             this.purgeDeserted = purgeDeserted;
             this.purgeAway = purgeAway;
             this.bumpAway = bumpAway;
             this.async = async;
+            this.autoStart = autoStart;
         }
     }
     public final AreaConfig config;
@@ -58,7 +60,8 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * @param l an AreaListener
      */
     public ZugArea(String t, ZugUser c, AreaListener l) {
-        this(t,ZugFields.UNKNOWN_STRING,c, l, new AreaConfig(true,true, true, false, true));
+        this(t,ZugFields.UNKNOWN_STRING,c, l,
+                new AreaConfig(true,true, true, false, true, false));
     }
 
     /**
@@ -323,7 +326,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      * Starts an area.  Note this does not send a ZugFields.ServMsgType.startArea message to the client and is a CompleteableFuture in case of subclasses
      * wishing to use requestConfirmation() or what not.
      * @param user The user (typicially the creator of the area) starting the area
-     * @param initData initialization data (in JSON format)
+     * @param initData initialization data (in JSON format), can be null
      * @return true upon success
      */
     public CompletableFuture<Boolean> startArea(ZugUser user, JsonNode initData) {
@@ -390,6 +393,9 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         if (super.addOccupant(occupant)) {
             observers.remove(occupant.getUser().getConn());
             getListener().ifPresent(l -> l.areaJoined(this, occupant));
+            if (getActiveOccupants(false).size() == getMaxOccupants() && config.autoStart) {
+                startArea(getCreator(true),null);
+            }
             return true;
         }
         return false;

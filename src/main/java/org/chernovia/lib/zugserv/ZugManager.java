@@ -835,7 +835,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
                 .findFirst()
                 .ifPresentOrElse(
                         prevUser -> {
-                            swapConnection(prevUser, conn); //conn.lockAddress(); // Lock after login
+                            swapConnection(prevUser, conn, dataNode); //conn.lockAddress(); // Lock after login
                         },
                         () -> handleCreateUser(conn, uName, dataNode)
                                 .ifPresentOrElse(
@@ -843,7 +843,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
                                                 .ifPresentOrElse(
                                                         wtf -> err(conn, "Error: duplicate user!"),
                                                         () -> {
-                                                            handleLoggedIn(newUser); //conn.lockAddress(); // Lock after login
+                                                            handleLoggedIn(newUser,dataNode); //conn.lockAddress(); // Lock after login
                                                         }
                                                 ),
                                         () -> err(conn, "Login error")
@@ -855,8 +855,9 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
     /**
      * Called upon completion of a successful login.
      * @param user The newly created (or connection-swapped) ZugUser
+     * @param dataNode misc data (area(s) to autojoin, etc.)
      */
-    public void handleLoggedIn(ZugUser user) {
+    public void handleLoggedIn(ZugUser user, JsonNode dataNode) {
         log("logged in: " + user.getUniqueName());
         user.setLoggedIn(true);
         user.tell(ZugServMsgType.logOK,user.toJSON());
@@ -865,7 +866,12 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
         MonthDay monthDay = MonthDay.now();
         trafficMap.putIfAbsent(monthDay,new HashSet<>());
         if (!user.isGuest()) trafficMap.get(monthDay).add(user.getUniqueName().toString());
+        getTxtNode(dataNode,ZugFields.AREA_ID).ifPresent(id -> autoJoin(user,id, dataNode));
+    }
 
+    public void autoJoin(ZugUser user, String areaId, JsonNode dataNode) {
+        getAreaById(areaId).ifPresentOrElse(area -> createOccupantAndJoin(area,user, dataNode),
+                () -> err(user, "Error: unknown area"));
     }
 
     /**
@@ -873,10 +879,10 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
      * @param prevUser the previous user
      * @param newConn the newly logged in user
      */
-    public void swapConnection(ZugUser prevUser, Connection newConn) {
+    public void swapConnection(ZugUser prevUser, Connection newConn, JsonNode dataNode) {
         newConn.tell(ZugServMsgType.servMsg,"Already logged in, swapping connections");
         prevUser.setConn(newConn);
-        handleLoggedIn(prevUser);
+        handleLoggedIn(prevUser,dataNode);
     }
 
     /**

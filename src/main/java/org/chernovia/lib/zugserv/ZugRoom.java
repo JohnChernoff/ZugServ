@@ -348,9 +348,8 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     //@Override public ObjectNode toJSON() { return toJSON2(ZugScope.basic); }
     public ObjectNode toJSON2(Enum<?>... scopes) {
         ObjectNode node = ZugUtils.newJSON();
-        if (isBasic(scopes)) {
-            node.put(ZugFields.AREA_ID,id).put(ZugFields.AREA_TITLE,title).put(ZugFields.NAME,getName());
-        }
+        //include these always
+        node.put(ZugFields.AREA_ID,id).put(ZugFields.AREA_TITLE,title).put(ZugFields.NAME,getName()); //if (isBasic(scopes)) {}
         if (hasScope(ZugScope.msg_history,true,scopes)) {
             node.set(ZugFields.MSG_HISTORY,messageManager.toJSONArray());
         }

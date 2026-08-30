@@ -124,6 +124,8 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
 
     private final MessageManager messageManager = new MessageManager();
 
+    private final SeekManager seekManager = new SeekManager(this);
+
     private boolean requirePassword = true;
     private boolean allowGuests = true;
     private boolean swapGuestConnection = false;
@@ -179,6 +181,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
         addHandler(ZugClientMsgType.joinArea,this::handleJoinArea);
         addHandler(ZugClientMsgType.partArea,this::handlePartArea);
         addHandler(ZugClientMsgType.startArea,this::handleStartArea);
+        addHandler(ZugClientMsgType.seek,this::handleSeek);
 
         addHandler(ZugClientMsgType.servMsg,this::handleServerMessage);
         addHandler(ZugClientMsgType.privMsg,this::handlePrivateMessage);
@@ -331,8 +334,19 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
                 () -> err(user,"Missing user name"));
     }
 
+
+    public Optional<ZugArea> handleCreateArea(List<ZugUser> users, JsonNode dataNode, boolean fill) {
+        Optional<ZugArea> optArea = handleCreateArea(users.get(0),dataNode);
+        optArea.ifPresent(area -> {
+            if (fill) area.setMaxOccupants(users.size());
+            for (ZugUser user : users) createOccupantAndJoin(area,user,dataNode);
+        });
+
+        return optArea;
+    }
+
     public Optional<ZugArea> handleCreateArea(ZugUser user, JsonNode dataNode) { //log(dataNode.toPrettyString());
-        String title = getTxtNode(dataNode, ZugFields.AREA_ID, true)
+        String title = getTxtNode(dataNode, ZugFields.AREA_TITLE, true)
                 .map(rawTitle -> {
                     try {
                         String validated = InputValidator.validateAreaTitle(rawTitle);
@@ -355,7 +369,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
             return Optional.empty();
         }
 
-        if (getArea(dataNode).isPresent()) {
+        if (getArea(dataNode).isPresent()) { //shouldn't occur
             err(user, "Already exists: " + title);
             return Optional.empty();
         }
@@ -411,6 +425,15 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
         Optional<ZugArea> a = getArea(dataNode);
         a.ifPresentOrElse(area -> startArea(area,user,dataNode), () -> err(user,"Area not found"));
         return a;
+    }
+
+    public void handleSeek(ZugUser user, JsonNode dataNode) {
+        createSeek(user,dataNode).ifPresent(seekManager::addSeek);
+        if (seekManager.seekMap.containsKey(user)) user.tell("Seek created..."); //TODO: create ZugServMsgType
+    }
+
+    public Optional<ZugSeek> createSeek(ZugUser user, JsonNode dataNode) {
+        return Optional.of(new ZugSeek(user));
     }
 
     public void startArea(ZugArea area, ZugUser user, JsonNode dataNode) {

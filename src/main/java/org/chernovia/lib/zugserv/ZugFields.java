@@ -62,5 +62,7 @@ public interface ZugFields {
             RESPONSE_TYPE = "response_type",
             UPDATE_SCOPE = "up_scope",
             UPDATE_TYPE = "update_type",
-            PHASE_DATA = "phase_data";
+            PHASE_DATA = "phase_data",
+            SEEK = "seek"
+    ;
 }

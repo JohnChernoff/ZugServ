@@ -322,6 +322,10 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     public void setRunning(boolean running) { this.running = running; }
 
+    public CompletableFuture<Boolean> startArea() {
+        return startArea(getCreator(true),null);
+    }
+
     /**
      * Starts an area.  Note this does not send a ZugFields.ServMsgType.startArea message to the client and is a CompleteableFuture in case of subclasses
      * wishing to use requestConfirmation() or what not.
@@ -390,11 +394,15 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     @Override
     public boolean addOccupant(Occupant occupant) {
+        return addOccupant(occupant,false);
+    }
+
+    public boolean addOccupant(Occupant occupant, boolean noStart) {
         if (super.addOccupant(occupant)) {
             observers.remove(occupant.getUser().getConn());
             getListener().ifPresent(l -> l.areaJoined(this, occupant));
-            if (getActiveOccupants(false).size() == getMaxOccupants() && config.autoStart) {
-                startArea(getCreator(true),null);
+            if (!noStart && getActiveOccupants(false).size() == getMaxOccupants() && config.autoStart) {
+                startArea();
             }
             return true;
         }

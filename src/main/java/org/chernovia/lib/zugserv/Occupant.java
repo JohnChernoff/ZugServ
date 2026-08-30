@@ -1,12 +1,11 @@
 package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.chernovia.lib.zugserv.enums.OccupantFilter;
 import org.chernovia.lib.zugserv.enums.ZugAuthSource;
 import org.chernovia.lib.zugserv.enums.ZugScope;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 /**
  * An Occupant encapsulates a ZugUser within a ZugArea.
@@ -40,7 +39,6 @@ abstract public class Occupant implements JSONifier {
      */
     public String getName() {
         if (area != null && area.getOccupants()
-                .stream()
                 .anyMatch(occupant -> occupant.user.getName().equalsIgnoreCase(user.getName())
                 && occupant.user.getSource() != user.getSource())) return user.getUniqueName().toString();
         else return user.getName();
@@ -121,6 +119,14 @@ abstract public class Occupant implements JSONifier {
 
     public boolean isBot() {
         return getUser().getSource() == ZugAuthSource.bot;
+    }
+
+    public boolean passesFilter(OccupantFilter... filters) {
+        List<OccupantFilter> filterList = Arrays.asList(filters);
+        return
+        (!filterList.contains(OccupantFilter.human) || !isBot()) &&
+        (!filterList.contains(OccupantFilter.notAway) || !isAway()) &&
+        (!filterList.contains(OccupantFilter.loggedIn) || !user.isLoggedIn());
     }
 
     public Optional<Object> getResponse(String responseType) { return responseMap.get(responseType); }

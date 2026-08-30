@@ -121,7 +121,7 @@ public class ResponseManager {
         List<OccupantResponse> responses = new ArrayList<>();
         try {
             // Create snapshot to prevent ConcurrentModificationException
-            List<Occupant> occupantSnapshot = new ArrayList<>(area.getOccupants());
+            List<Occupant> occupantSnapshot = new ArrayList<>(area.getOccupants().toList());
 
             for (Occupant occupant : occupantSnapshot) {
                 if (!occupant.isBot()) {

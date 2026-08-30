@@ -2,12 +2,14 @@ package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.chernovia.lib.zugserv.enums.OccupantFilter;
 import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.stream.Stream;
 
 /**
  * A ZugRoom represents an area that can contain and rudimentarily manage an arbitrarily defined number of Occupants.
@@ -40,7 +42,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @return true if in the room
      */
     public boolean isOccupant(Connection conn) {
-        for (Occupant occupant : getOccupants()) {
+        for (Occupant occupant : getOccupants().toList()) {
             Connection c = occupant.getUser().getConn();
             if (c != null && (c.equals(conn) || c.isSameOrigin(conn))) return true;
         }
@@ -54,7 +56,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @return true if in the room
      */
     public boolean isOccupant(Connection conn, boolean byOrigin) {
-        for (Occupant occupant : getOccupants()) {
+        for (Occupant occupant : getOccupants().toList()) {
             Connection c = occupant.getUser().getConn();
             if (c != null) {
                 if (byOrigin) {
@@ -128,28 +130,20 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         this.maxOccupants = maxOccupants;
     }
 
+    public boolean isFull(OccupantFilter... filters) {
+        return numOccupants(filters) >= maxOccupants;
+    }
+
     public final int numOccupants() {
         return occupants.size();
     }
 
-    public final int numHumanOccupants() {
-        return (int)occupants.values().stream().filter(o -> !o.isBot()).count();
+    public final int numOccupants(OccupantFilter... filters) {
+        return (int)getOccupants(filters).count();
     }
 
-    public final Collection<Occupant> getOccupants() {
-        return occupants.values();
-    }
-
-    /**
-     * Returns a collection of currently logged in Occupants
-     *
-     * @param countAway counts away users as inactive
-     * @return a collection of Occupants
-     */
-    public final Collection<Occupant> getActiveOccupants(boolean countAway) {
-        return getOccupants().stream().filter(occupant ->
-                (countAway ? !occupant.isAway() :  occupant.getUser().isLoggedIn()) &&
-                !occupant.isBot()).toList();
+    public final Stream<Occupant> getOccupants(OccupantFilter... filters) {
+        return occupants.values().stream().filter(o -> o.passesFilter(filters));
     }
 
     public final Optional<Occupant> getOccupant(ZugUser user) {
@@ -368,7 +362,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
 
     @Override
     public int compareTo(ZugRoom a) {
-        return this.getOccupants().size() - a.getOccupants().size();
+        return this.numOccupants() - a.numOccupants();
     }
 
 }

@@ -334,14 +334,22 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
                 () -> err(user,"Missing user name"));
     }
 
-
+    /**
+     * Creates an area based on a user list, typically for seeks
+     * @param users list of joining users
+     * @param dataNode area metaData
+     * @param fill set room size to userlist size
+     * @return the area created
+     */
     public Optional<ZugArea> handleCreateArea(List<ZugUser> users, JsonNode dataNode, boolean fill) {
         Optional<ZugArea> optArea = handleCreateArea(users.get(0),dataNode);
         optArea.ifPresent(area -> {
-            if (fill) area.setMaxOccupants(users.size());
+            if (fill) {
+                area.setMaxOccupants(users.size());
+                //area.setPrivate(true);
+            }
             for (ZugUser user : users) createOccupantAndJoin(area,user,dataNode);
         });
-
         return optArea;
     }
 
@@ -705,7 +713,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
 
     public void handleMaxOccupancy(ZugUser user, ZugArea area, JsonNode dataNode) {
         if (area.isBumpAway()) {
-                area.getOccupants().stream()
+                area.getOccupants()
                         .filter(o -> o.isAway() && !area.isCreator(o.getUser()))
                         .findFirst().ifPresent(occupant -> {
                     area.spam("Dropping idle occupant: " + occupant.getName());
@@ -982,7 +990,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
      * @param change the enumerated type of change (e.g., ZugFields.AreaChange.created, etc.)
      */
     public void handleAreaListUpdate(ZugArea area, ZugAreaChange change, String updateType) {
-        if (!isCrowded() && area.exists()) {
+        if (!isCrowded() && area.exists() && !area.isPrivate()) {
             spam(ZugServMsgType.updateAreaList,ZugUtils.newJSON()
                     .put(ZugFields.AREA_CHANGE,change.name())
                     .put(ZugFields.UPDATE_TYPE,updateType)

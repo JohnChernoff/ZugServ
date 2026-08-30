@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import net.datafaker.Faker;
+import org.chernovia.lib.zugserv.enums.OccupantFilter;
 import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.*;
@@ -21,17 +22,17 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         public boolean purgeDeserted;
         public boolean autoStart;
         public boolean purgeAway; //TODO: should this drop away occupants?
-        public boolean bumpAway; //TODO: what is this for?
         public boolean async;
-        public AreaConfig(boolean allowGuests, boolean purgeDeserted, boolean purgeAway, boolean bumpAway, boolean async, boolean autoStart) {
+        public AreaConfig(boolean allowGuests, boolean purgeDeserted, boolean purgeAway, boolean async, boolean autoStart) {
             this.allowGuests = allowGuests;
             this.purgeDeserted = purgeDeserted;
             this.purgeAway = purgeAway;
-            this.bumpAway = bumpAway;
             this.async = async;
             this.autoStart = autoStart;
         }
     }
+
+    public static final AreaConfig autoStartConfig = new AreaConfig(true,true,true,true,true);
     public final AreaConfig config;
     boolean created = false;
     public enum OperationType {start,stop,nudge}
@@ -61,7 +62,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
      */
     public ZugArea(String t, ZugUser c, AreaListener l) {
         this(t,ZugFields.UNKNOWN_STRING,c, l,
-                new AreaConfig(true,true, true, false, true, false));
+                new AreaConfig(true,true, true, true, false));
     }
 
     /**
@@ -143,8 +144,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     }
 
     private void deputizeCreator() {
-        Occupant deputy = getOccupants().stream().filter(o -> !o.isBot())
-                .findFirst().orElse(getOccupants().stream().findFirst().orElse(null));
+        Occupant deputy = getOccupants(OccupantFilter.human).findFirst().orElse(getOccupants().findFirst().orElse(null));
         setCreator(deputy != null ? deputy.getUser() : null);
     }
 
@@ -176,14 +176,6 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         config.purgeDeserted = purgeDeserted;
     }
 
-    public boolean isBumpAway() {
-        return config.bumpAway;
-    }
-
-    public void setBumpAway(boolean bumpAway) {
-        config.bumpAway = bumpAway;
-    }
-
     /**
      * Indicates if any bans on the user are currently in effect.
      * @param user the user
@@ -201,7 +193,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
             dropOccupant(occupant);
             tell(occupant,ZugServMsgType.kicked, getID());
             tell(occupant,ZugServMsgType.updateArea, this.toJSON2(ZugScope.occupants_basic)); //TODO: use updateOccupants?
-            spam(ZugServMsgType.updateOccupants, this.toJSON2(ZugScope.occupants_basic));
+            //spam(ZugServMsgType.updateOccupants, this.toJSON2(ZugScope.occupants_basic));
         }
     }
 
@@ -303,9 +295,14 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
     public boolean isOpen() {
         return areaThread == null;
     }
+
     public boolean isDeserted(boolean countAway) {
-        return getActiveOccupants(countAway).isEmpty();
+        return (countAway
+                ? getOccupants(OccupantFilter.human)
+                : getOccupants(OccupantFilter.human, OccupantFilter.notAway)).findAny().isPresent();
     }
+
+    public boolean isBumpAway() { return true; }
 
     @Override
     public boolean dropOccupant(ZugUser user) {
@@ -401,7 +398,7 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         if (super.addOccupant(occupant)) {
             observers.remove(occupant.getUser().getConn());
             getListener().ifPresent(l -> l.areaJoined(this, occupant));
-            if (!noStart && getActiveOccupants(false).size() == getMaxOccupants() && config.autoStart) {
+            if (!noStart && isFull(OccupantFilter.notAway,OccupantFilter.loggedIn) && config.autoStart) {
                 startArea();
             }
             return true;

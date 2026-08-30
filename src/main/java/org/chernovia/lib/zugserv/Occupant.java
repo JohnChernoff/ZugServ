@@ -126,7 +126,7 @@ abstract public class Occupant implements JSONifier {
         return
         (!filterList.contains(OccupantFilter.human) || !isBot()) &&
         (!filterList.contains(OccupantFilter.notAway) || !isAway()) &&
-        (!filterList.contains(OccupantFilter.loggedIn) || !user.isLoggedIn());
+        (!filterList.contains(OccupantFilter.loggedIn) || user.isLoggedIn());
     }
 
     public Optional<Object> getResponse(String responseType) { return responseMap.get(responseType); }

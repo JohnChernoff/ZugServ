@@ -298,8 +298,8 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
 
     public boolean isDeserted(boolean countAway) {
         return (countAway
-                ? getOccupants(OccupantFilter.human)
-                : getOccupants(OccupantFilter.human, OccupantFilter.notAway)).findAny().isPresent();
+                ? getOccupants(OccupantFilter.human, OccupantFilter.notAway)
+                : getOccupants(OccupantFilter.human, OccupantFilter.loggedIn)).findAny().isEmpty();
     }
 
     public boolean isBumpAway() { return true; }

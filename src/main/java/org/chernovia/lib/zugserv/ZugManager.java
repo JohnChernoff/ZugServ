@@ -714,7 +714,7 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
     public void handleMaxOccupancy(ZugUser user, ZugArea area, JsonNode dataNode) {
         if (area.isBumpAway()) {
                 area.getOccupants()
-                        .filter(o -> o.isAway() && !area.isCreator(o.getUser()))
+                        .filter(o -> o.canAct() && !area.isCreator(o.getUser()))
                         .findFirst().ifPresent(occupant -> {
                     area.spam("Dropping idle occupant: " + occupant.getName());
                     if (area.dropOccupant(occupant)) createOccupantAndJoin(area,user,dataNode);

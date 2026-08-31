@@ -215,7 +215,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
                     tell(occupant,type,msg);
                 }
             }
-            else if (!occupant.isAway()) tell(occupant,type,msg);
+            else if (!occupant.canAct()) tell(occupant,type,msg);
         }
     }
 
@@ -243,7 +243,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
                 if (Arrays.stream(exclude).noneMatch(o -> o.equals(occupant))) {
                     tell(occupant,type, msgNode,ignoreDeafness);
                 }
-            } else if (!occupant.isAway()) tell(occupant,type, msgNode,ignoreDeafness);
+            } else if (!occupant.canAct()) tell(occupant,type, msgNode,ignoreDeafness);
         });
         if (type.equals(ZugServMsgType.areaUserMsg) || type.equals(ZugServMsgType.roomUserMsg)) {
             messageManager.addMessage(msgNode);

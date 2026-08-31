@@ -3,7 +3,6 @@ package org.chernovia.lib.zugserv;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.enums.OccupantFilter;
 import org.chernovia.lib.zugserv.enums.ZugAuthSource;
-import org.chernovia.lib.zugserv.enums.ZugScope;
 
 import java.util.*;
 
@@ -48,7 +47,9 @@ abstract public class Occupant implements JSONifier {
      * Indicates if the Occupant is whatever the ZugArea it occupies considers idle.
      * @return true if away, otherwise false
      */
-    public boolean isAway() { return !user.isLoggedIn() || away; }
+    public boolean canAct() { return !user.isLoggedIn() || away; }
+
+    public boolean isAway() { return away; }
 
     /**
      * Sets the away/idle status of an Occupant.
@@ -125,7 +126,7 @@ abstract public class Occupant implements JSONifier {
         List<OccupantFilter> filterList = Arrays.asList(filters);
         return
         (!filterList.contains(OccupantFilter.human) || !isBot()) &&
-        (!filterList.contains(OccupantFilter.notAway) || !isAway()) &&
+        (!filterList.contains(OccupantFilter.notAway) || !canAct()) &&
         (!filterList.contains(OccupantFilter.loggedIn) || user.isLoggedIn());
     }
 

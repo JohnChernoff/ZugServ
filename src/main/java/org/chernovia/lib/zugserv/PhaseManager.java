@@ -311,6 +311,54 @@ public class PhaseManager implements JSONifier, AutoCloseable {
         return chain;
     }
 
+    /**
+     * Submits arbitrary game logic to run serialized with phase transitions,
+     * on the same single thread PhaseManager uses internally. Use this for
+     * any player-initiated action that mutates state also touched by phase
+     * transitions, to avoid races between the two. Fire-and-forget — failures
+     * are logged, not reported to the caller.
+     */
+    public void submit(Runnable task) {
+        try {
+            scheduler.execute(() -> runSafely(task));
+        } catch (RejectedExecutionException e) {
+            ZugHandler.log(Level.WARNING, "submit() rejected — area shut down: " + area.getDesc());
+        }
+    }
+
+    /**
+     * Same as submit(Runnable), but returns a CompletableFuture that completes
+     * (or completes exceptionally) once the task finishes, so callers can chain
+     * follow-up work or observe failure directly.
+     */
+    public CompletableFuture<Void> submitAsync(Runnable task) {
+        CompletableFuture<Void> result = new CompletableFuture<>();
+        try {
+            scheduler.execute(() -> {
+                try {
+                    task.run();
+                    result.complete(null);
+                } catch (Exception e) {
+                    ZugHandler.log(Level.SEVERE, "Error in submitted task: " + e.getMessage());
+                    ZugServ.printStackTrace(e);
+                    result.completeExceptionally(e);
+                }
+            });
+        } catch (RejectedExecutionException e) {
+            result.completeExceptionally(e);
+        }
+        return result;
+    }
+
+    private void runSafely(Runnable task) {
+        try {
+            task.run();
+        } catch (Exception e) {
+            ZugHandler.log(Level.SEVERE, "Error in submitted task: " + e.getMessage());
+            ZugServ.printStackTrace(e);
+        }
+    }
+
     @Override
     public ObjectNode toJSON2(Enum<?>... scopes) {
         return ZugUtils.newJSON()

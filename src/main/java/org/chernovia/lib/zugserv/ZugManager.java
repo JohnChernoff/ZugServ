@@ -6,6 +6,7 @@ import java.time.MonthDay;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.atomic.AtomicReference;
+import java.util.function.BiConsumer;
 import java.util.logging.Level;
 import net.datafaker.*;
 import org.chernovia.lib.zugserv.enums.*;
@@ -319,14 +320,18 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
         }
     }
 
-    protected <A extends ZugArea> void withOccupant(
-            ZugUser user, JsonNode dataNode, Class<A> areaType,
-            java.util.function.BiConsumer<A, Occupant> action) {
+    protected <A extends ZugArea, O extends Occupant> void withOccupant(
+            ZugUser user, JsonNode dataNode, Class<A> areaType, Class<O> occupantType,
+            BiConsumer<A, O> action) {
         getArea(dataNode).ifPresentOrElse(area -> {
             if (areaType.isInstance(area)) {
-                getOccupant(user, dataNode).ifPresentOrElse(
-                        occ -> action.accept(areaType.cast(area), occ),
-                        () -> err(user, ERR_NOT_OCCUPANT));
+                getOccupant(user, dataNode).ifPresentOrElse(occ -> {
+                    if (occupantType.isInstance(occ)) {
+                        action.accept(areaType.cast(area), occupantType.cast(occ));
+                    } else {
+                        err(user, "Wrong occupant type");
+                    }
+                }, () -> err(user, ERR_NOT_OCCUPANT));
             } else {
                 err(user, "Wrong area type");
             }

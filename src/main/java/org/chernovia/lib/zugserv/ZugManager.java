@@ -319,6 +319,20 @@ abstract public class ZugManager extends ZugHandler implements AreaListener {
         }
     }
 
+    protected <A extends ZugArea> void withOccupant(
+            ZugUser user, JsonNode dataNode, Class<A> areaType,
+            java.util.function.BiConsumer<A, Occupant> action) {
+        getArea(dataNode).ifPresentOrElse(area -> {
+            if (areaType.isInstance(area)) {
+                getOccupant(user, dataNode).ifPresentOrElse(
+                        occ -> action.accept(areaType.cast(area), occ),
+                        () -> err(user, ERR_NOT_OCCUPANT));
+            } else {
+                err(user, "Wrong area type");
+            }
+        }, () -> err(user, ERR_AREA_NOT_FOUND));
+    }
+
     /* *** */
 
     public void handleServerMessage(ZugUser user, JsonNode dataNode) { //String msg = getTxtNode(dataNode,ZugFields.MSG).orElse("");

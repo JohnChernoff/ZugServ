@@ -26,6 +26,19 @@ import java.util.logging.Level;
  */
 public class PhaseManager implements JSONifier, AutoCloseable {
 
+    private volatile Thread schedulerThread;
+
+    ThreadFactory threadFactory = r -> {
+        Thread t = new Thread(r, "ZugPhaseManager-" + area.getDesc());
+        t.setDaemon(false);
+        schedulerThread = t;
+        return t;
+    };
+
+    public Thread getSchedulerThread() {
+        return schedulerThread;
+    }
+
     public static class PhaseStep {
         public final Enum<?> phase;
         public final int durationMillis;

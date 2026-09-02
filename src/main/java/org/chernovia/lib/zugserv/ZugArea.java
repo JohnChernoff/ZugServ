@@ -486,4 +486,14 @@ abstract public class ZugArea extends ZugRoom implements OccupantListener,Runnab
         } else return "wtf:" + colorName;
     }
 
+    public void handleMutant(Runnable runnable) {
+        phaseManager.submit(runnable);
+    }
+
+    public void assertOnPhaseThread() {
+        if (Thread.currentThread() != phaseManager.getSchedulerThread()) {
+            throw new IllegalStateException("playCard() called off the game thread — use handlePlayCard() instead");
+        }
+    }
+
 }

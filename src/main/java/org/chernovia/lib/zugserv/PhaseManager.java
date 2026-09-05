@@ -24,7 +24,7 @@ import java.util.logging.Level;
  * @see PhaseStep
  * @see ZugArea
  */
-public class PhaseManager implements JSONifier, AutoCloseable {
+public class PhaseManager<O extends Occupant<O>> implements JSONifier, AutoCloseable {
 
     public static class PhaseStep {
         public final Enum<?> phase;
@@ -53,7 +53,7 @@ public class PhaseManager implements JSONifier, AutoCloseable {
         }
     }
 
-    ZugArea area;
+    ZugArea<O> area;
     Enum<?> phase = ZugAreaPhase.initializing;
     long phaseStamp = 0;
     long phaseTime = 0;
@@ -83,7 +83,7 @@ public class PhaseManager implements JSONifier, AutoCloseable {
     }
 
 
-    public PhaseManager(ZugArea area) {
+    public PhaseManager(ZugArea<O> area) {
         this.area = area;
 
         // Create executor with descriptive thread names for debugging
@@ -304,16 +304,16 @@ public class PhaseManager implements JSONifier, AutoCloseable {
         return runThenDelay(() -> area.spam(type, msgNode), millis);
     }
 
-    public CompletableFuture<Void> awaitSpamX(Enum<?> type, String msg, int millis, Occupant... exclude) {
+    public CompletableFuture<Void> awaitSpamX(Enum<?> type, String msg, int millis, O... exclude) {
         return runThenDelay(() -> area.spamX(type, msg, exclude), millis);
     }
 
-    public CompletableFuture<Void> awaitSpamX(Enum<?> type, ObjectNode msgNode, int millis, Occupant... exclude) {
+    public CompletableFuture<Void> awaitSpamX(Enum<?> type, ObjectNode msgNode, int millis, O... exclude) {
         return runThenDelay(() -> area.spamX(type, msgNode, exclude), millis);
     }
 
     public CompletableFuture<Void> awaitSpamX(Enum<?> type, ObjectNode msgNode, boolean ignoreDeafness,
-                                              int millis, Occupant... exclude) {
+                                              int millis, O... exclude) {
         return runThenDelay(() -> area.spamX(type, msgNode, ignoreDeafness, exclude), millis);
     }
 

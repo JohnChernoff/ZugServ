@@ -5,9 +5,9 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class SeekManager {
     Map<ZugUser,ZugSeek> seekMap = new ConcurrentHashMap<>();
-    ZugManager mgr;
+    ZugManager<?,?> mgr;
 
-    public SeekManager(ZugManager mgr) {
+    public SeekManager(ZugManager<?,?> mgr) {
         this.mgr = mgr;
     }
 

@@ -34,31 +34,31 @@ import java.util.logging.Level;
  *
  * Failure to cleanup would cause unbounded memory growth in long-running servers.
  */
-public class ResponseManager {
+public class ResponseManager<O extends Occupant<O>> {
 
-    ZugArea<?> area;
+    ZugArea<O> area;
 
-    public record OccupantResponse(Optional<Object> response, Occupant occupant) {}
-    public record BoolResponse(Optional<Boolean> response, Occupant occupant) {}
-    public record IntResponse(Optional<Integer> response, Occupant occupant) {}
-    public record DoubleResponse(Optional<Double> response, Occupant occupant) {}
-    public record StringResponse(Optional<String> response, Occupant occupant) {}
+    public record OccupantResponse<O extends Occupant<O>>(Optional<Object> response, O occupant) {}
+    public record BoolResponse<O extends Occupant<O>>(Optional<Boolean> response, O occupant) {}
+    public record IntResponse<O extends Occupant<O>>(Optional<Integer> response, O occupant) {}
+    public record DoubleResponse<O extends Occupant<O>>(Optional<Double> response, O occupant) {}
+    public record StringResponse<O extends Occupant<O>>(Optional<String> response, O occupant) {}
 
-    public static class ZugResponse {
-        CompletableFuture<List<OccupantResponse>> futureResponse;
+    public static class ZugResponse<O extends Occupant<O>> {
+        CompletableFuture<List<OccupantResponse<O>>> futureResponse;
         Object cancelValue;
 
-        public ZugResponse(CompletableFuture<List<OccupantResponse>> futureResponse, Object cancelValue) {
+        public ZugResponse(CompletableFuture<List<OccupantResponse<O>>> futureResponse, Object cancelValue) {
             this.futureResponse = futureResponse;
             this.cancelValue = cancelValue;
         }
     }
 
     // FIX: Use synchronized map to prevent concurrent modification and NPE
-    private final Map<String, ZugResponse> responseCheckerMap = Collections
+    private final Map<String, ZugResponse<O>> responseCheckerMap = Collections
             .synchronizedMap(new HashMap<>());
 
-    public ResponseManager(ZugArea area) {
+    public ResponseManager(ZugArea<O> area) {
         this.area = area;
     }
 
@@ -72,13 +72,13 @@ public class ResponseManager {
      * @param responseType the type of response to check
      */
     public void checkResponse(String responseType) {
-        ZugResponse response = responseCheckerMap.get(responseType);
+        ZugResponse<O> response = responseCheckerMap.get(responseType);
         if (response == null) {
             ZugHandler.log(Level.FINE, "Orphaned response type (already completed): " + responseType);
             return;
         }
 
-        List<OccupantResponse> responseMap = getResponses(responseType);
+        List<OccupantResponse<O>> responseMap = getResponses(responseType);
 
         try {
             // Check if ALL occupants have responded
@@ -99,7 +99,7 @@ public class ResponseManager {
                 ZugHandler.log(Level.FINE, "Response cancelled: " + responseType);
             }
             // Response not yet complete - DON'T clean up yet
-            else { return; }
+            //else { return; }
         } catch (Exception e) {
             ZugHandler.log(Level.SEVERE, "Error checking response " + responseType + ": " + e.getMessage());
             ZugServ.printStackTrace(e);
@@ -117,15 +117,15 @@ public class ResponseManager {
      * @param responseType the response type to query
      * @return list of occupant responses
      */
-    private List<OccupantResponse> getResponses(String responseType) {
-        List<OccupantResponse> responses = new ArrayList<>();
+    private List<OccupantResponse<O>> getResponses(String responseType) {
+        List<OccupantResponse<O>> responses = new ArrayList<>();
         try {
             // Create snapshot to prevent ConcurrentModificationException
-            List<Occupant> occupantSnapshot = new ArrayList<>(area.getOccupants().toList());
+            List<O> occupantSnapshot = new ArrayList<>(area.getOccupants().toList());
 
-            for (Occupant occupant : occupantSnapshot) {
+            for (O occupant : occupantSnapshot) {
                 if (!occupant.isBot()) {
-                    responses.add(new OccupantResponse(occupant.getResponse(responseType), occupant));
+                    responses.add(new OccupantResponse<>(occupant.getResponse(responseType), occupant));
                 }
             }
         } catch (Exception e) {
@@ -135,7 +135,7 @@ public class ResponseManager {
         return responses;
     }
 
-    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType, int timeout) {
+    public CompletableFuture<List<OccupantResponse<O>>> requestResponse(String responseType, int timeout) {
         return requestResponse(responseType, null, timeout);
     }
 
@@ -150,14 +150,14 @@ public class ResponseManager {
      * @param timeout timeout in seconds
      * @return future that completes when all respond, one cancels, or timeout expires
      */
-    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType,
+    public CompletableFuture<List<OccupantResponse<O>>> requestResponse(String responseType,
                                                                      Object cancelValue,
                                                                      int timeout) {
-        CompletableFuture<List<OccupantResponse>> future = new CompletableFuture<>();
+        CompletableFuture<List<OccupantResponse<O>>> future = new CompletableFuture<>();
 
         // Use computeIfAbsent for atomic put to prevent duplicates
-        ZugResponse existingResponse = responseCheckerMap.putIfAbsent(responseType,
-                new ZugResponse(future, cancelValue));
+        ZugResponse<O> existingResponse = responseCheckerMap.putIfAbsent(responseType,
+                new ZugResponse<>(future, cancelValue));
 
         if (existingResponse != null) {
             ZugHandler.log(Level.WARNING,
@@ -191,7 +191,7 @@ public class ResponseManager {
                 });
     }
 
-    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType,
+    public CompletableFuture<List<OccupantResponse<O>>> requestResponse(String responseType,
                                                                      int timeout,
                                                                      Class<?> classFilter) {
         return requestResponse(responseType, null, timeout, classFilter);
@@ -208,7 +208,7 @@ public class ResponseManager {
      * @param classFilter only include responses matching this class
      * @return future with filtered responses
      */
-    public CompletableFuture<List<OccupantResponse>> requestResponse(String responseType,
+    public CompletableFuture<List<OccupantResponse<O>>> requestResponse(String responseType,
                                                                      Object cancelValue,
                                                                      int timeout,
                                                                      Class<?> classFilter) {
@@ -216,74 +216,74 @@ public class ResponseManager {
                 response.stream().map(occupantResponse ->
                         (occupantResponse.response.isEmpty() ||
                                 !classFilter.isAssignableFrom(occupantResponse.response.get().getClass()))
-                                ? new OccupantResponse(Optional.empty(), occupantResponse.occupant)
+                                ? new OccupantResponse<>(Optional.empty(), occupantResponse.occupant)
                                 : occupantResponse
                 ).toList()
         );
     }
 
-    public CompletableFuture<List<BoolResponse>> requestBoolResponse(String responseType, int timeout) {
+    public CompletableFuture<List<BoolResponse<O>>> requestBoolResponse(String responseType, int timeout) {
         return requestBoolResponse(responseType, null, timeout);
     }
 
-    public CompletableFuture<List<BoolResponse>> requestBoolResponse(String responseType,
+    public CompletableFuture<List<BoolResponse<O>>> requestBoolResponse(String responseType,
                                                                      Object cancelValue,
                                                                      int timeout) {
         return requestResponse(responseType, cancelValue, timeout, Boolean.class)
                 .thenApplyAsync(response ->
                         response.stream().map(occupantResponse ->
-                                        new BoolResponse(
+                                        new BoolResponse<>(
                                                 Optional.ofNullable((Boolean) occupantResponse.response.orElse(null)),
                                                 occupantResponse.occupant))
                                 .toList()
                 );
     }
 
-    public CompletableFuture<List<IntResponse>> requestIntResponse(String responseType, int timeout) {
+    public CompletableFuture<List<IntResponse<O>>> requestIntResponse(String responseType, int timeout) {
         return requestIntResponse(responseType, null, timeout);
     }
 
-    public CompletableFuture<List<IntResponse>> requestIntResponse(String responseType,
+    public CompletableFuture<List<IntResponse<O>>> requestIntResponse(String responseType,
                                                                    Object cancelValue,
                                                                    int timeout) {
         return requestResponse(responseType, cancelValue, timeout, Integer.class)
                 .thenApplyAsync(response ->
                         response.stream().map(occupantResponse ->
-                                        new IntResponse(
+                                        new IntResponse<>(
                                                 Optional.ofNullable((Integer) occupantResponse.response.orElse(null)),
                                                 occupantResponse.occupant))
                                 .toList()
                 );
     }
 
-    public CompletableFuture<List<DoubleResponse>> requestDoubleResponse(String responseType, int timeout) {
+    public CompletableFuture<List<DoubleResponse<O>>> requestDoubleResponse(String responseType, int timeout) {
         return requestDoubleResponse(responseType, null, timeout);
     }
 
-    public CompletableFuture<List<DoubleResponse>> requestDoubleResponse(String responseType,
+    public CompletableFuture<List<DoubleResponse<O>>> requestDoubleResponse(String responseType,
                                                                          Object cancelValue,
                                                                          int timeout) {
         return requestResponse(responseType, cancelValue, timeout, Double.class)
                 .thenApplyAsync(response ->
                         response.stream().map(occupantResponse ->
-                                        new DoubleResponse(
+                                        new DoubleResponse<>(
                                                 Optional.ofNullable((Double) occupantResponse.response.orElse(null)),
                                                 occupantResponse.occupant))
                                 .toList()
                 );
     }
 
-    public CompletableFuture<List<StringResponse>> requestStringResponse(String responseType, int timeout) {
+    public CompletableFuture<List<StringResponse<O>>> requestStringResponse(String responseType, int timeout) {
         return requestStringResponse(responseType, null, timeout);
     }
 
-    public CompletableFuture<List<StringResponse>> requestStringResponse(String responseType,
+    public CompletableFuture<List<StringResponse<O>>> requestStringResponse(String responseType,
                                                                          Object cancelValue,
                                                                          int timeout) {
         return requestResponse(responseType, cancelValue, timeout, String.class)
                 .thenApplyAsync(response ->
                         response.stream().map(occupantResponse ->
-                                        new StringResponse(
+                                        new StringResponse<>(
                                                 Optional.ofNullable((String) occupantResponse.response.orElse(null)),
                                                 occupantResponse.occupant))
                                 .toList()

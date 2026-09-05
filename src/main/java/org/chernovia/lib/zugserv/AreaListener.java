@@ -3,7 +3,7 @@ package org.chernovia.lib.zugserv;
 /**
  * An AreaListener responds to events relating to a ZugArea.
  */
-public interface AreaListener<O extends Occupant, A extends ZugArea<O>> {
+public interface AreaListener<O extends Occupant<O>, A extends ZugArea<O>> {
 
     /**
      * Called upon the (server defined) conclusion of an Area's purpose.

@@ -16,7 +16,7 @@ enum ZugAreaPhase {initializing,running,finalizing}
 /**
  * ZugArea is a fuller featured extension of ZugRoom that includes passwords, bans, options, phases, and observers.
  */
-abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements OccupantListener<T>,Runnable {
+abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implements OccupantListener<O>,Runnable {
     public static class AreaConfig {
         public boolean allowGuests;
         public boolean purgeDeserted;
@@ -36,7 +36,7 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
     public final AreaConfig config;
     boolean created = false;
     public enum OperationType {start,stop,nudge}
-    final private AreaListener listener;
+    final private AreaListener<O, ? extends ZugArea<O>> listener;
     private String password;
     private ZugUser creator;
     private final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
@@ -60,7 +60,7 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
      * @param c the creator
      * @param l an AreaListener
      */
-    public ZugArea(String t, ZugUser c, AreaListener l) {
+    public ZugArea(String t, ZugUser c, AreaListener<O, ? extends ZugArea<O>> l) {
         this(t,ZugFields.UNKNOWN_STRING,c, l,
                 new AreaConfig(true,true, true, true, false));
     }
@@ -72,7 +72,7 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
      * @param l an AreaListener
      * @param config Area Configuration
      */
-    public ZugArea(String t, ZugUser c, AreaListener l, AreaConfig config) {
+    public ZugArea(String t, ZugUser c, AreaListener<O, ? extends ZugArea<O>>  l, AreaConfig config) {
         this(t,ZugFields.UNKNOWN_STRING,c, l, config);
     }
 
@@ -84,7 +84,7 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
      * @param l an AreaListener
      * @param config Area Configuration
      */
-    public ZugArea(String t, String p, ZugUser c, AreaListener l, AreaConfig config) { //l.areaCreated(this);
+    public ZugArea(String t, String p, ZugUser c, AreaListener<O, ? extends ZugArea<O>>  l, AreaConfig config) { //l.areaCreated(this);
         super(t);
         this.config = config;
         password = p; creator = c; listener = l;
@@ -144,7 +144,7 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
     }
 
     private void deputizeCreator() {
-        T deputy = getOccupants(OccupantFilter.human).findFirst().orElse(getOccupants().findFirst().orElse(null));
+        O deputy = getOccupants(OccupantFilter.human).findFirst().orElse(getOccupants().findFirst().orElse(null));
         setCreator(deputy != null ? deputy.getUser() : null);
     }
 
@@ -161,12 +161,12 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
     }
 
     @Override
-    public void handleAway(T occupant) {
+    public void handleAway(O occupant) {
         if (checkPurge()) stopArea(true);
     }
 
     @Override
-    public void handleRoomJoin(T occupant, ZugRoom<T> prevRoom, ZugRoom<T> newRoom) {}
+    public void handleRoomJoin(O occupant, ZugRoom<O> prevRoom, ZugRoom<O> newRoom) {}
 
     public void setPurgeAway(boolean purgeAway) {
         config.purgeAway = purgeAway;
@@ -185,10 +185,10 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
         return banList.stream().anyMatch(ban -> ban.inEffect(user));
     }
 
-    public void kick(T occupant) {
+    public void kick(O occupant) {
         kick(occupant, creator);
     }
-    public void kick(T occupant, ZugUser kicker) {
+    public void kick(O occupant, ZugUser kicker) {
         if (kicker.equals(creator)) {
             dropOccupant(occupant);
             tell(occupant,ZugServMsgType.kicked, getID());
@@ -235,7 +235,7 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
      * @param drop if true, the user is dropped from the Occupant list
      */
     public void banOccupant(ZugUser bannor, ZugUser.UniqueName uniqueName, long t, boolean drop) {
-        T occupant = getOccupant(uniqueName).orElse(null);
+        O occupant = getOccupant(uniqueName).orElse(null);
         if (occupant == null) {
             err(bannor, "Not found: " + uniqueName.name);
         }
@@ -249,7 +249,7 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
      * @param t the duration of the ban (in milliseconds)
      * @param drop if true, the user is dropped from the Occupant list
      */
-    public void banOccupant(ZugUser bannor, T occupant, long t, boolean drop) {
+    public void banOccupant(ZugUser bannor, O occupant, long t, boolean drop) {
         if (bannor.equals(getCreator().orElse(null))) {
             banList.add(new Ban(occupant.getUser(),t,bannor));
             if (drop) dropOccupant(occupant);
@@ -371,7 +371,7 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
         if (close) getListener().ifPresent(l -> l.areaClosed(this));
     }
 
-    public boolean nudgeArea(T occupant) {
+    public boolean nudgeArea(O occupant) {
         if (allowed(occupant.getUser(),OperationType.nudge)) {
             action(ActionType.nudge); return true;
         } return false;
@@ -390,11 +390,11 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
     }
 
     @Override
-    public boolean addOccupant(T occupant) {
+    public boolean addOccupant(O occupant) {
         return addOccupant(occupant,false);
     }
 
-    public boolean addOccupant(T occupant, boolean noStart) {
+    public boolean addOccupant(O occupant, boolean noStart) {
         if (super.addOccupant(occupant)) {
             observers.remove(occupant.getUser().getConn());
             getListener().ifPresent(l -> l.areaJoined(this, occupant));
@@ -407,7 +407,7 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
     }
 
     @Override
-    public boolean dropOccupant(T occupant) {
+    public boolean dropOccupant(O occupant) {
        if (super.dropOccupant(occupant)) {
            getListener().ifPresent(l -> l.areaParted(this, occupant.getUser()));
            return true;
@@ -416,12 +416,12 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
     }
 
     @Override
-    final public void spamX(Enum<?> t, String msg, T... ignoreList) {
+    final public void spamX(Enum<?> t, String msg, O... ignoreList) {
         spamX(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID, getID()),ignoreList);
     }
 
     @Override
-    final public void spamX(Enum<?> t, ObjectNode msgNode, T... ignoreList) {
+    final public void spamX(Enum<?> t, ObjectNode msgNode, O... ignoreList) {
         super.spamX(t, msgNode, ignoreList);
         List<Connection> deadConnections = new ArrayList<>();
         for (Connection conn : observers) {
@@ -448,7 +448,7 @@ abstract public class ZugArea<T extends Occupant> extends ZugRoom<T> implements 
      * @param msg an alphanumeric message
      */
     @Override
-    public void tell(T occupant, String msg) {
+    public void tell(O occupant, String msg) {
         tell(occupant, ZugServMsgType.areaMsg,msg);
     }
 

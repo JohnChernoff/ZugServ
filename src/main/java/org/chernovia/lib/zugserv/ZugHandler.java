@@ -28,7 +28,7 @@ import java.util.logging.Logger;
 /**
  * ZugHandler extends ConnListener and encapsulates ZugServ to provide basic server functionality.
  */
-abstract public class ZugHandler<A extends ZugArea<O>,O extends Occupant> implements ConnListener, JSONifier {
+abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> implements ConnListener, JSONifier {
 
     public static class ErrorContext {
         public static void logError(String component, String operation,

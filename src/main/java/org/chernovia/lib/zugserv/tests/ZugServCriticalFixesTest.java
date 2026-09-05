@@ -314,12 +314,13 @@ public class ZugServCriticalFixesTest {
         PHASE1, PHASE2, PHASE3
     }
 
-    static class MockZugArea<MockOccupant> extends ZugArea<ZugServCriticalFixesTest.MockOccupant> {
+    static class MockZugArea extends ZugArea<ZugServCriticalFixesTest.MockOccupant> {
         public MockOccupant mockOccupant1;
         public MockOccupant mockOccupant2;
 
         public MockZugArea(String title) {
             super(title, new MockZugUser("creator", "10.0.0.1"), new MockAreaListener());
+
             mockOccupant1 = new MockOccupant(new MockZugUser("user1", "192.168.1.1"), this);
             mockOccupant2 = new MockOccupant(new MockZugUser("user2", "192.168.1.2"), this);
         }
@@ -328,7 +329,7 @@ public class ZugServCriticalFixesTest {
         public String getName() { return getID(); }
     }
 
-    static class MockOccupant extends Occupant {
+    static class MockOccupant extends Occupant<MockOccupant> {
         public MockOccupant(ZugUser user, ZugArea<MockOccupant> area) {
             super(user, area);
         }

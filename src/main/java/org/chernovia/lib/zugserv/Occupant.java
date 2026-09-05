@@ -9,13 +9,13 @@ import java.util.*;
 /**
  * An Occupant encapsulates a ZugUser within a ZugArea.
  */
-abstract public class Occupant implements JSONifier {
+abstract public class Occupant<O extends Occupant<O>> implements JSONifier {
 
     private ZugUser user;
     private boolean deafened = false;
     private boolean away = false;
-    private final ZugArea area;
-    private ZugRoom room;
+    private final ZugArea<O> area;
+    private ZugRoom<O> room;
 
     private final Map<String, Optional<Object>> responseMap = new HashMap<>();
 
@@ -38,8 +38,8 @@ abstract public class Occupant implements JSONifier {
      */
     public String getName() {
         if (area != null && area.getOccupants()
-                .anyMatch(occupant -> occupant.user.getName().equalsIgnoreCase(user.getName())
-                && occupant.user.getSource() != user.getSource())) return user.getUniqueName().toString();
+                .anyMatch(occupant -> occupant.getUser().getName().equalsIgnoreCase(user.getName())
+                && occupant.getUser().getSource() != user.getSource())) return user.getUniqueName().toString();
         else return user.getName();
     }
 
@@ -57,7 +57,7 @@ abstract public class Occupant implements JSONifier {
      */
     public void setAway(boolean b) {
         away = b;
-        if (away && area != null) area.handleAway(this);
+        if (away && area != null) area.handleAway((O)this);
     }
 
     /**
@@ -80,25 +80,25 @@ abstract public class Occupant implements JSONifier {
      * Creates a roomless non-bot Occupant - note that whatever creates this is responsible for adding it to its assigned Area.
      * @param u the ZugUser associated with this Occupant
      */
-    public Occupant(ZugUser u, ZugArea area) {
+    public Occupant(ZugUser u, ZugArea<O> area) {
         setUser(u);
         this.area = area;
     }
 
-    public void setRoom(ZugRoom room) {
+    public void setRoom(ZugRoom<O> room) {
         this.room = room;
     }
-    public ZugRoom getRoom() { return room; }
+    public ZugRoom<O> getRoom() { return room; }
 
-    public ZugArea getArea() { return area; }
+    public ZugArea<O> getArea() { return area; }
 
     /**
      * Determines if the Occupant has the name UniqueName as another.
      * @param o the Occupant to compare to
      * @return true if the same, otherwise false
      */
-    public boolean eq(Occupant o) {
-        return user.getUniqueName().equals(o.user.getUniqueName());
+    public boolean eq(O o) {
+        return user.getUniqueName().equals(o.getUser().getUniqueName());
     }
 
     /**

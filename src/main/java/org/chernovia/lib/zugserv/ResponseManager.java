@@ -36,7 +36,7 @@ import java.util.logging.Level;
  */
 public class ResponseManager {
 
-    ZugArea area;
+    ZugArea<?> area;
 
     public record OccupantResponse(Optional<Object> response, Occupant occupant) {}
     public record BoolResponse(Optional<Boolean> response, Occupant occupant) {}

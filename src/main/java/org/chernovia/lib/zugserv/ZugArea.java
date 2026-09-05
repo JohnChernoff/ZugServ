@@ -45,14 +45,14 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
     private Thread areaThread;
     boolean running = false;
     private OptionsManager optionsManager = new OptionsManager();
-    private final ResponseManager responseManager;
-    private final PhaseManager phaseManager;
+    private final ResponseManager<O> responseManager;
+    private final PhaseManager<O> phaseManager;
     public OptionsManager om() { return optionsManager; }
     public void setOptionsManager(OptionsManager o) {
         optionsManager = o;
     }
-    public ResponseManager rm() { return responseManager; }
-    public PhaseManager pm() { return phaseManager; }
+    public ResponseManager<O> rm() { return responseManager; }
+    public PhaseManager<O> pm() { return phaseManager; }
 
     /**
      * Constructs a ZugArea with a title, creator, and AreaListener.
@@ -89,8 +89,8 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
         this.config = config;
         password = p; creator = c; listener = l;
         areaThread = new Thread(this);
-        responseManager = new ResponseManager(this);
-        phaseManager = new PhaseManager(this);
+        responseManager = new ResponseManager<>(this);
+        phaseManager = new PhaseManager<>(this);
         action(ActionType.creation);
     }
 

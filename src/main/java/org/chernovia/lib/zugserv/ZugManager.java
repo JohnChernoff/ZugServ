@@ -36,7 +36,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
 
     public static class WorkerProc extends Thread {
         private final ChronJob job;
-        private long interval;
+        private final long interval;
         private boolean running = false;
         private volatile Throwable lastError = null;
 
@@ -526,8 +526,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
             response = dblVal;
         } else if (responseNode.isTextual()) {
             response = responseNode.asText();
-        } else {
-            response = null;
+        } else { //response = null;
             err(user, "Unknown response type");
             return a;
         }

@@ -63,7 +63,7 @@ public class PhaseManager<O extends Occupant<O>> implements JSONifier, AutoClose
     Runnable onTimeoutAction;
     private boolean isPaused = false;
     private long remainingMillis = 0;
-    private long pauseTimestamp = 0;
+    private long pauseTimestamp = 0; //TODO: use somehow
 
     // FIX: Named executor with proper thread factory + shutdown tracking
     private final ScheduledExecutorService scheduler;

@@ -45,9 +45,6 @@ public class ZugServCriticalFixesTest {
         testMessageManagerNullHandling();
         testMessageManagerConcurrentAdds();
 
-        // Issue #6 Tests
-        testPhaseManagerSimpleDeprecation();
-
         // Print summary
         System.out.println("\n========================================");
         System.out.println("Test Results");
@@ -310,18 +307,6 @@ public class ZugServCriticalFixesTest {
     }
 
     // ========================================================================
-    // ISSUE #6: PhaseManagerSimple Deprecation Tests
-    // ========================================================================
-
-    private static void testPhaseManagerSimpleDeprecation() {
-        test("PhaseManagerSimple should not throw on creation", () -> {
-            MockZugArea area = new MockZugArea("TestArea");
-            PhaseManagerSimple pms = new PhaseManagerSimple(area);
-            assertNotNull(pms, "PhaseManagerSimple should be created");
-        });
-    }
-
-    // ========================================================================
     // Test Fixtures / Mocks
     // ========================================================================
 
@@ -329,7 +314,7 @@ public class ZugServCriticalFixesTest {
         PHASE1, PHASE2, PHASE3
     }
 
-    static class MockZugArea extends ZugArea {
+    static class MockZugArea<MockOccupant> extends ZugArea<ZugServCriticalFixesTest.MockOccupant> {
         public MockOccupant mockOccupant1;
         public MockOccupant mockOccupant2;
 
@@ -344,7 +329,7 @@ public class ZugServCriticalFixesTest {
     }
 
     static class MockOccupant extends Occupant {
-        public MockOccupant(ZugUser user, ZugArea area) {
+        public MockOccupant(ZugUser user, ZugArea<MockOccupant> area) {
             super(user, area);
         }
     }

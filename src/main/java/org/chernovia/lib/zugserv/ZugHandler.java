@@ -28,7 +28,7 @@ import java.util.logging.Logger;
 /**
  * ZugHandler extends ConnListener and encapsulates ZugServ to provide basic server functionality.
  */
-abstract public class ZugHandler implements ConnListener, JSONifier {
+abstract public class ZugHandler<A extends ZugArea<O>,O extends Occupant> implements ConnListener, JSONifier {
 
     public static class ErrorContext {
         public static void logError(String component, String operation,
@@ -48,7 +48,7 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
     public static boolean CONN_MSG_DEBUG = false;
     static final Logger logger = Logger.getLogger("ZugServLog");
     ConcurrentHashMap<String,ZugUser> users = new ConcurrentHashMap<>();
-    ConcurrentHashMap<String,ZugArea> areas = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String, A> areas = new ConcurrentHashMap<>();
     Map<ZugAuthSource,Boolean> authSources = new HashMap<>();
     private boolean preserveDisconnectedUsers = true;
     ZugServ serv;
@@ -112,15 +112,15 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
         return Optional.ofNullable(users.remove(user.getName()));
     }
 
-    public Optional<ZugArea> addOrGetArea(ZugArea area) {
+    public Optional<A> addOrGetArea(A area) {
         return Optional.ofNullable(areas.putIfAbsent(area.getID(), area));
     }
 
-    public Optional<ZugArea> removeArea(ZugArea area) {
+    public Optional<A> removeArea(A area) {
         return Optional.ofNullable(areas.remove(area.getID()));
     }
 
-    public Collection<ZugArea> getAreas() {
+    public Collection<A> getAreas() {
         return areas.values();
     }
 
@@ -132,11 +132,11 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
         this.serv = serv;
     }
 
-    public Optional<ZugArea> getAreaById(String id) {
+    public Optional<A> getAreaById(String id) {
         return Optional.ofNullable(areas.get(id));
     }
 
-    public Optional<ZugArea> getAreaByTitle(String title) {
+    public Optional<A> getAreaByTitle(String title) {
         return areas.values().stream().filter(a -> a.getTitle().equals(title)).findFirst();
     }
 
@@ -145,7 +145,7 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
      * @param user A ZugUser
      * @return list of ZugAreas
      */
-    public List<ZugArea> areasByUserToJSON(ZugUser user) {
+    public List<A> areasByUserToJSON(ZugUser user) {
         return getAreas().stream().filter(area -> area.getOccupant(user).isPresent()).toList();
     }
 
@@ -457,13 +457,13 @@ abstract public class ZugHandler implements ConnListener, JSONifier {
             log("Disconnected: " + user.getName() + ", duration: " + conn.getTimeConnected()/1000 + " seconds");
             rateLimitManager.removeUser(user);
             user.setLoggedIn(false);
-            List<ZugArea> areas = areasByUserToJSON(user);
+            List<A> areas = areasByUserToJSON(user);
             if (!isPreservingDisconnectedUsers() || areas.isEmpty()) {
                 areas.forEach(area -> area.dropOccupant(user));
                 removeUser(user);
             }
         }
-        for (ZugArea area : getAreas()) area.removeObserver(conn);
+        for (ZugArea<?> area : getAreas()) area.removeObserver(conn);
         rateLimitManager.removeConnection(conn.getID());
         log("Active connections: " + getActiveConnectionCount() + "/" + getServ().getMaxConnections());
     }

@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 /**
  * A ZugRoom represents an area that can contain and rudimentarily manage an arbitrarily defined number of Occupants.
  */
-abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>, JSONifier {
+abstract public class ZugRoom <T extends Occupant> extends Timeoutable implements Comparable<ZugRoom<T>>, JSONifier {
 
     static final Logger logger = Logger.getLogger("RoomLog");
 
@@ -27,7 +27,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
 
     //private int id; //TODO: use
 
-    private final ConcurrentHashMap<String,Occupant> occupants = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String,T> occupants = new ConcurrentHashMap<>();
 
     private final MessageManager messageManager = new MessageManager();
 
@@ -42,7 +42,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @return true if in the room
      */
     public boolean isOccupant(Connection conn) {
-        for (Occupant occupant : getOccupants().toList()) {
+        for (T occupant : getOccupants().toList()) {
             Connection c = occupant.getUser().getConn();
             if (c != null && (c.equals(conn) || c.isSameOrigin(conn))) return true;
         }
@@ -56,7 +56,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @return true if in the room
      */
     public boolean isOccupant(Connection conn, boolean byOrigin) {
-        for (Occupant occupant : getOccupants().toList()) {
+        for (T occupant : getOccupants().toList()) {
             Connection c = occupant.getUser().getConn();
             if (c != null) {
                 if (byOrigin) {
@@ -73,7 +73,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @param occupant The Occupant to add
      * @return true upon success
      */
-    public boolean addOccupant(Occupant occupant) {
+    public boolean addOccupant(T occupant) {
         if (occupants.putIfAbsent(occupant.getUser().getUniqueName().toString(),occupant) == null) {
             action(ActionType.join);
             spam(ZugServMsgType.updateOccupants, toJSON2(ZugScope.occupants_basic));
@@ -86,7 +86,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * Notifies an Occupant when they rejoin a room.  Many servers may wish to override this method.
      * @param occupant the rejoining Occupant
      */
-    public void rejoin(Occupant occupant) {
+    public void rejoin(T occupant) {
         action(ActionType.join);
         err(occupant.getUser(), "Already joined");
     }
@@ -96,7 +96,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @param occupant the departing Occupant
      * @return The departed Occupant, if successful
      */
-    public boolean dropOccupant(Occupant occupant) { //occupant.setArea(null);
+    public boolean dropOccupant(T occupant) { //occupant.setArea(null);
         return occupant != null && dropOccupant(occupant.getUser());
     }
 
@@ -142,15 +142,15 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
         return (int)getOccupants(filters).count();
     }
 
-    public final Stream<Occupant> getOccupants(OccupantFilter... filters) {
+    public final Stream<T> getOccupants(OccupantFilter... filters) {
         return occupants.values().stream().filter(o -> o.passesFilter(filters));
     }
 
-    public final Optional<Occupant> getOccupant(ZugUser user) {
+    public final Optional<T> getOccupant(ZugUser user) {
         return getOccupant(user.getUniqueName());
     }
 
-    public final Optional<Occupant> getOccupant(ZugUser.UniqueName name) {
+    public final Optional<T> getOccupant(ZugUser.UniqueName name) {
         return Optional.ofNullable(occupants.get(name.toString()));
     }
 
@@ -208,8 +208,8 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @param msg an alphanumeric message
      * @param exclude a list of excluded Occupants
      */
-    public void spamX(Enum<?> type, String msg, Occupant... exclude) {
-        for (Occupant occupant : occupants.values()) {
+    public void spamX(Enum<?> type, String msg, T... exclude) {
+        for (T occupant : occupants.values()) {
             if (exclude != null) {
                 if (Arrays.stream(exclude).noneMatch(o -> o.equals(occupant))) {
                     tell(occupant,type,msg);
@@ -226,7 +226,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @param msgNode a JSON-encoded message
      * @param exclude a list of excluded Occupants
      */
-    public void spamX(Enum<?> type, ObjectNode msgNode, Occupant... exclude) {
+    public void spamX(Enum<?> type, ObjectNode msgNode, T... exclude) {
         spamX(type,msgNode,false,exclude);
     }
 
@@ -237,7 +237,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @param ignoreDeafness if true, ignores isDeafened()
      * @param exclude a list of excluded Occupants
      */
-    public final void spamX(Enum<?> type, ObjectNode msgNode, boolean ignoreDeafness, Occupant... exclude) {
+    public final void spamX(Enum<?> type, ObjectNode msgNode, boolean ignoreDeafness, T... exclude) {
         occupants.values().forEach(occupant -> {
             if (exclude != null) { //System.out.println("Checking ignore list");
                 if (Arrays.stream(exclude).noneMatch(o -> o.equals(occupant))) {
@@ -275,7 +275,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @param occupant the message recipient
      * @param type the enumerated message type
      */
-    public final void tell(Occupant occupant, Enum<?> type) {
+    public final void tell(T occupant, Enum<?> type) {
         tell(occupant,type,"");
     }
 
@@ -284,7 +284,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @param occupant the message recipient
      * @param msg an alphanumeric message
      */
-    public void tell(Occupant occupant, String msg) {
+    public void tell(T occupant, String msg) {
         tell(occupant, ZugServMsgType.roomMsg,msg);
     }
 
@@ -294,7 +294,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @param type the enumerated message type
      * @param msg an alphanumeric message
      */
-    public final void tell(Occupant occupant, Enum<?> type, String msg) {
+    public final void tell(T occupant, Enum<?> type, String msg) {
         tell(occupant, type,msg.isBlank() ? ZugUtils.newJSON() : ZugUtils.newJSON().put(ZugFields.MSG,msg));
     }
 
@@ -304,7 +304,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @param type the enumerated message type
      * @param node a JSON-formatted message
      */
-    public final void tell(Occupant occupant, Enum<?> type, ObjectNode node) {
+    public final void tell(T occupant, Enum<?> type, ObjectNode node) {
         tell(occupant,type,node,false);
     }
 
@@ -315,7 +315,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
      * @param node a JSON-formatted message
      * @param ignoreDeafness it true, message is sent regardless of isDeafened()
      */
-    public final void tell(Occupant occupant, Enum<?> type, ObjectNode node,boolean ignoreDeafness) {
+    public final void tell(T occupant, Enum<?> type, ObjectNode node,boolean ignoreDeafness) {
         if (occupant == null) {
             logger.log(Level.WARNING, "tell() called with null occupant");
             return;
@@ -361,7 +361,7 @@ abstract public class ZugRoom extends Timeoutable implements Comparable<ZugRoom>
     }
 
     @Override
-    public int compareTo(ZugRoom a) {
+    public int compareTo(ZugRoom<T> a) {
         return this.numOccupants() - a.numOccupants();
     }
 

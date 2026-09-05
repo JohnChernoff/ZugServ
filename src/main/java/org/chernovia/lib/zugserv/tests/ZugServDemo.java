@@ -54,7 +54,7 @@ public class ZugServDemo extends ZugManager {
         }
     }
 
-    class DemoArea extends ZugArea {
+    class DemoArea<DemoOccupant> extends ZugArea {
         public DemoArea(String t, ZugUser c, AreaListener l) {
             super(t, c, l);
         }

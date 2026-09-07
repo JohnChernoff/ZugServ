@@ -23,6 +23,8 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.Level;
+import java.util.stream.Collectors;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import static java.util.logging.Level.*;
@@ -130,6 +132,10 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> imp
 
     public Optional<A> getAreaByTitle(String title) {
         return areas.values().stream().filter(a -> a.getTitle().equals(title)).findFirst();
+    }
+
+    public List<A> getAreasByUser(ZugUser user) {
+        return areas.values().stream().filter(a -> a.getOccupants().anyMatch(o -> o.getUser() == user)).toList();
     }
 
     /**

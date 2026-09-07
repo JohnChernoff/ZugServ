@@ -116,6 +116,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
     private boolean fancyGuestNames = true;
     private final List<Class<? extends Enum<?>>> commandList = new ArrayList<>();
     private int crowdThreshold = 100;
+    private boolean singleAreaPerUser = true;
     private final Map<MonthDay,Set<String>> trafficMap = new HashMap<>();
     private static final AtomicLong idCounter = new AtomicLong();
     public static String createID() {
@@ -175,6 +176,8 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         startCleaner(999999);
     }
 
+    public boolean getSingleAreaPerUser() { return singleAreaPerUser; }
+    public void setSingleAreaPerUser(boolean singleAreaPerUser) { this.singleAreaPerUser = singleAreaPerUser; }
     public boolean requiringPassword() { return requirePassword; }
     public boolean swappingGuestConnection() { return swapGuestConnection; }
     public void setSwapGuestConnection(boolean swapGuestConnection) { this.swapGuestConnection = swapGuestConnection; }
@@ -364,8 +367,15 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
     }
 
     public void handleSeek(ZugUser user, JsonNode dataNode) {
+        if (singleAreaPerUser) {
+            List<A> userAreas = getAreasByUser(user);
+            if (!userAreas.isEmpty()) {
+                user.tell(ZugServMsgType.errServMsg,"Currently in: " + userAreas.get(0).getTitle());
+                return;
+            }
+        }
         createSeek(user,dataNode).ifPresent(seekManager::addSeek);
-        if (seekManager.seekMap.containsKey(user)) user.tell("Seek created...");
+        if (seekManager.seekMap.containsKey(user)) user.tell(ZugServMsgType.seekCreated);
     }
 
     public Optional<ZugSeek> createSeek(ZugUser user, JsonNode dataNode) {

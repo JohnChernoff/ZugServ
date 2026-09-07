@@ -53,8 +53,6 @@ public class JavalinServ extends ServAdapter implements ZugServ {
                     ctx.status(200); // Respond to preflight CORS requests
                 })
                 .ws("/" + endpoint, ws -> {
-
-
                     ws.onConnect(ctx -> {
                         try {
                             System.out.println("Client connected: " + ctx.session.getRemoteAddress());

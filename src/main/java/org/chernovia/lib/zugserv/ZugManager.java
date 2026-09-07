@@ -133,6 +133,10 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         this(type,port, new ArrayList<>(), null);
     }
 
+    public ZugManager(ZugServ.ServType type, int port, String ep) {
+        this(type,port, ep, new ArrayList<>(), null);
+    }
+
     public ZugManager(ZugServ.ServType type, int port, List<String> hosts, Map<ZugAuthSource,Boolean> auths) {
         this(type,port, "ws",hosts, auths);
     }

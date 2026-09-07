@@ -1,5 +1,7 @@
 package org.chernovia.lib.zugserv;
 
+import org.chernovia.lib.zugserv.enums.ZugServMsgType;
+
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -11,7 +13,7 @@ public class SeekManager {
         this.mgr = mgr;
     }
 
-    public void addSeek(ZugSeek seek) {
+    public void addSeek(ZugSeek seek) { //TODO: players > 2 seeks
         seekMap.put(seek.user, seek);
         seekMap.values().stream()
                 .filter(s -> s != seek && s.isAcceptable(seek) && seek.isAcceptable(s))
@@ -19,10 +21,13 @@ public class SeekManager {
                 .ifPresent(bestMatch -> matchSeeks(bestMatch, seek));
     }
 
-    public void matchSeeks(ZugSeek seek1, ZugSeek seek2) {
-        seekMap.remove(seek1.user);
-        seekMap.remove(seek2.user);
-        mgr.handleCreateArea(List.of(seek1.user, seek2.user), null, true);
+    public void matchSeeks(ZugSeek... seeks) {
+        List<ZugUser> seekList = Arrays.stream(seeks).map(s -> s.user).toList();
+        seekList.forEach(user -> {
+            seekMap.remove(user);
+            user.tell(ZugServMsgType.seekMatched);
+        });
+        mgr.handleCreateArea(seekList, null, true);
     }
 
 }

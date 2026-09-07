@@ -189,9 +189,8 @@ abstract public class ZugRoom <O extends Occupant<O>> extends Timeoutable implem
      * @param type an enumerated type
      * @param msg an alphanumeric message
      */
-    @SuppressWarnings("unchecked")
     public final void spam(Enum<?> type, String msg) {
-        spamX(type,msg, (O)null); //TODO: remove varargs, add List
+        spamX(type,msg, List.of());
     }
 
     /**
@@ -199,11 +198,9 @@ abstract public class ZugRoom <O extends Occupant<O>> extends Timeoutable implem
      * @param type an enumerated type
      * @param msgNode a JSON-encoded message
      */
-    @SuppressWarnings("unchecked")
     public final void spam(Enum<?> type, ObjectNode msgNode) {
-        spamX(type,msgNode, (O)null); //TODO: remove varargs, add List
+        spamX(type,msgNode, List.of());
     }
-
 
     /**
      * Sends an alphanumeric message and enumerated type to all unexcluded Occupants in the room.
@@ -211,11 +208,10 @@ abstract public class ZugRoom <O extends Occupant<O>> extends Timeoutable implem
      * @param msg an alphanumeric message
      * @param exclude a list of excluded Occupants
      */
-    @SuppressWarnings("unchecked")
-    public void spamX(Enum<?> type, String msg, O... exclude) {
+    public void spamX(Enum<?> type, String msg, List<O> exclude) {
         for (O occupant : occupants.values()) {
             if (exclude != null) {
-                if (Arrays.stream(exclude).noneMatch(o -> o.equals(occupant))) {
+                if (exclude.stream().noneMatch(o -> o.equals(occupant))) {
                     tell(occupant,type,msg);
                 }
             }
@@ -230,8 +226,7 @@ abstract public class ZugRoom <O extends Occupant<O>> extends Timeoutable implem
      * @param msgNode a JSON-encoded message
      * @param exclude a list of excluded Occupants
      */
-    @SuppressWarnings("unchecked")
-    public void spamX(Enum<?> type, ObjectNode msgNode, O... exclude) {
+    public void spamX(Enum<?> type, ObjectNode msgNode, List<O> exclude) {
         spamX(type,msgNode,false,exclude);
     }
 
@@ -242,11 +237,10 @@ abstract public class ZugRoom <O extends Occupant<O>> extends Timeoutable implem
      * @param ignoreDeafness if true, ignores isDeafened()
      * @param exclude a list of excluded Occupants
      */
-    @SuppressWarnings("unchecked")
-    public final void spamX(Enum<?> type, ObjectNode msgNode, boolean ignoreDeafness, O... exclude) {
+    public final void spamX(Enum<?> type, ObjectNode msgNode, boolean ignoreDeafness, List<O> exclude) {
         occupants.values().forEach(occupant -> {
             if (exclude != null) { //System.out.println("Checking ignore list");
-                if (Arrays.stream(exclude).noneMatch(o -> o.equals(occupant))) {
+                if (exclude.stream().noneMatch(o -> o.equals(occupant))) {
                     tell(occupant,type, msgNode,ignoreDeafness);
                 }
             } else if (!occupant.canAct()) tell(occupant,type, msgNode,ignoreDeafness);

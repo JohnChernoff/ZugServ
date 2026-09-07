@@ -416,12 +416,12 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
     }
 
     @Override
-    final public void spamX(Enum<?> t, String msg, O... ignoreList) {
+    final public void spamX(Enum<?> t, String msg, List<O> ignoreList) {
         spamX(t,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID, getID()),ignoreList);
     }
 
     @Override
-    final public void spamX(Enum<?> t, ObjectNode msgNode, O... ignoreList) {
+    final public void spamX(Enum<?> t, ObjectNode msgNode, List<O> ignoreList) {
         super.spamX(t, msgNode, ignoreList);
         List<Connection> deadConnections = new ArrayList<>();
         for (Connection conn : observers) {

@@ -304,16 +304,16 @@ public class PhaseManager<O extends Occupant<O>> implements JSONifier, AutoClose
         return runThenDelay(() -> area.spam(type, msgNode), millis);
     }
 
-    public CompletableFuture<Void> awaitSpamX(Enum<?> type, String msg, int millis, O... exclude) {
+    public CompletableFuture<Void> awaitSpamX(Enum<?> type, String msg, int millis, List<O> exclude) {
         return runThenDelay(() -> area.spamX(type, msg, exclude), millis);
     }
 
-    public CompletableFuture<Void> awaitSpamX(Enum<?> type, ObjectNode msgNode, int millis, O... exclude) {
+    public CompletableFuture<Void> awaitSpamX(Enum<?> type, ObjectNode msgNode, int millis, List<O> exclude) {
         return runThenDelay(() -> area.spamX(type, msgNode, exclude), millis);
     }
 
     public CompletableFuture<Void> awaitSpamX(Enum<?> type, ObjectNode msgNode, boolean ignoreDeafness,
-                                              int millis, O... exclude) {
+                                              int millis, List<O> exclude) {
         return runThenDelay(() -> area.spamX(type, msgNode, ignoreDeafness, exclude), millis);
     }
 

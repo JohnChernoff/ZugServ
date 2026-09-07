@@ -9,23 +9,26 @@ import org.chernovia.lib.zugserv.Connection;
 import org.chernovia.lib.zugserv.ServAdapter;
 import org.chernovia.lib.zugserv.ZugServ;
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 public class JavalinServ extends ServAdapter implements ZugServ {
     private final Javalin server;
-    private static final Logger logger = Logger.getLogger(JavalinServ.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(JavalinServ.class);
     private final Map<WsContext, JavalinConn> connections = new HashMap<>();
-    int port;
+    private final int port;
 
     /**
      * Creates a new Javalin Server.
      * @param p the port for incoming connections
      * @param l the connection listener (see ConnListener)
+     * @param endpoint the WebSocket endpoint
+     * @param hosts allowed CORS hosts
      */
     public JavalinServ(int p, ConnListener l, String endpoint, List<String> hosts) {
-        super(l); port = p;
-        logger.log(Level.INFO, "Starting Server, port: " + p + ", endpoint: " + endpoint + ", hosts: " + hosts);
+        super(l);
+        port = p;
+        logger.info("Starting Server, port: {}, endpoint: {}, hosts: {}", p, endpoint, hosts);
         server = Javalin.create(config ->
                         {
                             config.jetty.modifyHttpConfiguration(httpConfig -> {
@@ -55,56 +58,60 @@ public class JavalinServ extends ServAdapter implements ZugServ {
                 .ws("/" + endpoint, ws -> {
                     ws.onConnect(ctx -> {
                         try {
-                            System.out.println("Client connected: " + ctx.session.getRemoteAddress());
                             if (getConn(ctx).isEmpty()) {
                                 JavalinConn conn = new JavalinConn(ctx);
-                                logger.log(Level.INFO,"Incoming Connection at address: " + conn.getAddress());
+
+                                logger.debug("Incoming connection from {}", conn.getAddress());
+
                                 connections.put(ctx, conn);
                                 getConnListener().connected(conn);
                             } else {
-                                logger.log(Level.INFO,"Already connected at address: " + ctx.session.getRemoteAddress());
+                                logger.debug("Already connected at address: {}",
+                                        ctx.session.getRemoteAddress());
                             }
                         } catch (Exception e) {
-                            logger.log(Level.SEVERE, "Error in onConnect: " + e.getMessage());
-                            ZugServ.printStackTrace(e);
+                            logger.error("Error in onConnect", e);
                             ctx.session.close();
                         }
                     });
+
                     ws.onMessage(ctx -> {
                         try {
                             String message = ctx.message();
+
                             if (message.length() < getMaxIncomingMessageSize()) {
                                 getConn(ctx).ifPresentOrElse(
                                         conn -> getConnListener().newMsg(conn, message),
-                                        () -> logger.log(Level.WARNING, "Unknown connection message: " +
-                                                message + " at address: " + ctx.session.getRemoteAddress()));
+                                        () -> logger.warn(
+                                                "Unknown connection message: {} at address: {}",
+                                                message,
+                                                ctx.session.getRemoteAddress())
+                                );
                             } else {
-                                logger.log(Level.WARNING, "Overly long connection message: " + message.length());
+                                logger.warn("Overly long connection message: {}",
+                                        message.length());
                             }
                         } catch (Exception e) {
-                            logger.log(Level.SEVERE, "Error in onMessage: " + e.getMessage());
-                            ZugServ.printStackTrace(e);
+                            logger.error("Error in onMessage", e);
                         }
                     });
 
                     ws.onClose(ctx -> {
                         try {
-                            logger.log(Level.INFO,"Client disconnecting...");
                             // IMPORTANT: Remove from map FIRST, then notify listener
                             Connection conn = connections.remove(ctx);
+
                             if (conn != null) {
-                                logger.log(Level.INFO,"Client disconnected: " + conn.getAddress());
+                                logger.debug("Client disconnected: {}", conn.getAddress());
                                 getConnListener().disconnected(conn);
                             } else {
-                                logger.log(Level.WARNING, "Unknown client disconnected");
+                                logger.warn("Unknown client disconnected");
                             }
                         } catch (Exception e) {
-                            logger.log(Level.SEVERE, "Error in onClose: " + e.getMessage());
-                            ZugServ.printStackTrace(e);
+                            logger.error("Error in onClose", e);
                         }
                     });
-                        }
-                );
+                });
     }
 
     /**
@@ -113,8 +120,7 @@ public class JavalinServ extends ServAdapter implements ZugServ {
      * @return the Connection
      */
     public Optional<Connection> getConn(WsContext ctx) {
-        Connection conn = connections.get(ctx);
-        if (conn == null)  return Optional.empty(); else return Optional.of(conn);
+        return Optional.ofNullable(connections.get(ctx));
     }
 
     /**
@@ -125,7 +131,7 @@ public class JavalinServ extends ServAdapter implements ZugServ {
     @Override
     public List<Connection> getAllConnections(boolean active) {
         return connections.values().stream()
-                .filter(conn -> !active || conn.getStatus().equals(Connection.Status.STATUS_CONNECTED))
+                .filter(conn -> !active || conn.getStatus() == Connection.Status.STATUS_CONNECTED)
                 .map(conn -> (Connection) conn)
                 .toList();
     }

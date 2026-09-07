@@ -23,7 +23,9 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.Level;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import static java.util.logging.Level.*;
 
 /**
  * ZugHandler extends ConnListener and encapsulates ZugServ to provide basic server functionality.
@@ -46,7 +48,7 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> imp
     public static String GOOGLE_APPLICATION_CREDENTIALS_FILE_NAME = "google_app_credentials";
     private static boolean VERBOSE = true; //for enum names vs ordinal
     public static boolean CONN_MSG_DEBUG = false;
-    static final Logger logger = Logger.getLogger("ZugServLog");
+    static final Logger logger = LoggerFactory.getLogger(ZugHandler.class);
     ConcurrentHashMap<String,ZugUser> users = new ConcurrentHashMap<>();
     ConcurrentHashMap<String, A> areas = new ConcurrentHashMap<>();
     Map<ZugAuthSource,Boolean> authSources = new HashMap<>();
@@ -82,22 +84,12 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> imp
     public ZugHandler(ZugServ.ServType type, int port, String ep, List<String> hosts, Map<ZugAuthSource,Boolean> auths) {
         if (auths != null) authSources.putAll(auths);
         else for (ZugAuthSource authSource : ZugAuthSource.values()) authSources.put(authSource, Boolean.TRUE);
-        setLoggingLevel(Level.INFO);
         serv = switch (type) {
             case SOCK, IRC, TWITCH, DISCORD, UNKNOWN -> null; //TODO: implement?
             case WEBSOCK_JAVALIN -> new JavalinServ(port,this, ep, hosts);
             case WEBSOCK_DEFAULT -> new WebSockServ(port,this);
         };
         initializeAuthServices(authSources);
-    }
-
-    public static void setLoggingLevel(Level level) {
-        logger.setLevel(level); log("Logging Level: " + level);
-    }
-
-    public static Level getLoggingLevel() {
-        if (logger.getLevel() == null) return Level.INFO;
-        return logger.getLevel();
     }
 
     public ConcurrentHashMap<String,ZugUser> getUsers() {
@@ -383,7 +375,15 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> imp
     }
 
     public static void log(Level level, String msg, String source) {
-        logger.log(level,source + ": " + msg);
+        if (level == Level.SEVERE) {
+            logger.error("{}: {}", source, msg);
+        } else if (level == Level.WARNING) {
+            logger.warn("{}: {}", source, msg);
+        } else if (level == Level.INFO) {
+            logger.info("{}: {}", source, msg);
+        } else {
+            logger.debug("{}: {}", source, msg);
+        }
     }
 
     /**
@@ -432,7 +432,7 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> imp
                 err(conn,"Error: Bad Data(null)"); //return;
             }
             else if (equalsType(typeNode.asText(), ZugClientMsgType.pong)) {
-                log(Level.FINE,"Pong from: " + conn.getID());
+                log(FINE,"Pong from: " + conn.getID());
                 conn.setLatency(System.currentTimeMillis() - conn.lastPing());
             }
             else {

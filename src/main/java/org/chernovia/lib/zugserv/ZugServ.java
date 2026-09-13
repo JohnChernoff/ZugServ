@@ -9,6 +9,10 @@ import java.util.List;
  */
 public interface ZugServ {
 
+	public default void setMgr(ZugManager<?, ?> mgr) {}
+
+	public default ZugManager<?,?> getMgr() { return null; }
+
 	boolean stackTrace = true;
 
 	static void printStackTrace(Throwable e) {
@@ -97,5 +101,6 @@ public interface ZugServ {
 	 * @return the Connection Listener Object
 	 */
 	ConnListener getConnListener();
+
 }
 

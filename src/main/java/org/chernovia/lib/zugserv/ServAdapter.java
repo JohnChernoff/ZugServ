@@ -7,6 +7,16 @@ abstract public class ServAdapter implements ZugServ {
     private final ConnListener connListener;
     boolean running = false; boolean paused = false;
 
+    protected ZugManager<?,?> mgr;
+
+    public void setMgr(ZugManager<?,?> mgr) {
+        this.mgr = mgr;
+    }
+
+    public ZugManager<?,?> getMgr() {
+        return mgr;
+    }
+
     public ServAdapter(final ConnListener connListener) {
         this.connListener = connListener;
     }

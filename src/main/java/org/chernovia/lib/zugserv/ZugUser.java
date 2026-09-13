@@ -59,6 +59,11 @@ public class ZugUser extends Timeoutable implements JSONifier {  // long lastMes
         }
 
         @Override
+        public int hashCode() {
+            return 31 * name.hashCode() * source.hashCode();
+        }
+
+        @Override
         public String toString() {
             return name + (source == ZugAuthSource.none ? "" : ("@" + source.name()));
         }

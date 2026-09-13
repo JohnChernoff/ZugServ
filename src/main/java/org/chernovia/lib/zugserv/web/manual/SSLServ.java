@@ -20,8 +20,8 @@ public class SSLServ implements ZugServ, Runnable {
     SSLServerSocket serverSocket; boolean running = false;
     ConnListener connListener;
 	int maxIncomingMessageSize = 1024;
-    
-    public SSLServ(int p, ConnListener l) {
+
+	public SSLServ(int p, ConnListener l) {
     	port = p; connListener = l;
     }
     

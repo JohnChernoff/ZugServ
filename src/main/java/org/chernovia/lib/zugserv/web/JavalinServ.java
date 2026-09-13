@@ -4,11 +4,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import io.javalin.Javalin;
 import io.javalin.http.Context;
 import io.javalin.websocket.WsContext;
-import org.chernovia.lib.zugserv.ConnListener;
-import org.chernovia.lib.zugserv.Connection;
-import org.chernovia.lib.zugserv.ServAdapter;
-import org.chernovia.lib.zugserv.ZugServ;
+import org.chernovia.lib.zugserv.*;
 import java.util.*;
+import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,7 +41,8 @@ public class JavalinServ extends ServAdapter implements ZugServ {
                                         it.exposeHeader("Authorization"); }));
 
                         })
-                .post("/twitchsrv/shutdown", this::handleShutdown)
+                .post("/shutdown", this::handleShutdown)
+                .get("/status",this::handleStatus)
                 .before(ctx -> {
                     String origin = ctx.header("Origin");
                     // Return the requesting origin back exactly as allowed
@@ -180,6 +179,13 @@ public class JavalinServ extends ServAdapter implements ZugServ {
         if (remoteAddress.equals("127.0.0.1") || remoteAddress.equals("::1")) {
             ctx.status(201);
             System.exit(-1);
+        }
+    }
+
+    public void handleStatus(Context ctx) {
+        ZugManager<?,?> mgr = getMgr();
+        if (mgr != null) {
+            ctx.json(mgr.toJSON2(ZugScope.basic));
         }
     }
 

@@ -233,14 +233,16 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
             try {
                 Arrays.stream(cmdSet.getEnumConstants())
                         .filter(eCon -> eCon.name().equalsIgnoreCase(type))
-                        .forEach(e -> {
+                        .forEach(e -> { //log(Level.FINE,"Command: " + e);
                             CommandHandler handler = handMap.get(e);
-                            if (handler != null) {
+                            if (handler != null) { //log(Level.FINE,"Handling command: " + e);
                                 handler.handleCommand(user,dataNode);
                                 handleList.add(handler);
                             }
                         });
-            } catch (IllegalArgumentException ignore) {}
+            } catch (IllegalArgumentException wtf) {
+                log(Level.WARNING, "Invalid command: " + type + ", " + Arrays.toString(cmdSet.getEnumConstants()));
+            }
         });
         if (handleList.isEmpty()) {
             handleUnsupportedMsg(user.getConn(),type,dataNode,user);
@@ -870,7 +872,9 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
                     .put(ZugFields.ALLOW_GUESTS, allowGuests)
                     .put(ZugFields.USERS, getUsers().size())
                     .put(ZugFields.LOGGED_IN, getUsers().values().stream().filter(ZugUser::isLoggedIn).count())
-                    .put(ZugFields.DAILY_USERS, dailyUsers != null ? dailyUsers.size() : 0);
+                    .put(ZugFields.DAILY_USERS, dailyUsers != null ? dailyUsers.size() : 0)
+                    .put(ZugFields.AREAS,areas.size())
+                    .put(ZugFields.RUNNING,areas.values().stream().filter(ZugArea::isRunning).count());
         }
         if (hasScope(ZugScope.msg_history,true,scopes)) {
             node.set(ZugFields.MSG_HISTORY,messageManager.toJSONArray());

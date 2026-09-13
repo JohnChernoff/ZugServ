@@ -492,7 +492,9 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
 
     public void assertOnPhaseThread() {
         if (Thread.currentThread() != phaseManager.getSchedulerThread()) {
-            throw new IllegalStateException("playCard() called off the game thread — use handlePlayCard() instead");
+            IllegalStateException ex = new IllegalStateException("Mutating function called off the game thread — use handleMutant() instead");
+            ex.printStackTrace();
+            throw ex;
         }
     }
 

@@ -85,14 +85,6 @@ public class PhaseManager<O extends Occupant<O>> implements JSONifier, AutoClose
 
     public PhaseManager(ZugArea<O> area) {
         this.area = area;
-
-        // Create executor with descriptive thread names for debugging
-        ThreadFactory threadFactory = r -> {
-            Thread t = new Thread(r, "ZugPhaseManager-" + area.getDesc());
-            t.setDaemon(false);
-            return t;
-        };
-
         this.scheduler = Executors.newSingleThreadScheduledExecutor(threadFactory);
     }
 

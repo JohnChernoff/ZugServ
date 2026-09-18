@@ -23,7 +23,7 @@ public class ZugSeek implements JSONifier {
      * discount based on combined wait time. Subclasses should override
      * to add other factors.
      */
-    double matchDiff(ZugSeek other) {
+    public double matchDiff(ZugSeek other) {
         long now = System.currentTimeMillis() / 1000;
         int combinedAge = (int) ((now - timeStamp) + (now - other.timeStamp));
 
@@ -40,7 +40,7 @@ public class ZugSeek implements JSONifier {
      * Subclasses should override to add compatibility constraints
      * (variant, options, seek type, etc.).
      */
-    boolean isAcceptable(ZugSeek other) {
+    public boolean isAcceptable(ZugSeek other) {
         return user.isLoggedIn() && other.user.isLoggedIn(); // default: any age-based diff is fine, always match oldest available
     }
 

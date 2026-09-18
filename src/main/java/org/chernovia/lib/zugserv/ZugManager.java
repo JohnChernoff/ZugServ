@@ -27,7 +27,8 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
             ERR_AREA_NOT_FOUND = "Area not found",
             ERR_NOT_OCCUPANT = "Not joined",
             ERR_NO_TITLE = "No title",
-            ERR_TITLE_NOT_FOUND = "Title not found";
+            ERR_TITLE_NOT_FOUND = "Title not found",
+            ERR_CHALLENGE_NOT_FOUND = "Challenge not found (it may have been accepted, cancelled or expired)";
 
     @FunctionalInterface
     public interface ChronJob {
@@ -88,6 +89,8 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
      * see the comment above that method.
      */
     public synchronized void cleanup() {
+        seekManager.purgeExpired().forEach(c ->
+                c.getCreator().tell(ZugServMsgType.challengeClosed, challengeClosedMsg(c.getID(), "expired")));
         areas.values().stream().filter(Timeoutable::timedOut).forEach(area -> {
             area.spam(ZugServMsgType.servMsg, "Closing " + area.getDesc() + " (reason: timeout)");
             areaClosed(area);
@@ -150,6 +153,10 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         addHandler(ZugClientMsgType.partArea,this::handlePartArea);
         addHandler(ZugClientMsgType.startArea,this::handleStartArea);
         addHandler(ZugClientMsgType.seek,this::handleSeek);
+        addHandler(ZugClientMsgType.newChallenge,this::handleNewChallenge);
+        addHandler(ZugClientMsgType.viewChallenge,this::handleViewChallenge);
+        addHandler(ZugClientMsgType.acceptChallenge,this::handleAcceptChallenge);
+        addHandler(ZugClientMsgType.cancelChallenge,this::handleCancelChallenge);
 
         addHandler(ZugClientMsgType.servMsg,this::handleServerMessage);
         addHandler(ZugClientMsgType.privMsg,this::handlePrivateMessage);
@@ -368,20 +375,101 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         return a;
     }
 
+    /** Tells the user off (and returns true) if they're already in an area and this manager allows only one at a time. */
+    private boolean blockedByCurrentArea(ZugUser user) {
+        if (!singleAreaPerUser) return false;
+        List<A> userAreas = getAreasByUser(user);
+        if (userAreas.isEmpty()) return false;
+        user.tell(ZugServMsgType.errMsg,"Currently in: " + userAreas.get(0).getTitle());
+        return true;
+    }
+
     public void handleSeek(ZugUser user, JsonNode dataNode) {
-        if (singleAreaPerUser) {
-            List<A> userAreas = getAreasByUser(user);
-            if (!userAreas.isEmpty()) {
-                user.tell(ZugServMsgType.errMsg,"Currently in: " + userAreas.get(0).getTitle());
-                return;
-            }
-        }
+        if (blockedByCurrentArea(user)) return;
         createSeek(user,dataNode).ifPresent(seekManager::addSeek);
         if (seekManager.seekMap.containsKey(user)) user.tell(ZugServMsgType.seekCreated);
     }
 
     public Optional<ZugSeek> createSeek(ZugUser user, JsonNode dataNode) {
         return Optional.of(new ZugSeek(user));
+    }
+
+    /* *** Challenges: link-only seeks *** */
+
+    public void setChallengeTTL(long millis) { seekManager.setChallengeTTL(millis); }
+
+    private ObjectNode challengeMsg(ZugChallenge challenge) {
+        return ZugUtils.newJSON().set(ZugFields.CHALLENGE, challenge.toJSON());
+    }
+
+    private ObjectNode challengeClosedMsg(String id, String reason) {
+        return ZugUtils.newJSON().put(ZugFields.CHALLENGE_ID, id).put(ZugFields.REASON, reason);
+    }
+
+    /**
+     * Creates a challenge: a seek that can only be matched by someone who has its id (i.e., its link).
+     * Game-specific settings go in the message's "data" object; they're validated by (and handed to) the
+     * same hooks that ordinary seeks and areas use: {@link #createSeek}, {@link #handleCreateArea} and {@link #handleCreateOccupant}.
+     */
+    public void handleNewChallenge(ZugUser user, JsonNode dataNode) {
+        if (blockedByCurrentArea(user)) return;
+        Optional<ZugSeek> seek = createSeek(user,dataNode);
+        if (seek.isEmpty()) {
+            err(user, "Unable to create challenge");
+            return;
+        }
+        seekManager.addChallenge(seek.get(), dataNode == null ? null : dataNode.get(ZugFields.DATA)).ifPresentOrElse(
+                challenge -> user.tell(ZugServMsgType.challengeCreated, challengeMsg(challenge)),
+                () -> err(user, "Too many open challenges (maximum " + SeekManager.MAX_CHALLENGES_PER_USER + ")"));
+    }
+
+    /** Lets a prospective acceptor see who's challenging them, and to what, before committing. */
+    public void handleViewChallenge(ZugUser user, JsonNode dataNode) {
+        getTxtNode(dataNode, ZugFields.CHALLENGE_ID, true).flatMap(seekManager::getChallenge).ifPresentOrElse(
+                challenge -> user.tell(ZugServMsgType.challengeInfo, challengeMsg(challenge)),
+                () -> err(user, ERR_CHALLENGE_NOT_FOUND));
+    }
+
+    public void handleAcceptChallenge(ZugUser user, JsonNode dataNode) {
+        Optional<ZugChallenge> found = getTxtNode(dataNode, ZugFields.CHALLENGE_ID, true).flatMap(seekManager::getChallenge);
+        if (found.isEmpty()) {
+            err(user, ERR_CHALLENGE_NOT_FOUND);
+            return;
+        }
+        ZugChallenge challenge = found.get();
+        ZugUser creator = challenge.getCreator();
+        if (creator == user) {
+            err(user, "You can't accept your own challenge");
+        } else if (blockedByCurrentArea(user)) {
+            log(Level.FINE, "Challenge acceptor already in an area: " + user.getName());
+        } else if (singleAreaPerUser && !getAreasByUser(creator).isEmpty()) {
+            err(user, "Challenger is currently busy");
+        } else {
+            Optional<ZugSeek> acceptorSeek = createSeek(user,dataNode);
+            if (acceptorSeek.isEmpty() || !challenge.getSeek().isAcceptable(acceptorSeek.get())
+                    || !acceptorSeek.get().isAcceptable(challenge.getSeek())) {
+                err(user, "You are not eligible for that challenge");
+            } else if (!seekManager.claimChallenge(challenge)) { //someone else got there first
+                err(user, ERR_CHALLENGE_NOT_FOUND);
+            } else {
+                creator.tell(ZugServMsgType.challengeClosed, challengeClosedMsg(challenge.getID(), "accepted"));
+                seekManager.matchSeeksWith(challenge.getSettings(), challenge.getSeek(), acceptorSeek.get());
+            }
+        }
+    }
+
+    public void handleCancelChallenge(ZugUser user, JsonNode dataNode) {
+        Optional<String> id = getTxtNode(dataNode, ZugFields.CHALLENGE_ID, true);
+        if (id.isPresent() && seekManager.cancelChallenge(id.get(), user)) {
+            user.tell(ZugServMsgType.challengeClosed, challengeClosedMsg(id.get(), "cancelled"));
+        } else err(user, ERR_CHALLENGE_NOT_FOUND);
+    }
+
+    /** A user's pending seeks and challenges die with their connection. */
+    @Override
+    public void disconnected(Connection conn) {
+        getUsersByConn(conn).forEach(seekManager::dropUser); //before super, which may remove the user
+        super.disconnected(conn);
     }
 
     public void startArea(A area, ZugUser user, JsonNode dataNode) {

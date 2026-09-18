@@ -63,6 +63,10 @@ public interface ZugFields {
             UPDATE_SCOPE = "up_scope",
             UPDATE_TYPE = "update_type",
             PHASE_DATA = "phase_data",
-            SEEK = "seek"
+            SEEK = "seek",
+            CHALLENGE = "challenge",
+            CHALLENGE_ID = "challenge_id",
+            EXPIRES = "expires",
+            REASON = "reason"
     ;
 }

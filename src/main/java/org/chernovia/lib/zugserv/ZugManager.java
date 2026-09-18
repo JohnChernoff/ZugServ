@@ -372,7 +372,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         if (singleAreaPerUser) {
             List<A> userAreas = getAreasByUser(user);
             if (!userAreas.isEmpty()) {
-                user.tell(ZugServMsgType.errServMsg,"Currently in: " + userAreas.get(0).getTitle());
+                user.tell(ZugServMsgType.errMsg,"Currently in: " + userAreas.get(0).getTitle());
                 return;
             }
         }
@@ -639,7 +639,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
     public void handleMaxOccupancy(ZugUser user, A area, JsonNode dataNode) {
         if (area.isBumpAway()) {
             area.getOccupants()
-                    .filter(o -> o.canAct() && !area.isCreator(o.getUser()))
+                    .filter(o -> !o.canAct() && !area.isCreator(o.getUser()))
                     .findFirst().ifPresent(occupant -> {
                         area.spam("Dropping idle occupant: " + occupant.getName());
                         if (area.dropOccupant(occupant)) createOccupantAndJoin(area,user,dataNode);
@@ -858,7 +858,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
     }
 
     @Override
-    public void err(Connection conn, String msg) { tell(conn, ZugServMsgType.errServMsg, msg); }
+    public void err(Connection conn, String msg) { tell(conn, ZugServMsgType.errMsg, msg); }
 
     @Override
     public void msg(Connection conn, String msg) { tell(conn, ZugServMsgType.servMsg, msg); }

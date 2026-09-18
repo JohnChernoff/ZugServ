@@ -41,7 +41,7 @@ public class ZugSeek implements JSONifier {
      * (variant, options, seek type, etc.).
      */
     boolean isAcceptable(ZugSeek other) {
-        return true; // default: any age-based diff is fine, always match oldest available
+        return user.isLoggedIn() && other.user.isLoggedIn(); // default: any age-based diff is fine, always match oldest available
     }
 
     @Override

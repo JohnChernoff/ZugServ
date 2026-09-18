@@ -47,7 +47,7 @@ abstract public class Occupant<O extends Occupant<O>> implements JSONifier {
      * Indicates if the Occupant is whatever the ZugArea it occupies considers idle.
      * @return true if away, otherwise false
      */
-    public boolean canAct() { return !user.isLoggedIn() || away; }
+    public boolean canAct() { return user.isLoggedIn() && !away; }
 
     public boolean isAway() { return away; }
 
@@ -126,7 +126,7 @@ abstract public class Occupant<O extends Occupant<O>> implements JSONifier {
         List<OccupantFilter> filterList = Arrays.asList(filters);
         return
         (!filterList.contains(OccupantFilter.human) || !isBot()) &&
-        (!filterList.contains(OccupantFilter.notAway) || !canAct()) &&
+        (!filterList.contains(OccupantFilter.notAway) || canAct()) &&
         (!filterList.contains(OccupantFilter.loggedIn) || user.isLoggedIn());
     }
 

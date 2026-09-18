@@ -215,7 +215,7 @@ abstract public class ZugRoom <O extends Occupant<O>> extends Timeoutable implem
                     tell(occupant,type,msg);
                 }
             }
-            else if (!occupant.canAct()) tell(occupant,type,msg);
+            else if (occupant.canAct()) tell(occupant,type,msg);
         }
     }
 
@@ -243,7 +243,7 @@ abstract public class ZugRoom <O extends Occupant<O>> extends Timeoutable implem
                 if (exclude.stream().noneMatch(o -> o.equals(occupant))) {
                     tell(occupant,type, msgNode,ignoreDeafness);
                 }
-            } else if (!occupant.canAct()) tell(occupant,type, msgNode,ignoreDeafness);
+            } else if (occupant.canAct()) tell(occupant,type, msgNode,ignoreDeafness);
         });
         if (type.equals(ZugServMsgType.areaUserMsg) || type.equals(ZugServMsgType.roomUserMsg)) {
             messageManager.addMessage(msgNode);
@@ -266,7 +266,7 @@ abstract public class ZugRoom <O extends Occupant<O>> extends Timeoutable implem
      * @param msg the alphanumeric error message
      */
     public void err(ZugUser user, String msg) {
-        user.tell(ZugServMsgType.errServMsg,
+        user.tell(ZugServMsgType.errMsg,
                 ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID, getID()));
     }
 

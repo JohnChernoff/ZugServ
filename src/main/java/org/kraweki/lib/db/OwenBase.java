@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 
 public class OwenBase {
 
-    public static boolean closeQueries = true;
+    public static boolean closeQueries = false;
     private static final Logger logger = Logger.getLogger(OwenBase.class.getName());
     public static class SqlQuery {
         private final String statement;
@@ -83,6 +83,14 @@ public class OwenBase {
             try { conn.close(); } catch (SQLException e) { logSQLException(e); }
         }
 
+        public int runUpdate(final StatementInitializer varSetter) {
+            return runUpdate(varSetter, OwenBase::logSQLException);
+        }
+
+        public int runUpdate() {
+            return runUpdate(it -> {}, OwenBase::logSQLException);
+        }
+
         public int runUpdate(final StatementInitializer varSetter, final Consumer<SQLException> whenFails) {
             try (final PreparedStatement ps = conn.prepareStatement(statement)) {
                 varSetter.setVariables(ps);
@@ -95,36 +103,14 @@ public class OwenBase {
             }
         }
 
-        public void runUpdate(final StatementInitializer varSetter) {
-            runUpdate(varSetter, OwenBase::logSQLException);
-        }
-
-        public void runUpdate() {
-            runUpdate(it -> {}, OwenBase::logSQLException);
-        }
-
         private void cleanup() {
             if (preparedStatement != null) {
-                try {
-                    preparedStatement.close();
-                } catch (SQLException e) {
-                    logSQLException(e);
-                }
+                try { preparedStatement.close(); } catch (SQLException e) { logSQLException(e); }
             }
             if (resultSet != null) {
-                try {
-                    resultSet.close();
-                } catch (SQLException e) {
-                    logSQLException(e);
-                }
+                try { resultSet.close(); } catch (SQLException e) { logSQLException(e); }
             }
-            if (closeQueries) {
-                try {
-                    conn.close();
-                } catch (SQLException e) {
-                    logSQLException(e);
-                }
-            }
+            closeConn();
         }
     }
 

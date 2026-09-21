@@ -78,12 +78,20 @@ public class OwenBase {
             }
         }
 
-        public void runUpdate(final StatementInitializer varSetter, final Consumer<SQLException> whenFails) {
-            try (final PreparedStatement preparedStatement = conn.prepareStatement(statement)) {
-                varSetter.setVariables(preparedStatement);
-                preparedStatement.executeUpdate();
+        private void closeConn() {
+            if (!closeQueries) return;
+            try { conn.close(); } catch (SQLException e) { logSQLException(e); }
+        }
+
+        public int runUpdate(final StatementInitializer varSetter, final Consumer<SQLException> whenFails) {
+            try (final PreparedStatement ps = conn.prepareStatement(statement)) {
+                varSetter.setVariables(ps);
+                return ps.executeUpdate();
             } catch (SQLException e) {
                 whenFails.accept(e);
+                return -1;
+            } finally {
+                closeConn();
             }
         }
 

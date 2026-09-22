@@ -436,7 +436,10 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
             err(user, ERR_CHALLENGE_NOT_FOUND);
             return;
         }
-        ZugChallenge challenge = found.get();
+        handleAcceptChallenge(user,found.get(),dataNode);
+    }
+
+    public void handleAcceptChallenge(ZugUser user, ZugChallenge challenge, JsonNode dataNode) {
         ZugUser creator = challenge.getCreator();
         if (creator == user) {
             err(user, "You can't accept your own challenge");

@@ -2,7 +2,6 @@ package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
-
 import java.security.SecureRandom;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;

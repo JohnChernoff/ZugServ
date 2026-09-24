@@ -415,7 +415,6 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> imp
      */
     @Override
     public void newMsg(Connection conn, String msg) {
-        log(CONN_MSG_DEBUG ? Level.INFO : Level.FINER, "New Conn Message: " + msg);
         if (msg.length() > getServ().getMaxIncomingMessageSize()) {
             log(Level.WARNING, "Message exceeds size limit: " + msg.length() +
                     " from " + conn.getAddress());
@@ -434,14 +433,15 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> imp
                 return;
             }
             JsonNode typeNode = msgNode.get("type"), dataNode = msgNode.get("data");
+
             if (typeNode == null || dataNode == null) { //redundant, but keep for now
                 err(conn,"Error: Bad Data(null)"); //return;
             }
-            else if (equalsType(typeNode.asText(), ZugClientMsgType.pong)) {
-                log(FINE,"Pong from: " + conn.getID());
+            else if (equalsType(typeNode.asText(), ZugClientMsgType.pong)) { //log(FINE,"Pong from: " + conn.getID());
                 conn.setLatency(System.currentTimeMillis() - conn.lastPing());
             }
             else {
+                log(CONN_MSG_DEBUG ? Level.INFO : Level.FINER, "Handling new message: " + msg);
                 handleMsg(conn,typeNode.asText(),dataNode);
             }
         }

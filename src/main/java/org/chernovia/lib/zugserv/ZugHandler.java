@@ -29,7 +29,7 @@ import org.slf4j.LoggerFactory;
 /**
  * ZugHandler extends ConnListener and encapsulates ZugServ to provide basic server functionality.
  */
-abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>, U extends ZugUser> implements ConnListener, JSONifier {
+abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O,A>, U extends ZugUser> implements ConnListener, JSONifier {
 
     public static class ErrorContext {
         public static void logError(String component, String operation,
@@ -466,7 +466,7 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>, U e
                 removeUser(user);
             }
         }
-        for (ZugArea<?> area : getAreas()) area.removeObserver(conn);
+        for (ZugArea<?,?> area : getAreas()) area.removeObserver(conn);
         rateLimitManager.removeConnection(conn.getID());
         log("Active connections: " + getActiveConnectionCount() + "/" + getServ().getMaxConnections());
     }

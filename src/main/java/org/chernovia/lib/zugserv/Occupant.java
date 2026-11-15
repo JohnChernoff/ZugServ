@@ -14,7 +14,7 @@ abstract public class Occupant<O extends Occupant<O>> implements JSONifier {
     private ZugUser user;
     private boolean deafened = false;
     private boolean away = false;
-    private final ZugArea<O> area;
+    private final ZugArea<O,?> area;
     private ZugRoom<O> room;
 
     private final Map<String, Optional<Object>> responseMap = new HashMap<>();
@@ -55,6 +55,7 @@ abstract public class Occupant<O extends Occupant<O>> implements JSONifier {
      * Sets the away/idle status of an Occupant.
      * @param b true for away
      */
+    @SuppressWarnings("unchecked")
     public void setAway(boolean b) {
         away = b;
         if (away && area != null) area.handleAway((O)this);
@@ -80,7 +81,7 @@ abstract public class Occupant<O extends Occupant<O>> implements JSONifier {
      * Creates a roomless non-bot Occupant - note that whatever creates this is responsible for adding it to its assigned Area.
      * @param u the ZugUser associated with this Occupant
      */
-    public Occupant(ZugUser u, ZugArea<O> area) {
+    public Occupant(ZugUser u, ZugArea<O,?> area) {
         setUser(u);
         this.area = area;
     }
@@ -90,7 +91,7 @@ abstract public class Occupant<O extends Occupant<O>> implements JSONifier {
     }
     public ZugRoom<O> getRoom() { return room; }
 
-    public ZugArea<O> getArea() { return area; }
+    public ZugArea<O,?> getArea() { return area; }
 
     /**
      * Determines if the Occupant has the name UniqueName as another.

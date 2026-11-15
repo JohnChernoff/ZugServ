@@ -314,7 +314,7 @@ public class ZugServCriticalFixesTest {
         PHASE1, PHASE2, PHASE3
     }
 
-    static class MockZugArea extends ZugArea<ZugServCriticalFixesTest.MockOccupant> {
+    static class MockZugArea extends ZugArea<ZugServCriticalFixesTest.MockOccupant,MockZugArea> {
         public MockOccupant mockOccupant1;
         public MockOccupant mockOccupant2;
 
@@ -330,7 +330,7 @@ public class ZugServCriticalFixesTest {
     }
 
     static class MockOccupant extends Occupant<MockOccupant> {
-        public MockOccupant(ZugUser user, ZugArea<MockOccupant> area) {
+        public MockOccupant(ZugUser user, ZugArea<MockOccupant,MockZugArea> area) {
             super(user, area);
         }
     }

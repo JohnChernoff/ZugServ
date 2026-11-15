@@ -16,7 +16,7 @@ import org.chernovia.lib.zugserv.enums.*;
  * Parameterized by the concrete Occupant type (T) and concrete Area type (A) this manager handles —
  * every real subclass (FL_Serv, BingoServ, etc.) manages exactly one area/occupant pair.
  */
-abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>, U extends ZugUser> extends ZugHandler<O,A,U> implements AreaListener<O,A> {
+abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, U extends ZugUser> extends ZugHandler<O,A,U> implements AreaListener<O,A> {
 
     public int maxMsgLen = 512;
 

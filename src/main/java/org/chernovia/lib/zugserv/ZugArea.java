@@ -16,7 +16,7 @@ enum ZugAreaPhase {initializing,running,finalizing}
 /**
  * ZugArea is a fuller featured extension of ZugRoom that includes passwords, bans, options, phases, and observers.
  */
-abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implements OccupantListener<O>,Runnable {
+abstract public class ZugArea<O extends Occupant<O>, A extends ZugArea<O, A>> extends ZugRoom<O> implements OccupantListener<O>,Runnable {
     public static class AreaConfig {
         public boolean allowGuests;
         public boolean purgeDeserted;
@@ -31,12 +31,11 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
             this.autoStart = autoStart;
         }
     }
-
     public static final AreaConfig autoStartConfig = new AreaConfig(true,true,true,true,true);
     public final AreaConfig config;
     boolean created = false;
     public enum OperationType {start,stop,nudge}
-    final private AreaListener<O, ZugArea<O>> listener;
+    private final AreaListener<O, A> listener;
     private String password;
     private ZugUser creator;
     private final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
@@ -54,13 +53,18 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
     public ResponseManager<O> rm() { return responseManager; }
     public PhaseManager<O> pm() { return phaseManager; }
 
+    @SuppressWarnings("unchecked")
+    protected A self() {
+        return (A) this;
+    }
+
     /**
      * Constructs a ZugArea with a title, creator, and AreaListener.
      * @param t the title
      * @param c the creator
      * @param l an AreaListener
      */
-    public ZugArea(String t, ZugUser c, AreaListener<O, ZugArea<O>> l) {
+    public ZugArea(String t, ZugUser c, AreaListener<O, A> l) {
         this(t,ZugFields.UNKNOWN_STRING,c, l,
                 new AreaConfig(true,true, true, true, false));
     }
@@ -72,7 +76,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
      * @param l an AreaListener
      * @param config Area Configuration
      */
-    public ZugArea(String t, ZugUser c, AreaListener<O, ZugArea<O>> l, AreaConfig config) {
+    public ZugArea(String t, ZugUser c, AreaListener<O,A> l, AreaConfig config) {
         this(t,ZugFields.UNKNOWN_STRING,c, l, config);
     }
 
@@ -84,7 +88,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
      * @param l an AreaListener
      * @param config Area Configuration
      */
-    public ZugArea(String t, String p, ZugUser c, AreaListener<O, ZugArea<O>> l, AreaConfig config) { //l.areaCreated(this);
+    public ZugArea(String t, String p, ZugUser c, AreaListener<O, A> l, AreaConfig config) { //l.areaCreated(this);
         super(t);
         this.config = config;
         password = p; creator = c; listener = l;
@@ -114,7 +118,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
      * Gets the AreaListener for the area (typically a species of ZugHandler or ZugManager).
      * @return the area's AreaListener
      */
-    public Optional<AreaListener<O,ZugArea<O>>> getListener() {
+    public Optional<AreaListener<O,A>> getListener() {
         return Optional.ofNullable(listener);
     }
 
@@ -348,7 +352,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
             action(ActionType.start);
             areaThread.start();
             getListener().ifPresent(l -> {
-                l.areaStarted(this);
+                l.areaStarted(self());
                 //l.areaUpdated(this);
             });
             future.complete(true);
@@ -368,7 +372,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
             } catch (InterruptedException ignore) {} //handled by phaseManager
 
         }
-        if (close) getListener().ifPresent(l -> l.areaClosed(this));
+        if (close) getListener().ifPresent(l -> l.areaClosed(self()));
     }
 
     public boolean nudgeArea(O occupant) {
@@ -397,7 +401,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
     public boolean addOccupant(O occupant, boolean noStart) {
         if (super.addOccupant(occupant)) {
             observers.remove(occupant.getUser().getConn());
-            getListener().ifPresent(l -> l.areaJoined(this, occupant));
+            getListener().ifPresent(l -> l.areaJoined(self(), occupant));
             if (!noStart && isFull(OccupantFilter.notAway,OccupantFilter.loggedIn) && config.autoStart) {
                 startArea();
             }
@@ -409,7 +413,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
     @Override
     public boolean dropOccupant(O occupant) {
        if (super.dropOccupant(occupant)) {
-           getListener().ifPresent(l -> l.areaParted(this, occupant));
+           getListener().ifPresent(l -> l.areaParted(self(), occupant));
            return true;
        }
        return false;

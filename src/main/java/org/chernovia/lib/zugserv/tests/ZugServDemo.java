@@ -6,7 +6,7 @@ import org.chernovia.lib.zugserv.*;
 import java.util.List;
 import java.util.Optional;
 
-public class ZugServDemo extends ZugManager {
+public class ZugServDemo extends ZugManager<DemoOccupant,DemoArea,ZugUser> {
 
     public static void main(String[] args) {
         new ZugServDemo().start();
@@ -18,18 +18,18 @@ public class ZugServDemo extends ZugManager {
 
     @Override
     public Optional<ZugUser> handleCreateUser(Connection conn, ZugUser.UniqueName name, JsonNode dataNode) {
-        return Optional.of(new DemoUser(conn,name));
+        return Optional.of(new ZugUser(conn,name));
 
     }
 
     @Override
-    public Optional<ZugArea> handleCreateArea(ZugUser user, String title, JsonNode dataNode) {
+    public Optional<DemoArea> handleCreateArea(ZugUser user, String title, JsonNode dataNode) {
         return Optional.of(new DemoArea(title,user,this));
     }
 
     @Override
-    public Optional<Occupant> handleCreateOccupant(ZugUser user, ZugArea area, JsonNode dataNode) {
-        return Optional.of(new DemoOccupant(user,area));
+    public Optional<DemoOccupant> handleCreateOccupant(ZugUser user, DemoArea area, JsonNode dataNode) {
+        return Optional.of(new DemoOccupant(user, area));
     }
 
     @Override
@@ -42,26 +42,4 @@ public class ZugServDemo extends ZugManager {
         return super.toJSON();
     }
 
-    class DemoUser extends ZugUser {
-        public DemoUser(Connection c, UniqueName name) {
-            super(c, name);
-        }
-    }
-
-    class DemoOccupant extends Occupant {
-        public DemoOccupant(ZugUser u, ZugArea a) {
-            super(u, a);
-        }
-    }
-
-    class DemoArea<DemoOccupant> extends ZugArea {
-        public DemoArea(String t, ZugUser c, AreaListener l) {
-            super(t, c, l);
-        }
-
-        @Override
-        public String getName() {
-            return "DemoArea";
-        }
-    }
 }

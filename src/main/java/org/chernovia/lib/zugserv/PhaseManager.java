@@ -53,7 +53,7 @@ public class PhaseManager<O extends Occupant<O>> implements JSONifier, AutoClose
         }
     }
 
-    ZugArea<O> area;
+    ZugArea<O,?> area;
     Enum<?> phase = ZugAreaPhase.initializing;
     long phaseStamp = 0;
     long phaseTime = 0;
@@ -83,7 +83,7 @@ public class PhaseManager<O extends Occupant<O>> implements JSONifier, AutoClose
     }
 
 
-    public PhaseManager(ZugArea<O> area) {
+    public PhaseManager(ZugArea<O,?> area) {
         this.area = area;
         this.scheduler = Executors.newSingleThreadScheduledExecutor(threadFactory);
     }

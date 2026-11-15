@@ -36,7 +36,7 @@ import java.util.logging.Level;
  */
 public class ResponseManager<O extends Occupant<O>> {
 
-    ZugArea<O> area;
+    ZugArea<O,?> area;
 
     public record OccupantResponse<O extends Occupant<O>>(Optional<Object> response, O occupant) {}
     public record BoolResponse<O extends Occupant<O>>(Optional<Boolean> response, O occupant) {}
@@ -58,7 +58,7 @@ public class ResponseManager<O extends Occupant<O>> {
     private final Map<String, ZugResponse<O>> responseCheckerMap = Collections
             .synchronizedMap(new HashMap<>());
 
-    public ResponseManager(ZugArea<O> area) {
+    public ResponseManager(ZugArea<O,?> area) {
         this.area = area;
     }
 

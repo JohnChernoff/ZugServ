@@ -36,7 +36,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
     public final AreaConfig config;
     boolean created = false;
     public enum OperationType {start,stop,nudge}
-    final private AreaListener<O, ? extends ZugArea<O>> listener;
+    final private AreaListener<O, ZugArea<O>> listener;
     private String password;
     private ZugUser creator;
     private final Set<Connection> observers =  Collections.synchronizedSet(new HashSet<>());
@@ -60,7 +60,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
      * @param c the creator
      * @param l an AreaListener
      */
-    public ZugArea(String t, ZugUser c, AreaListener<O, ? extends ZugArea<O>> l) {
+    public ZugArea(String t, ZugUser c, AreaListener<O, ZugArea<O>> l) {
         this(t,ZugFields.UNKNOWN_STRING,c, l,
                 new AreaConfig(true,true, true, true, false));
     }
@@ -72,7 +72,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
      * @param l an AreaListener
      * @param config Area Configuration
      */
-    public ZugArea(String t, ZugUser c, AreaListener<O, ? extends ZugArea<O>>  l, AreaConfig config) {
+    public ZugArea(String t, ZugUser c, AreaListener<O, ZugArea<O>> l, AreaConfig config) {
         this(t,ZugFields.UNKNOWN_STRING,c, l, config);
     }
 
@@ -84,7 +84,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
      * @param l an AreaListener
      * @param config Area Configuration
      */
-    public ZugArea(String t, String p, ZugUser c, AreaListener<O, ? extends ZugArea<O>>  l, AreaConfig config) { //l.areaCreated(this);
+    public ZugArea(String t, String p, ZugUser c, AreaListener<O, ZugArea<O>> l, AreaConfig config) { //l.areaCreated(this);
         super(t);
         this.config = config;
         password = p; creator = c; listener = l;
@@ -114,7 +114,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
      * Gets the AreaListener for the area (typically a species of ZugHandler or ZugManager).
      * @return the area's AreaListener
      */
-    public Optional<AreaListener> getListener() {
+    public Optional<AreaListener<O,ZugArea<O>>> getListener() {
         return Optional.ofNullable(listener);
     }
 
@@ -409,7 +409,7 @@ abstract public class ZugArea<O extends Occupant<O>> extends ZugRoom<O> implemen
     @Override
     public boolean dropOccupant(O occupant) {
        if (super.dropOccupant(occupant)) {
-           getListener().ifPresent(l -> l.areaParted(this, occupant.getUser()));
+           getListener().ifPresent(l -> l.areaParted(this, occupant));
            return true;
        }
        return false;

@@ -26,10 +26,10 @@ public class ChallengeTest {
         System.out.println("ZugServ Challenge Test Suite\n");
 
         test("ids are unguessable-looking, unique and retrievable", () -> {
-            SeekManager sm = new SeekManager(null);
+            SeekManager<ZugUser> sm = new SeekManager<>(null);
             Set<String> ids = new HashSet<>();
             for (int i = 0; i < 200; i++) {
-                ZugChallenge c = sm.addChallenge(new ZugSeek(newUser()), null).orElseThrow();
+                ZugChallenge<ZugUser> c = sm.addChallenge(new ZugSeek<>(newUser()), null).orElseThrow();
                 assertEquals(10, c.getID().length(), "id length");
                 assertTrue(ids.add(c.getID()), "duplicate id: " + c.getID());
                 assertTrue(sm.getChallenge(c.getID()).isPresent(), "not retrievable");
@@ -39,19 +39,19 @@ public class ChallengeTest {
         });
 
         test("per-user cap", () -> {
-            SeekManager sm = new SeekManager(null);
+            SeekManager<ZugUser> sm = new SeekManager<>(null);
             ZugUser user = newUser();
             for (int i = 0; i < SeekManager.MAX_CHALLENGES_PER_USER; i++) {
-                assertTrue(sm.addChallenge(new ZugSeek(user), null).isPresent(), "should be allowed: " + i);
+                assertTrue(sm.addChallenge(new ZugSeek<>(user), null).isPresent(), "should be allowed: " + i);
             }
-            assertFalse(sm.addChallenge(new ZugSeek(user), null).isPresent(), "cap not enforced");
-            assertTrue(sm.addChallenge(new ZugSeek(newUser()), null).isPresent(), "cap leaked to other users");
+            assertFalse(sm.addChallenge(new ZugSeek<>(user), null).isPresent(), "cap not enforced");
+            assertTrue(sm.addChallenge(new ZugSeek<>(newUser()), null).isPresent(), "cap leaked to other users");
         });
 
         test("only the creator can cancel", () -> {
-            SeekManager sm = new SeekManager(null);
+            SeekManager<ZugUser> sm = new SeekManager<>(null);
             ZugUser creator = newUser(), other = newUser();
-            ZugChallenge c = sm.addChallenge(new ZugSeek(creator), null).orElseThrow();
+            ZugChallenge<ZugUser> c = sm.addChallenge(new ZugSeek<>(creator), null).orElseThrow();
             assertFalse(sm.cancelChallenge(c.getID(), other), "stranger cancelled");
             assertTrue(sm.getChallenge(c.getID()).isPresent(), "vanished after failed cancel");
             assertTrue(sm.cancelChallenge(c.getID(), creator), "creator couldn't cancel");
@@ -60,8 +60,8 @@ public class ChallengeTest {
 
         test("single use: concurrent claims yield exactly one winner", () -> {
             for (int round = 0; round < 50; round++) {
-                SeekManager sm = new SeekManager(null);
-                ZugChallenge c = sm.addChallenge(new ZugSeek(newUser()), null).orElseThrow();
+                SeekManager<ZugUser> sm = new SeekManager<>(null);
+                ZugChallenge<ZugUser> c = sm.addChallenge(new ZugSeek<>(newUser()), null).orElseThrow();
                 int racers = 8;
                 AtomicInteger winners = new AtomicInteger();
                 CountDownLatch go = new CountDownLatch(1), done = new CountDownLatch(racers);
@@ -77,36 +77,36 @@ public class ChallengeTest {
         });
 
         test("expiry: hidden, unclaimable and purgeable", () -> {
-            SeekManager sm = new SeekManager(null);
+            SeekManager<ZugUser> sm = new SeekManager<>(null);
             sm.setChallengeTTL(20);
-            ZugChallenge c = sm.addChallenge(new ZugSeek(newUser()), null).orElseThrow();
-            ZugChallenge d = sm.addChallenge(new ZugSeek(newUser()), null).orElseThrow();
+            ZugChallenge<ZugUser> c = sm.addChallenge(new ZugSeek<>(newUser()), null).orElseThrow();
+            ZugChallenge<ZugUser> d = sm.addChallenge(new ZugSeek<>(newUser()), null).orElseThrow();
             Thread.sleep(60);
             assertFalse(sm.claimChallenge(c), "claimed an expired challenge");
             assertFalse(sm.getChallenge(c.getID()).isPresent(), "expired challenge visible");
-            List<ZugChallenge> purged = sm.purgeExpired();
+            List<ZugChallenge<ZugUser>> purged = sm.purgeExpired();
             assertEquals(1, purged.size(), "purged count (c was already dropped by the lookup)");
             assertEquals(d.getID(), purged.get(0).getID(), "wrong challenge purged");
         });
 
         test("dropUser removes that user's challenges only", () -> {
-            SeekManager sm = new SeekManager(null);
+            SeekManager<ZugUser> sm = new SeekManager<>(null);
             ZugUser leaver = newUser(), stayer = newUser();
-            ZugChallenge gone = sm.addChallenge(new ZugSeek(leaver), null).orElseThrow();
-            ZugChallenge kept = sm.addChallenge(new ZugSeek(stayer), null).orElseThrow();
+            ZugChallenge<ZugUser> gone = sm.addChallenge(new ZugSeek<>(leaver), null).orElseThrow();
+            ZugChallenge<ZugUser> kept = sm.addChallenge(new ZugSeek<>(stayer), null).orElseThrow();
             sm.dropUser(leaver);
             assertFalse(sm.getChallenge(gone.getID()).isPresent(), "leaver's challenge survived");
             assertTrue(sm.getChallenge(kept.getID()).isPresent(), "stayer's challenge removed");
         });
 
         test("settings are copied and stripped of routing fields", () -> {
-            SeekManager sm = new SeekManager(null);
+            SeekManager<ZugUser> sm = new SeekManager<>(null);
             ObjectNode raw = com.fasterxml.jackson.databind.node.JsonNodeFactory.instance.objectNode()
                     .put("time_control", "5+3")
                     .put(ZugFields.AREA_ID, "hijack")
                     .put(ZugFields.AREA_TITLE, "hijack")
                     .put(ZugFields.AUTO_JOIN, false);
-            ZugChallenge c = sm.addChallenge(new ZugSeek(newUser()), raw).orElseThrow();
+            ZugChallenge<ZugUser> c = sm.addChallenge(new ZugSeek<>(newUser()), raw).orElseThrow();
             ObjectNode settings = c.getSettings();
             assertEquals("5+3", settings.get("time_control").asText(), "setting lost");
             assertFalse(settings.has(ZugFields.AREA_ID), "area_id leaked");
@@ -116,8 +116,8 @@ public class ChallengeTest {
         });
 
         test("JSON shape", () -> {
-            SeekManager sm = new SeekManager(null);
-            ZugChallenge c = sm.addChallenge(new ZugSeek(newUser()), null).orElseThrow();
+            SeekManager<ZugUser> sm = new SeekManager<>(null);
+            ZugChallenge<ZugUser> c = sm.addChallenge(new ZugSeek<>(newUser()), null).orElseThrow();
             ObjectNode json = c.toJSON();
             assertEquals(c.getID(), json.get("challenge_id").asText(), "challenge_id");
             assertTrue(json.get("expires").asLong() > System.currentTimeMillis(), "expires");

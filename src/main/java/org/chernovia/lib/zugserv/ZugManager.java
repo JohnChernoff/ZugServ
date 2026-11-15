@@ -16,7 +16,7 @@ import org.chernovia.lib.zugserv.enums.*;
  * Parameterized by the concrete Occupant type (T) and concrete Area type (A) this manager handles —
  * every real subclass (FL_Serv, BingoServ, etc.) manages exactly one area/occupant pair.
  */
-abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> extends ZugHandler<O,A> implements AreaListener<O,A> {
+abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>, U extends ZugUser> extends ZugHandler<O,A,U> implements AreaListener<O,A> {
 
     public int maxMsgLen = 512;
 
@@ -111,7 +111,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
     }
 
     private final MessageManager messageManager = new MessageManager();
-    private final SeekManager seekManager = new SeekManager(this);
+    private final SeekManager<U> seekManager = new SeekManager<>(this);
 
     private boolean requirePassword = true;
     private boolean allowGuests = true;
@@ -127,11 +127,11 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
     }
 
     @FunctionalInterface
-    public interface CommandHandler {
-        void handleCommand(ZugUser user,JsonNode data);
+    public interface CommandHandler<U>  {
+        void handleCommand(U user,JsonNode data);
     }
 
-    private final Map<Enum<?>,CommandHandler> handMap = new HashMap<>();
+    private final Map<Enum<?>,CommandHandler<U>> handMap = new HashMap<>();
 
     public ZugManager(ZugServ.ServType type, int port) {
         this(type,port, new ArrayList<>(), null);
@@ -193,11 +193,11 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
     public int getCrowdThreshold() { return crowdThreshold; }
     public void setCrowdThreshold(int n) { crowdThreshold = n; }
     public void addMessageList(Class<? extends Enum<?>> e) { commandList.add(e); }
-    public void addHandler(Enum<?> e, CommandHandler handler) { handMap.put(e,handler); }
+    public void addHandler(Enum<?> e, CommandHandler<U> handler) { handMap.put(e,handler); }
 
     @Override
     public void handleMsg(Connection conn, String type, JsonNode dataNode) {
-        ZugUser user = getUserByConn(conn).orElse(null);
+        U user = getUserByConn(conn).orElse(null);
         if (user != null) user.action(Timeoutable.ActionType.user);
 
         if (!getRateLimitManager().allow(conn, user)) {
@@ -234,14 +234,14 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         else handleUnsupportedMsg(conn,type,dataNode,null);
     }
 
-    public void handleUserMsg(ZugUser user, String type, JsonNode dataNode) {
-        List<CommandHandler> handleList = new ArrayList<>();
+    public void handleUserMsg(U user, String type, JsonNode dataNode) {
+        List<CommandHandler<U>> handleList = new ArrayList<>();
         commandList.forEach(cmdSet -> {
             try {
                 Arrays.stream(cmdSet.getEnumConstants())
                         .filter(eCon -> eCon.name().equalsIgnoreCase(type))
                         .forEach(e -> { //log(Level.FINE,"Command: " + e);
-                            CommandHandler handler = handMap.get(e);
+                            CommandHandler<U> handler = handMap.get(e);
                             if (handler != null) { //log(Level.FINE,"Handling command: " + e);
                                 handler.handleCommand(user,dataNode);
                                 handleList.add(handler);
@@ -260,7 +260,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
      * Resolves the area and occupant for a message and invokes action if both are found and correctly typed.
      * Simplified now that T/A are fixed by the ZugManager subclass — no runtime Class checks needed.
      */
-    protected void withOccupant(ZugUser user, JsonNode dataNode, BiConsumer<A, O> action) {
+    protected void withOccupant(U user, JsonNode dataNode, BiConsumer<A, O> action) {
         getArea(dataNode).ifPresentOrElse(area ->
                 getOccupant(user, dataNode).ifPresentOrElse(
                         occ -> action.accept(area, occ),
@@ -270,31 +270,31 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
 
     /* *** */
 
-    public void handleServerMessage(ZugUser user, JsonNode dataNode) {
+    public void handleServerMessage(U user, JsonNode dataNode) {
         JsonNode msg = ZugUtils.newJSON().set(ZugFields.ZUG_MSG,
                 new ZugMessage(new ZugMessage.ZugText(dataNode.get(ZugFields.ZUG_TEXT)), user).toJSON());
         spam(ZugServMsgType.servUserMsg, msg);
         messageManager.addMessage(msg);
     }
 
-    public void handlePrivateMessage(ZugUser user, JsonNode dataNode) {
+    public void handlePrivateMessage(U user, JsonNode dataNode) {
         getUniqueName(dataNode).ifPresentOrElse(uName -> sendPrivateMsg(user,uName,
                         getTxtNode(dataNode,ZugFields.MSG).orElse("")),
                 () -> err(user,"Missing user name"));
     }
 
-    public Optional<A> handleCreateArea(List<ZugUser> users, JsonNode dataNode, boolean fill) {
+    public Optional<A> handleCreateArea(List<U> users, JsonNode dataNode, boolean fill) {
         Optional<A> optArea = handleCreateArea(users.get(0),dataNode);
         optArea.ifPresent(area -> {
             if (fill) {
                 area.setMaxOccupants(users.size());
             }
-            for (ZugUser user : users) createOccupantAndJoin(area,user,dataNode);
+            for (U user : users) createOccupantAndJoin(area,user,dataNode);
         });
         return optArea;
     }
 
-    public Optional<A> handleCreateArea(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handleCreateArea(U user, JsonNode dataNode) {
         String title = getTxtNode(dataNode, ZugFields.AREA_TITLE, true)
                 .map(rawTitle -> {
                     try {
@@ -325,7 +325,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         Optional<A> a = handleCreateArea(user, title, dataNode);
         user.tell("Creating: " + title);
         log("Creating: " + title);
-        a.ifPresentOrElse(area -> handleAreaCreated(area,dataNode),
+        a.ifPresentOrElse(area -> handleAreaCreated(area,user,dataNode),
                 () -> err(user,"Failed to create area: " + title));
         return a;
     }
@@ -335,7 +335,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         if (getAreaByTitle(name).isPresent()) return name + createID(); else return name;
     }
 
-    public Optional<A> handleJoinArea(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handleJoinArea(U user, JsonNode dataNode) {
         if (getTxtNode(dataNode, ZugFields.AREA_ID).isEmpty()) {
             return handleJoinRandomArea(user,dataNode);
         }
@@ -344,7 +344,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         return a;
     }
 
-    public Optional<A> handleJoinRandomArea(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handleJoinRandomArea(U user, JsonNode dataNode) {
         AtomicReference<Optional<A>> a = new AtomicReference<>(areas.values().stream()
                 .filter(ZugArea::isOpen).sorted().findFirst());
         a.get().ifPresentOrElse(area -> handleCreateOccupant(user, area, dataNode)
@@ -353,7 +353,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         return a.get();
     }
 
-    public Optional<A> handlePartArea(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handlePartArea(U user, JsonNode dataNode) {
         Optional<A> a = getArea(dataNode);
         a.ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
                         .ifPresentOrElse(occupant -> {
@@ -369,14 +369,14 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         return a;
     }
 
-    public Optional<A> handleStartArea(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handleStartArea(U user, JsonNode dataNode) {
         Optional<A> a = getArea(dataNode);
         a.ifPresentOrElse(area -> startArea(area,user,dataNode), () -> err(user,"Area not found"));
         return a;
     }
 
     /** Tells the user off (and returns true) if they're already in an area and this manager allows only one at a time. */
-    private boolean blockedByCurrentArea(ZugUser user) {
+    private boolean blockedByCurrentArea(U user) {
         if (!singleAreaPerUser) return false;
         List<A> userAreas = getAreasByUser(user);
         if (userAreas.isEmpty()) return false;
@@ -384,21 +384,21 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         return true;
     }
 
-    public void handleSeek(ZugUser user, JsonNode dataNode) {
+    public void handleSeek(U user, JsonNode dataNode) {
         if (blockedByCurrentArea(user)) return;
         createSeek(user,dataNode).ifPresent(seekManager::addSeek);
         if (seekManager.seekMap.containsKey(user)) user.tell(ZugServMsgType.seekCreated);
     }
 
-    public Optional<ZugSeek> createSeek(ZugUser user, JsonNode dataNode) {
-        return Optional.of(new ZugSeek(user));
+    public Optional<ZugSeek<U>> createSeek(U user, JsonNode dataNode) {
+        return Optional.of(new ZugSeek<>(user));
     }
 
     /* *** Challenges: link-only seeks *** */
 
     public void setChallengeTTL(long millis) { seekManager.setChallengeTTL(millis); }
 
-    private ObjectNode challengeMsg(ZugChallenge challenge) {
+    private ObjectNode challengeMsg(ZugChallenge<U> challenge) {
         return ZugUtils.newJSON().set(ZugFields.CHALLENGE, challenge.toJSON());
     }
 
@@ -411,9 +411,9 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
      * Game-specific settings go in the message's "data" object; they're validated by (and handed to) the
      * same hooks that ordinary seeks and areas use: {@link #createSeek}, {@link #handleCreateArea} and {@link #handleCreateOccupant}.
      */
-    public void handleNewChallenge(ZugUser user, JsonNode dataNode) {
+    public void handleNewChallenge(U user, JsonNode dataNode) {
         if (blockedByCurrentArea(user)) return;
-        Optional<ZugSeek> seek = createSeek(user,dataNode);
+        Optional<ZugSeek<U>> seek = createSeek(user,dataNode);
         if (seek.isEmpty()) {
             err(user, "Unable to create challenge");
             return;
@@ -424,14 +424,14 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
     }
 
     /** Lets a prospective acceptor see who's challenging them, and to what, before committing. */
-    public void handleViewChallenge(ZugUser user, JsonNode dataNode) {
+    public void handleViewChallenge(U user, JsonNode dataNode) {
         getTxtNode(dataNode, ZugFields.CHALLENGE_ID, true).flatMap(seekManager::getChallenge).ifPresentOrElse(
                 challenge -> user.tell(ZugServMsgType.challengeInfo, challengeMsg(challenge)),
                 () -> err(user, ERR_CHALLENGE_NOT_FOUND));
     }
 
-    public void handleAcceptChallenge(ZugUser user, JsonNode dataNode) {
-        Optional<ZugChallenge> found = getTxtNode(dataNode, ZugFields.CHALLENGE_ID, true).flatMap(seekManager::getChallenge);
+    public void handleAcceptChallenge(U user, JsonNode dataNode) {
+        Optional<ZugChallenge<U>> found = getTxtNode(dataNode, ZugFields.CHALLENGE_ID, true).flatMap(seekManager::getChallenge);
         if (found.isEmpty()) {
             err(user, ERR_CHALLENGE_NOT_FOUND);
             return;
@@ -439,8 +439,8 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         handleAcceptChallenge(user,found.get(),dataNode);
     }
 
-    public void handleAcceptChallenge(ZugUser user, ZugChallenge challenge, JsonNode dataNode) {
-        ZugUser creator = challenge.getCreator();
+    public void handleAcceptChallenge(U user, ZugChallenge<U> challenge, JsonNode dataNode) {
+        U creator = challenge.getCreator();
         if (creator == user) {
             err(user, "You can't accept your own challenge");
         } else if (blockedByCurrentArea(user)) {
@@ -448,7 +448,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         } else if (singleAreaPerUser && !getAreasByUser(creator).isEmpty()) {
             err(user, "Challenger is currently busy");
         } else {
-            Optional<ZugSeek> acceptorSeek = createSeek(user,dataNode);
+            Optional<ZugSeek<U>> acceptorSeek = createSeek(user,dataNode);
             if (acceptorSeek.isEmpty() || !challenge.getSeek().isAcceptable(acceptorSeek.get())
                     || !acceptorSeek.get().isAcceptable(challenge.getSeek())) {
                 err(user, "You are not eligible for that challenge");
@@ -461,7 +461,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         }
     }
 
-    public void handleCancelChallenge(ZugUser user, JsonNode dataNode) {
+    public void handleCancelChallenge(U user, JsonNode dataNode) {
         Optional<String> id = getTxtNode(dataNode, ZugFields.CHALLENGE_ID, true);
         if (id.isPresent() && seekManager.cancelChallenge(id.get(), user)) {
             user.tell(ZugServMsgType.challengeClosed, challengeClosedMsg(id.get(), "cancelled"));
@@ -475,12 +475,12 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         super.disconnected(conn);
     }
 
-    public void startArea(A area, ZugUser user, JsonNode dataNode) {
+    public void startArea(A area, U user, JsonNode dataNode) {
         area.startArea(user,dataNode)
                 .thenAccept(starting -> { if (starting) areaStarted(area); });
     }
 
-    public Optional<A> handleAreaMsg(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handleAreaMsg(U user, JsonNode dataNode) {
         Optional<A> a = getArea(dataNode);
         a.ifPresentOrElse(zugArea -> zugArea.getOccupant(user)
                         .ifPresentOrElse(occupant -> {
@@ -506,11 +506,11 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         return a;
     }
 
-    public void handleUpdateServ(ZugUser user, JsonNode dataNode) {
+    public void handleUpdateServ(U user, JsonNode dataNode) {
         updateServ(user.getConn());
     }
 
-    public Optional<A> handleUpdateArea(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handleUpdateArea(U user, JsonNode dataNode) {
         Optional<A> a = getArea(dataNode);
         a.ifPresent(area -> {
             if (!area.isPrivate()) user.tell(ZugServMsgType.updateArea,area.toJSON2(ZugScope.all));
@@ -520,7 +520,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         return a;
     }
 
-    public Optional<A> handleUpdateOccupant(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handleUpdateOccupant(U user, JsonNode dataNode) {
         Optional<A> a = getArea(dataNode);
         a.ifPresentOrElse(area -> area.getOccupant(user)
                         .ifPresentOrElse(occupant -> user.getConn().tell(ZugServMsgType.updateOccupant,occupant.toJSON()),
@@ -529,7 +529,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         return a;
     }
 
-    public void handleUpdateUser(ZugUser user, JsonNode dataNode) {
+    public void handleUpdateUser(U user, JsonNode dataNode) {
         getTxtNode(dataNode, ZugFields.NAME)
                 .ifPresentOrElse(name -> getUserByName(name,getTxtNode(dataNode, ZugFields.SOURCE).orElse(null))
                                 .ifPresentOrElse(usr -> user.update(user.getConn()),
@@ -537,17 +537,17 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
                         () -> user.update(user.getConn()));
     }
 
-    public Optional<A> handleUpdateMessages(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handleUpdateMessages(U user, JsonNode dataNode) {
         Optional<A> a = getArea(dataNode);
         a.ifPresent(area -> user.tell(ZugServMsgType.msgHistory,area.toJSON2(ZugScope.msg_history)));
         return a;
     }
 
-    public void handleDeafen(ZugUser user, JsonNode dataNode) {
+    public void handleDeafen(U user, JsonNode dataNode) {
         getOccupant(user,dataNode).ifPresent(occupant -> getBoolNode(dataNode,ZugFields.DEAFENED).ifPresent(occupant::setDeafened));
     }
 
-    public Optional<A> handleBan(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handleBan(U user, JsonNode dataNode) {
         Optional<A> areaOpt = getArea(dataNode);
 
         if (areaOpt.isEmpty()) {
@@ -563,7 +563,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
             return areaOpt;
         }
 
-        Optional<ZugUser.UniqueName> nameOpt = getUniqueName(dataNode.get(ZugFields.NAME));
+        Optional<U.UniqueName> nameOpt = getUniqueName(dataNode.get(ZugFields.NAME));
         if (nameOpt.isEmpty()) {
             err(user, "Invalid target username");
             return areaOpt;
@@ -580,7 +580,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         return areaOpt;
     }
 
-    public Optional<A> handleKick(ZugUser kicker, JsonNode dataNode) {
+    public Optional<A> handleKick(U kicker, JsonNode dataNode) {
         Optional<A> a = getArea(dataNode);
         a.ifPresent(area ->
                 getJSONNode(dataNode, ZugFields.UNAME)
@@ -590,13 +590,13 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         return a;
     }
 
-    public Optional<A> handleNudge(ZugUser nudger, JsonNode dataNode) {
+    public Optional<A> handleNudge(U nudger, JsonNode dataNode) {
         Optional<O> occupant = getOccupant(nudger, dataNode);
         occupant.ifPresent(o -> o.getArea().nudgeArea(o));
         return occupant.map(o -> (A) o.getArea());
     }
 
-    public Optional<A> handleResponse(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handleResponse(U user, JsonNode dataNode) {
         Optional<A> a = getArea(dataNode);
 
         String responseType = getTxtNode(dataNode, ZugFields.RESPONSE_TYPE).orElse(null);
@@ -658,35 +658,35 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         return a;
     }
 
-    public Optional<A> handleUpdateOptions(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handleUpdateOptions(U user, JsonNode dataNode) {
         Optional<A> a = getArea(dataNode);
         a.ifPresent(area -> area.updateOptions(user));
         return a;
     }
 
-    public Optional<A> handleSetOptions(ZugUser user, JsonNode dataNode) {
+    public Optional<A> handleSetOptions(U user, JsonNode dataNode) {
         Optional<A> a = getArea(dataNode);
         a.ifPresent(area -> getJSONNode(dataNode,ZugFields.OPTIONS)
                 .ifPresent(options -> area.setOptions(user,options)));
         return a;
     }
 
-    public void addArea(A area, boolean autoJoin, JsonNode dataNode) {
+    public void addArea(A area, JsonNode dataNode) {
         addOrGetArea(area);
-        if (autoJoin) {
-            area.getCreator().ifPresent(creator -> createOccupantAndJoin(area,creator,dataNode));
-        }
         areaCreated(area);
     }
 
     /* *** */
 
-    private void handleAreaCreated(A area, JsonNode dataNode) {
+    private void handleAreaCreated(A area, U creator, JsonNode dataNode) {
         Optional<Boolean> join = getBoolNode(dataNode, ZugFields.AUTO_JOIN);
-        addArea(area,join.isEmpty() || join.get(),dataNode);
+        addArea(area,dataNode);
+        if (join.isPresent() && join.get()) {
+            createOccupantAndJoin(area,creator,dataNode);
+        }
     }
 
-    private void createOccupantAndJoin(A area, ZugUser user, JsonNode dataNode) {
+    private void createOccupantAndJoin(A area, U user, JsonNode dataNode) {
         Optional<O> existingOccupant = area.getOccupant(user);
         existingOccupant.ifPresentOrElse(
                 existing -> {
@@ -727,7 +727,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         }
     }
 
-    public void handleMaxOccupancy(ZugUser user, A area, JsonNode dataNode) {
+    public void handleMaxOccupancy(U user, A area, JsonNode dataNode) {
         if (area.isBumpAway()) {
             area.getOccupants()
                     .filter(o -> !o.canAct() && !area.isCreator(o.getUser()))
@@ -747,8 +747,8 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
     }
 
     @Override
-    public void areaParted(A area, ZugUser user) {
-        user.tell(ZugServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.AREA_ID,area.getID()));
+    public void areaParted(A area, O occupant) {
+        occupant.getUser().tell(ZugServMsgType.partArea,ZugUtils.newJSON().put(ZugFields.AREA_ID,area.getID()));
         areaUpdated(area,"parted");
     }
 
@@ -758,7 +758,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         tell(conn, ZugServMsgType.updateServ, toJSON2(ZugScope.all,ZugScope.msg_history));
     }
 
-    public Optional<O> getOccupant(ZugUser user, JsonNode dataNode) {
+    public Optional<O> getOccupant(U user, JsonNode dataNode) {
         return getArea(dataNode).flatMap(area -> area.getOccupant(user));
     }
 
@@ -777,7 +777,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
                 .set(ZugFields.ZUG_MSG,new ZugMessage(zugTxt,occupant.getUser()).toJSON()));
     }
 
-    public void sendPrivateMsg(ZugUser user1, ZugUser.UniqueName name, String msg) {
+    public void sendPrivateMsg(U user1, U.UniqueName name, String msg) {
         if (msg.length() > maxMsgLen) {
             err(user1, "Private message overflow!");
         } else {
@@ -825,7 +825,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
     }
 
     @Override
-    public void handleLogin(Connection conn, ZugUser.UniqueName uName, JsonNode dataNode) {
+    public void handleLogin(Connection conn, U.UniqueName uName, JsonNode dataNode) {
         getUsers().values().stream()
                 .filter(user -> user.sameUser(uName, conn))
                 .findFirst()
@@ -843,7 +843,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
                 );
     }
 
-    public void handleLoggedIn(ZugUser user, JsonNode dataNode) {
+    public void handleLoggedIn(U user, JsonNode dataNode) {
         log("logged in: " + user.getUniqueName());
         user.setLoggedIn(true);
         user.tell(ZugServMsgType.logOK,user.toJSON());
@@ -855,18 +855,18 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         getTxtNode(dataNode,ZugFields.AREA_ID).ifPresent(id -> autoJoin(user,id, dataNode));
     }
 
-    public void autoJoin(ZugUser user, String areaId, JsonNode dataNode) {
+    public void autoJoin(U user, String areaId, JsonNode dataNode) {
         getAreaById(areaId).ifPresentOrElse(area -> createOccupantAndJoin(area,user, dataNode),
                 () -> err(user, "Error: unknown area"));
     }
 
-    public void swapConnection(ZugUser prevUser, Connection newConn, JsonNode dataNode) {
+    public void swapConnection(U prevUser, Connection newConn, JsonNode dataNode) {
         newConn.tell(ZugServMsgType.servMsg,"Already logged in, swapping connections");
         prevUser.setConn(newConn);
         handleLoggedIn(prevUser,dataNode);
     }
 
-    public Optional<ZugUser.UniqueName> getUniqueName(JsonNode dataNode) {
+    public Optional<U.UniqueName> getUniqueName(JsonNode dataNode) {
         String source = getTxtNode(dataNode,ZugFields.SOURCE)
                 .orElse(getTxtNode(dataNode.get(ZugFields.NAME),ZugFields.SOURCE).orElse(""));
         String name = getTxtNode(dataNode,ZugFields.NAME)
@@ -878,15 +878,15 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O>> ex
         }
     }
 
-    public abstract Optional<ZugUser> handleCreateUser(Connection conn, ZugUser.UniqueName uName, JsonNode dataNode);
-    public abstract Optional<A> handleCreateArea(ZugUser user, String title, JsonNode dataNode);
-    public abstract Optional<O> handleCreateOccupant(ZugUser user, A area, JsonNode dataNode);
+    public abstract Optional<U> handleCreateUser(Connection conn, U.UniqueName uName, JsonNode dataNode);
+    public abstract Optional<A> handleCreateArea(U user, String title, JsonNode dataNode);
+    public abstract Optional<O> handleCreateOccupant(U user, A area, JsonNode dataNode);
 
     public boolean canPartArea(A area, O occupant, JsonNode dataNode) {
         return true;
     }
 
-    public abstract void handleUnsupportedMsg(Connection conn, String type, JsonNode dataNode, ZugUser user);
+    public abstract void handleUnsupportedMsg(Connection conn, String type, JsonNode dataNode, U user);
 
     public void handleAreaListUpdate(A area, ZugAreaChange change, String updateType) {
         if (!isCrowded() && area.exists() && !area.isPrivate()) {

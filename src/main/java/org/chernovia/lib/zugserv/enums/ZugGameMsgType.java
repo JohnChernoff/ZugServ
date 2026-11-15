@@ -1,5 +1,3 @@
 package org.chernovia.lib.zugserv.enums;
 
-public enum ZugGameMsgType {
-
-}
+public enum ZugGameMsgType {}

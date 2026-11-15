@@ -183,7 +183,7 @@ public class JavalinServ extends ServAdapter implements ZugServ {
     }
 
     public void handleStatus(Context ctx) {
-        ZugManager<?,?> mgr = getMgr();
+        ZugManager<?,?,?> mgr = getMgr();
         if (mgr != null) {
             ctx.json(mgr.toJSON2(ZugScope.basic));
         }

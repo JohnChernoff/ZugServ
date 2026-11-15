@@ -365,6 +365,14 @@ public class PhaseManager<O extends Occupant<O>> implements JSONifier, AutoClose
         }
     }
 
+    public synchronized void extendPhase(long additionalMillis) {
+        if (currentTimeout == null || currentPhaseFuture == null || currentPhaseFuture.isDone()) return;
+        currentTimeout.cancel(false);
+        phaseTime += additionalMillis;              // keep phaseStamp fixed, grow the target duration
+        long remaining = Math.max(0, getPhaseTimeRemaining());
+        currentTimeout = scheduler.schedule(() -> currentPhaseFuture.complete(true), remaining, TimeUnit.MILLISECONDS);
+    }
+
     @Override
     public ObjectNode toJSON2(Enum<?>... scopes) {
         return ZugUtils.newJSON()

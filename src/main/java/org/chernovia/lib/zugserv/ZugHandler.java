@@ -23,16 +23,13 @@ import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.logging.Level;
-import java.util.stream.Collectors;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import static java.util.logging.Level.*;
 
 /**
  * ZugHandler extends ConnListener and encapsulates ZugServ to provide basic server functionality.
  */
-abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> implements ConnListener, JSONifier {
+abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>, U extends ZugUser> implements ConnListener, JSONifier {
 
     public static class ErrorContext {
         public static void logError(String component, String operation,
@@ -51,7 +48,7 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> imp
     private static boolean VERBOSE = true; //for enum names vs ordinal
     public static boolean CONN_MSG_DEBUG = false;
     static final Logger logger = LoggerFactory.getLogger(ZugHandler.class);
-    ConcurrentHashMap<String,ZugUser> users = new ConcurrentHashMap<>();
+    ConcurrentHashMap<String,U> users = new ConcurrentHashMap<>();
     ConcurrentHashMap<String, A> areas = new ConcurrentHashMap<>();
     Map<ZugAuthSource,Boolean> authSources = new HashMap<>();
     private boolean preserveDisconnectedUsers = true;
@@ -94,15 +91,15 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> imp
         initializeAuthServices(authSources);
     }
 
-    public ConcurrentHashMap<String,ZugUser> getUsers() {
+    public ConcurrentHashMap<String,U> getUsers() {
         return users;
     }
 
-    public Optional<ZugUser> addOrGetUser(ZugUser user) {
+    public Optional<U> addOrGetUser(U user) {
         return Optional.ofNullable(users.putIfAbsent(user.getUniqueName().toString(), user));
     }
 
-    public Optional<ZugUser> removeUser(ZugUser user) {
+    public Optional<U> removeUser(U user) {
         return Optional.ofNullable(users.remove(user.getName()));
     }
 
@@ -134,7 +131,7 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> imp
         return areas.values().stream().filter(a -> a.getTitle().equals(title)).findFirst();
     }
 
-    public List<A> getAreasByUser(ZugUser user) {
+    public List<A> getAreasByUser(U user) {
         return areas.values().stream().filter(a -> a.getOccupants().anyMatch(o -> o.getUser() == user)).toList();
     }
 
@@ -143,32 +140,32 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> imp
      * @param user A ZugUser
      * @return list of ZugAreas
      */
-    public List<A> areasByUserToJSON(ZugUser user) {
+    public List<A> areasByUserToJSON(U user) {
         return getAreas().stream().filter(area -> area.getOccupant(user).isPresent()).toList();
     }
 
-    public List<ZugUser> getUsersByConn(Connection conn) {
-        final List<ZugUser> userList = new Vector<>();
-        for (ZugUser user : users.values()) if (user.getConn().equals(conn)) userList.add(user); return userList;
+    public List<U> getUsersByConn(Connection conn) {
+        final List<U> userList = new Vector<>();
+        for (U user : users.values()) if (user.getConn().equals(conn)) userList.add(user); return userList;
     }
 
-    public Optional<ZugUser> getUserByConn(Connection conn) {
-        for (ZugUser user : users.values()) if (user.getConn().equals(conn)) return Optional.of(user);
+    public Optional<U> getUserByConn(Connection conn) {
+        for (U user : users.values()) if (user.getConn().equals(conn)) return Optional.of(user);
         return Optional.empty();
     }
 
-    public Optional<ZugUser> getUserByAddress(Connection conn) {
-        for (ZugUser user : users.values()) if (user.getConn().isSameOrigin(conn)) return Optional.of(user);
+    public Optional<U> getUserByAddress(Connection conn) {
+        for (U user : users.values()) if (user.getConn().isSameOrigin(conn)) return Optional.of(user);
         return Optional.empty();
     }
 
-    public Optional<ZugUser> getUserByName(String name, String source) {
-        return getUserByUniqueName(new ZugUser.UniqueName(name, ZugAuthSource.valueOf(source)));
+    public Optional<U> getUserByName(String name, String source) {
+        return getUserByUniqueName(new U.UniqueName(name, ZugAuthSource.valueOf(source)));
     }
 
-    public Optional<ZugUser> getUserByUniqueName(ZugUser.UniqueName name) {
+    public Optional<U> getUserByUniqueName(U.UniqueName name) {
         //log("Looking for user: " + name); for (String key : users.keySet()) log(key.toString());
-        ZugUser user = users.get(name.toString()); //log("Found: " + user);
+        U user = users.get(name.toString()); //log("Found: " + user);
         return user == null ? Optional.empty() : Optional.of(user);
     }
 
@@ -459,7 +456,7 @@ abstract public class ZugHandler<O extends Occupant<O>,A extends ZugArea<O>> imp
      * @param conn The newly disconnected Connection
      */
     public void disconnected(Connection conn) {
-        for (ZugUser user : getUsersByConn(conn)) {
+        for (U user : getUsersByConn(conn)) {
             log("Disconnected: " + user.getName() + ", duration: " + conn.getTimeConnected()/1000 + " seconds");
             rateLimitManager.removeUser(user);
             user.setLoggedIn(false);

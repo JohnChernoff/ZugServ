@@ -3,10 +3,10 @@ package org.chernovia.lib.zugserv;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.enums.ZugScope;
 
-public class ZugSeek implements JSONifier {
-    ZugUser user;
+public class ZugSeek<U extends ZugUser> implements JSONifier {
+    U user;
     long timeStamp;
-    public ZugSeek(ZugUser user) {
+    public ZugSeek(U user) {
         this.user = user;
         timeStamp = System.currentTimeMillis() / 1000;
     }
@@ -23,7 +23,7 @@ public class ZugSeek implements JSONifier {
      * discount based on combined wait time. Subclasses should override
      * to add other factors.
      */
-    public double matchDiff(ZugSeek other) {
+    public double matchDiff(ZugSeek<U> other) {
         long now = System.currentTimeMillis() / 1000;
         int combinedAge = (int) ((now - timeStamp) + (now - other.timeStamp));
 
@@ -40,7 +40,7 @@ public class ZugSeek implements JSONifier {
      * Subclasses should override to add compatibility constraints
      * (variant, options, seek type, etc.).
      */
-    public boolean isAcceptable(ZugSeek other) {
+    public boolean isAcceptable(ZugSeek<U> other) {
         return user.isLoggedIn() && other.user.isLoggedIn(); // default: any age-based diff is fine, always match oldest available
     }
 

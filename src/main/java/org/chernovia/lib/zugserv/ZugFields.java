@@ -67,6 +67,7 @@ public interface ZugFields {
             CHALLENGE = "challenge",
             CHALLENGE_ID = "challenge_id",
             EXPIRES = "expires",
-            REASON = "reason"
+            REASON = "reason",
+            ACK = "ack"
     ;
 }

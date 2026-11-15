@@ -27,7 +27,7 @@ public interface AreaListener<O extends Occupant<O>, A extends ZugArea<O>> {
      */
     void areaUpdated(A area, String updateType);
 
-    void areaParted(A area, ZugUser user);
+    void areaParted(A area, O occupant);
 
     void areaJoined(A area, O occupant);
 }

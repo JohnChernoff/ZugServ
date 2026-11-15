@@ -9,9 +9,9 @@ import java.util.List;
  */
 public interface ZugServ {
 
-	public default void setMgr(ZugManager<?, ?> mgr) {}
+	public default void setMgr(ZugManager<?, ?,?> mgr) {}
 
-	public default ZugManager<?,?> getMgr() { return null; }
+	public default ZugManager<?,?,?> getMgr() { return null; }
 
 	boolean stackTrace = true;
 

@@ -13,16 +13,16 @@ import java.util.List;
  * A challenge wraps whatever {@link ZugSeek} the game's {@link ZugManager#createSeek} produces, so any
  * game-specific compatibility rules carry over unchanged. Challenges are single-use and expire.
  */
-public class ZugChallenge implements JSONifier {
+public class ZugChallenge<U extends ZugUser> implements JSONifier {
     private final String id;
-    private final ZugSeek seek;
+    private final ZugSeek<U> seek;
     private final ObjectNode settings;
     private final long created, expires; //epoch millis
 
     /** Routing fields a client may not smuggle into area creation via challenge settings. */
     private static final List<String> RESERVED_FIELDS = List.of(ZugFields.AREA_ID, ZugFields.AREA_TITLE, ZugFields.AUTO_JOIN);
 
-    ZugChallenge(String id, ZugSeek seek, JsonNode rawSettings, long ttlMillis) {
+    ZugChallenge(String id, ZugSeek<U> seek, JsonNode rawSettings, long ttlMillis) {
         this.id = id;
         this.seek = seek;
         this.settings = ZugUtils.newJSON();
@@ -33,8 +33,8 @@ public class ZugChallenge implements JSONifier {
     }
 
     public String getID() { return id; }
-    public ZugSeek getSeek() { return seek; }
-    public ZugUser getCreator() { return seek.user; }
+    public ZugSeek<U> getSeek() { return seek; }
+    public U getCreator() { return seek.user; }
     public long getExpiration() { return expires; }
     public boolean isExpired() { return System.currentTimeMillis() >= expires; }
 

@@ -8,8 +8,12 @@ public class ZugSeek<U extends ZugUser> implements JSONifier {
     long timeStamp;
     AreaOptions options;
     public ZugSeek(U user) {
+        this(user,new AreaOptions());
+    }
+
+    public ZugSeek(U user, AreaOptions options) {
         this.user = user;
-        options = new AreaOptions();
+        this.options = options;
         timeStamp = System.currentTimeMillis() / 1000;
     }
 

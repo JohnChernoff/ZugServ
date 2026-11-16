@@ -2,6 +2,7 @@ package org.chernovia.lib.zugserv;
 
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.jetbrains.annotations.NotNull;
+import java.util.Optional;
 
 public class AreaOptions implements JSONifier, Comparable<AreaOptions> {
 
@@ -15,12 +16,8 @@ public class AreaOptions implements JSONifier, Comparable<AreaOptions> {
         this.json = json;
     }
 
-    public static AreaOptions fromJSON(ObjectNode json) {
-        return new AreaOptions(json);
-    }
-
     public boolean eq(AreaOptions other) {
-        return true;
+        return json.equals(other.json);
     }
 
     @Override

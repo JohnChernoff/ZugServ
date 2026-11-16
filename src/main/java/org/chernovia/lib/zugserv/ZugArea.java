@@ -347,14 +347,7 @@ abstract public class ZugArea<O extends Occupant<O>, A extends ZugArea<O, A>> ex
                 err(user, "Area already started");
                 return future;  // Return early instead of completing twice
             }
-
-            running = true;
-            action(ActionType.start);
-            areaThread.start();
-            getListener().ifPresent(l -> {
-                l.areaStarted(self());
-                //l.areaUpdated(this);
-            });
+            areaStarted();
             future.complete(true);
         } catch (Exception e) {
             ZugHandler.log(Level.SEVERE, "Error starting area: " + e.getMessage());
@@ -362,6 +355,15 @@ abstract public class ZugArea<O extends Occupant<O>, A extends ZugArea<O, A>> ex
             future.completeExceptionally(e);
         }
         return future;
+    }
+
+    public void areaStarted() {
+        running = true;
+        action(ActionType.start);
+        areaThread.start();
+        getListener().ifPresent(l -> {
+            l.areaStarted(self()); //l.areaUpdated(this);
+        });
     }
 
     public void stopArea(boolean close) {

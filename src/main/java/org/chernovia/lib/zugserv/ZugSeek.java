@@ -6,8 +6,10 @@ import org.chernovia.lib.zugserv.enums.ZugScope;
 public class ZugSeek<U extends ZugUser> implements JSONifier {
     U user;
     long timeStamp;
+    AreaOptions options;
     public ZugSeek(U user) {
         this.user = user;
+        options = new AreaOptions();
         timeStamp = System.currentTimeMillis() / 1000;
     }
 
@@ -41,7 +43,7 @@ public class ZugSeek<U extends ZugUser> implements JSONifier {
      * (variant, options, seek type, etc.).
      */
     public boolean isAcceptable(ZugSeek<U> other) {
-        return user.isLoggedIn() && other.user.isLoggedIn(); // default: any age-based diff is fine, always match oldest available
+        return user.isLoggedIn() && other.user.isLoggedIn() && other.options.eq(options); // default: any age-based diff is fine, always match oldest available
     }
 
     @Override

@@ -283,12 +283,10 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
                 () -> err(user,"Missing user name"));
     }
 
-    public Optional<A> handleCreateArea(List<U> users, JsonNode dataNode, boolean fill) {
+    public Optional<A> handleCreateAreaAndPopualate(List<U> users, JsonNode dataNode, boolean fill) {
         Optional<A> optArea = handleCreateArea(users.get(0),dataNode);
         optArea.ifPresent(area -> {
-            if (fill) {
-                area.setMaxOccupants(users.size());
-            }
+            if (fill) area.setMaxOccupants(users.size()); //if needed, set area's autostart
             for (U user : users) createOccupantAndJoin(area,user,dataNode);
         });
         return optArea;
@@ -409,7 +407,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
     /**
      * Creates a challenge: a seek that can only be matched by someone who has its id (i.e., its link).
      * Game-specific settings go in the message's "data" object; they're validated by (and handed to) the
-     * same hooks that ordinary seeks and areas use: {@link #createSeek}, {@link #handleCreateArea} and {@link #handleCreateOccupant}.
+     * same hooks that ordinary seeks and areas use: {@link #createSeek}, {@link #handleCreateAreaAndPopualate} and {@link #handleCreateOccupant}.
      */
     public void handleNewChallenge(U user, JsonNode dataNode) {
         if (blockedByCurrentArea(user)) return;

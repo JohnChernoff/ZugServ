@@ -40,7 +40,7 @@ public class ZugChallenge<U extends ZugUser> implements JSONifier {
 
     /**
      * @return the creator's game-specific settings (never null), suitable as the dataNode
-     * handed to {@link ZugManager#handleCreateArea} and {@link ZugManager#handleCreateOccupant}
+     * handed to {@link ZugManager#handleCreateAreaAndPopualate} and {@link ZugManager#handleCreateOccupant}
      */
     public ObjectNode getSettings() { return settings; }
 

@@ -28,12 +28,7 @@ public class SeekManager<U extends ZugUser> {
         seekMap.values().stream()
                 .filter(s -> s != seek && s.isAcceptable(seek) && seek.isAcceptable(s))
                 .min(Comparator.comparingDouble(s -> s.matchDiff(seek)))
-                .ifPresent(bestMatch -> matchSeeks(bestMatch, seek));
-    }
-
-    @SafeVarargs
-    public final void matchSeeks(ZugSeek<U>... seeks) {
-        matchSeeksWith(null, seeks);
+                .ifPresent(bestMatch -> matchSeeksWith(seek.options.toJSON(),bestMatch, seek));
     }
 
     /**
@@ -47,7 +42,7 @@ public class SeekManager<U extends ZugUser> {
             seekMap.remove(user);
             user.tell(ZugServMsgType.seekMatched);
         });
-        mgr.handleCreateArea(seekList, data, true);
+        mgr.handleCreateAreaAndPopualate(seekList, data, true);
     }
 
     /* *** Challenges *** */

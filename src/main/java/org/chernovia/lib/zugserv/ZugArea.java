@@ -361,6 +361,7 @@ abstract public class ZugArea<O extends Occupant<O>, A extends ZugArea<O, A>> ex
         running = true;
         action(ActionType.start);
         areaThread.start();
+        spam(ZugServMsgType.startArea,toJSON2(ZugScope.all));
         getListener().ifPresent(l -> {
             l.areaStarted(self()); //l.areaUpdated(this);
         });

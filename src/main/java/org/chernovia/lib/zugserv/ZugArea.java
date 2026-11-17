@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import net.datafaker.Faker;
 import org.chernovia.lib.zugserv.enums.OccupantFilter;
+import org.chernovia.lib.zugserv.enums.ZugAuthSource;
 import org.chernovia.lib.zugserv.enums.ZugScope;
 import org.chernovia.lib.zugserv.enums.ZugServMsgType;
 import java.util.*;
@@ -466,7 +467,7 @@ abstract public class ZugArea<O extends Occupant<O>, A extends ZugArea<O, A>> ex
 
     @Override
     public String toString() {
-        return "[" + getDesc() + ", " + getID() + ", " + getTitle() + "]";
+        return "[" + getDesc() + ", running: " + running + ", occupants: " + numOccupants() + "]";
     }
 
     //@Override public ObjectNode toJSON() { return this.toJSON2(ZugScope.basic); }
@@ -496,6 +497,10 @@ abstract public class ZugArea<O extends Occupant<O>, A extends ZugArea<O, A>> ex
         if (colorName.length() > 1) {
             return colorName.substring(0,1).toUpperCase() + colorName.substring(1) + new Faker().appliance().equipment().split(" ")[0];
         } else return "wtf:" + colorName;
+    }
+
+    public ZugUser.UniqueName generateBotUName() {
+        return new ZugUser.UniqueName(generateBotName(), ZugAuthSource.bot);
     }
 
     public void handleMutant(Runnable runnable) {

@@ -685,39 +685,66 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
         }
     }
 
-    private void createOccupantAndJoin(A area, U user, JsonNode dataNode) {
+    private boolean createOccupantAndJoin(A area, U user, JsonNode dataNode) {
         Optional<O> existingOccupant = area.getOccupant(user);
-        existingOccupant.ifPresentOrElse(
-                existing -> {
-                    area.rejoin(existing);
-                    log(Level.FINE, "User rejoining: " + user.getName());
-                },
-                () -> {
-                    if (!area.config.allowGuests && user.isGuest()) {
-                        log(Level.INFO, "Guest rejected from area: " + area.getDesc());
-                        err(user, "Sorry, guests are not allowed in this area");
-                        return;
-                    }
+        if (existingOccupant.isPresent()) {
+            area.rejoin(existingOccupant.get());
+            log(Level.FINE, "User rejoining: " + user.getName());
+            return true;
+        } else {
+            if (!area.config.allowGuests && user.isGuest()) {
+                log(Level.INFO, "Guest rejected from area: " + area.getDesc());
+                err(user, "Sorry, guests are not allowed in this area");
+                return false;
+            }
 
-                    if (area.numOccupants() >= area.getMaxOccupants()) {
-                        log(Level.INFO, "Area full: " + area.getDesc());
-                        handleMaxOccupancy(user, area, dataNode);
-                        return;
-                    }
+            if (area.numOccupants() >= area.getMaxOccupants()) {
+                log(Level.INFO, "Area full: " + area.getDesc());
+                handleMaxOccupancy(user, area, dataNode);
+                return false;
+            }
 
-                    Optional<O> newOccupantOpt = handleCreateOccupant(user, area, dataNode);
-                    newOccupantOpt.ifPresentOrElse(
-                            occupant -> {
-                                joinArea(area, occupant);
-                                log(Level.FINE, "User joined: " + user.getName() + " in " + area.getDesc());
-                            },
-                            () -> {
-                                log(Level.WARNING, "Failed to create occupant for " + user.getName());
-                                err(user, "Failed to join area");
-                            }
-                    );
-                }
-        );
+            Optional<O> newOccupantOpt = handleCreateOccupant(user, area, dataNode);
+            if (newOccupantOpt.isPresent()) {
+                joinArea(area, newOccupantOpt.get());
+                log(Level.FINE, "User joined: " + user.getName() + " in " + area.getDesc());
+                return true;
+            } else {
+                log(Level.WARNING, "Failed to create occupant for " + user.getName());
+                err(user, "Failed to join area");
+                return false;
+            }
+        }
+    }
+
+    public void createAreaAndFill(U user) {
+        createAreaAndFill(user,null,null,null,false);
+    }
+
+    public void createAreaAndFill(U user, JsonNode areaNode) {
+        createAreaAndFill(user,areaNode,null,null,false);
+    }
+
+    public void createAreaAndFill(U user, JsonNode areaNode, JsonNode dataNode) {
+        createAreaAndFill(user,areaNode,dataNode,dataNode,false);
+    }
+
+    public void createAreaAndFill(U user, JsonNode areaNode, JsonNode userNode, JsonNode botNode, boolean start) {
+        handleCreateArea(user,areaNode).ifPresent(area -> createOccupantAndFill(area,user,userNode,botNode,start));
+    }
+
+    public void createOccupantAndFill(A area, U user) {
+        createOccupantAndFill(area,user,null,null,false);
+    }
+    public void createOccupantAndFill(A area, U user, JsonNode dataNode, JsonNode botNode, boolean start) {
+        if (createOccupantAndJoin(area, user, dataNode)) {
+            while (!area.isFull()) {
+                Optional<U> bot = handleCreateUser(null, area.generateBotUName(), botNode);
+                if (bot.isPresent()) createOccupantAndJoin(area, bot.get(), dataNode);
+                else break;
+            }
+            if (start) area.startArea(user, dataNode);
+        }
     }
 
     private void joinArea(A area, O occupant) {

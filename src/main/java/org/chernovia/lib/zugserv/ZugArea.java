@@ -464,6 +464,11 @@ abstract public class ZugArea<O extends Occupant<O>, A extends ZugArea<O, A>> ex
         user.tell(ZugServMsgType.areaMsg,ZugUtils.newJSON().put(ZugFields.MSG,msg).put(ZugFields.AREA_ID, getID()));
     }
 
+    @Override
+    public String toString() {
+        return "[" + getDesc() + ", " + getID() + ", " + getTitle() + "]";
+    }
+
     //@Override public ObjectNode toJSON() { return this.toJSON2(ZugScope.basic); }
     @Override
     public ObjectNode toJSON2(Enum<?>... scopes) {

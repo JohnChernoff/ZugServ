@@ -112,7 +112,8 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
 
     private final MessageManager messageManager = new MessageManager();
     private final SeekManager<U> seekManager = new SeekManager<>(this);
-
+    public record AreaEventLogs(boolean created, boolean started, boolean finished, boolean closed){}
+    public AreaEventLogs areaEventLogs = new AreaEventLogs(true, true,true,true);
     private boolean requirePassword = true;
     private boolean allowGuests = true;
     private boolean swapGuestConnection = false;
@@ -900,6 +901,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
         area.getCreator().ifPresent(creator -> creator.tell(ZugServMsgType.createArea, area.toJSON2(ZugScope.all)));
         handleAreaListUpdate(area, ZugAreaChange.created,"creating");
         area.created = true;
+        if (areaEventLogs.created) logger.info("Area created: {}", area);
     }
 
     @Override
@@ -907,18 +909,22 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
         handleAreaListUpdate(area, ZugAreaChange.deleted,"deleting");
         area.setExistence(false);
         removeArea(area);
+        if (areaEventLogs.closed) logger.info("Area removed: {}", area);
     }
 
     @Override
     public void areaStarted(A area) {
         log(Level.FINE, "area started: " + area);
         areaUpdated(area,"started");
+        if (areaEventLogs.started) logger.info("Area started: {}", area);
+
     }
 
     @Override
     public void areaFinished(A area) {
         log(Level.FINE, "area finished: " + area);
         areaUpdated(area,"finished");
+        if (areaEventLogs.finished) logger.info("Area finished: {}", area);
     }
 
     @Override

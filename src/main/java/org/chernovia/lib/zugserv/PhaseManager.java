@@ -228,7 +228,7 @@ public class PhaseManager<O extends Occupant<O>> implements JSONifier, AutoClose
     public void shutdownPhases() throws InterruptedException {
         if (closed) return;
         closed = true;
-
+        cancelPhase();
         try {
             scheduler.shutdown();
             if (!scheduler.awaitTermination(5, TimeUnit.SECONDS)) {

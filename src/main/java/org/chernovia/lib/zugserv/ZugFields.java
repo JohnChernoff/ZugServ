@@ -68,6 +68,7 @@ public interface ZugFields {
             CHALLENGE_ID = "challenge_id",
             EXPIRES = "expires",
             REASON = "reason",
-            ACK = "ack"
+            ACK = "ack",
+            TIMEOUT = "timeout"
     ;
 }

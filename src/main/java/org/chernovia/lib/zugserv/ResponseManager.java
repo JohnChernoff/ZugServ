@@ -163,8 +163,10 @@ public class ResponseManager<O extends Occupant<O>> {
         // Clear any existing responses
         area.getOccupants().forEach(occupant -> occupant.setResponse(responseType, null));
 
-        area.spam(ZugServMsgType.reqResponse,
-                ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
+        area.spam(ZugServMsgType.reqResponse, ZugUtils.newJSON()
+                .put(ZugFields.RESPONSE_TYPE, responseType)
+                .put(ZugFields.TIMEOUT,timeout)
+        );
 
         CompletableFuture.delayedExecutor(timeout, TimeUnit.SECONDS).execute(() -> {
             if (future.isDone()) return;

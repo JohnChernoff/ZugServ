@@ -81,14 +81,12 @@ public class ResponseManager<O extends Occupant<O>> {
         List<OccupantResponse<O>> responseMap = getResponses(responseType);
 
         try {
-            // Check if ALL occupants have responded
-            if (responseMap.stream().allMatch(occupantResponse -> occupantResponse.response().isPresent())) {
+            if (responseMap.stream().allMatch(r -> r.response().isPresent())) {
                 area.spam(ZugServMsgType.completedResponse,
                         ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
                 response.futureResponse.complete(responseMap);
                 ZugHandler.log(Level.FINE, "Response completed: " + responseType);
             }
-            // Check if any occupant submitted a cancel value
             else if (responseMap.stream()
                     .map(r -> r.response)
                     .filter(Optional::isPresent)
@@ -98,15 +96,11 @@ public class ResponseManager<O extends Occupant<O>> {
                 response.futureResponse.complete(responseMap);
                 ZugHandler.log(Level.FINE, "Response cancelled: " + responseType);
             }
-            // Response not yet complete - DON'T clean up yet
-            //else { return; }
+            // otherwise still waiting on someone; the entry stays in the map
         } catch (Exception e) {
             ZugHandler.log(Level.SEVERE, "Error checking response " + responseType + ": " + e.getMessage());
             ZugServ.printStackTrace(e);
-            response.futureResponse.completeExceptionally(e);
-        } finally {
-            // ALWAYS cleanup on completion or error
-            responseCheckerMap.remove(responseType);
+            response.futureResponse.completeExceptionally(e);   // whenComplete handles the cleanup
         }
     }
 
@@ -155,9 +149,8 @@ public class ResponseManager<O extends Occupant<O>> {
                                                                      int timeout) {
         CompletableFuture<List<OccupantResponse<O>>> future = new CompletableFuture<>();
 
-        // Use computeIfAbsent for atomic put to prevent duplicates
-        ZugResponse<O> existingResponse = responseCheckerMap.putIfAbsent(responseType,
-                new ZugResponse<>(future, cancelValue));
+        ZugResponse<O> mine = new ZugResponse<>(future, cancelValue);
+        ZugResponse<O> existingResponse = responseCheckerMap.putIfAbsent(responseType,mine);
 
         if (existingResponse != null) {
             ZugHandler.log(Level.WARNING,
@@ -173,20 +166,20 @@ public class ResponseManager<O extends Occupant<O>> {
         area.spam(ZugServMsgType.reqResponse,
                 ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
 
-        // Guaranteed cleanup on ALL completion paths
-        return future
-                .completeOnTimeout(getResponses(responseType), timeout, TimeUnit.SECONDS)
-                .whenComplete((result, ex) -> {
+        CompletableFuture.delayedExecutor(timeout, TimeUnit.SECONDS)
+                .execute(() -> { if (!future.isDone()) future.complete(getResponses(responseType)); });
+
+        return future.whenComplete((result, ex) -> {
                     try {
                         if (ex != null) {
                             ZugHandler.log(Level.WARNING,
                                     "Response request failed: " + responseType + ", error: " + ex.getMessage());
-                        } else if (result != null && result.isEmpty()) {
-                            ZugHandler.log(Level.FINE, "Response timeout: " + responseType);
+                        } else if (result != null && result.stream().anyMatch(r -> r.response().isEmpty())) {
+                            ZugHandler.log(Level.FINE, "Response timeout or cancel: " + responseType);
                         }
                     } finally {
                         // THIS ALWAYS RUNS - cleanup guaranteed
-                        responseCheckerMap.remove(responseType);
+                        responseCheckerMap.remove(responseType, mine);
                     }
                 });
     }

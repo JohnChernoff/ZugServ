@@ -740,8 +740,9 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
         if (createOccupantAndJoin(area, user, dataNode)) {
             while (!area.isFull()) {
                 Optional<U> bot = handleCreateUser(null, area.generateBotUName(), botNode);
-                if (bot.isPresent()) createOccupantAndJoin(area, bot.get(), dataNode);
-                else break;
+                if (bot.isPresent()) {
+                    if (!createOccupantAndJoin(area, bot.get(), dataNode)) break;
+                } else break;
             }
             if (start) area.startArea(user, dataNode);
         }

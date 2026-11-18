@@ -166,8 +166,13 @@ public class ResponseManager<O extends Occupant<O>> {
         area.spam(ZugServMsgType.reqResponse,
                 ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
 
-        CompletableFuture.delayedExecutor(timeout, TimeUnit.SECONDS)
-                .execute(() -> { if (!future.isDone()) future.complete(getResponses(responseType)); });
+        CompletableFuture.delayedExecutor(timeout, TimeUnit.SECONDS).execute(() -> {
+            if (future.isDone()) return;
+            if (future.complete(getResponses(responseType))) {      // true only if the timeout won the race
+                area.spam(ZugServMsgType.cancelledResponse,
+                        ZugUtils.newJSON().put(ZugFields.RESPONSE_TYPE, responseType));
+            }
+        });
 
         return future.whenComplete((result, ex) -> {
                     try {

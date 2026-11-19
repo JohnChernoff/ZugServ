@@ -3,7 +3,7 @@ package org.chernovia.lib.zugserv;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import org.chernovia.lib.zugserv.enums.ZugScope;
 
-public class ZugSeek<U extends ZugUser> implements JSONifier {
+final public class ZugSeek<U extends ZugUser> implements JSONifier {
     U user;
     long timeStamp;
     AreaOptions options;
@@ -15,6 +15,10 @@ public class ZugSeek<U extends ZugUser> implements JSONifier {
         this.user = user;
         this.options = options;
         timeStamp = System.currentTimeMillis() / 1000;
+    }
+
+    public ZugSeek<U> copy(U user) {
+        return new ZugSeek<>(user,options);
     }
 
     /**

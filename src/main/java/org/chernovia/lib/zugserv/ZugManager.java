@@ -435,9 +435,10 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
             err(user, ERR_CHALLENGE_NOT_FOUND);
             return;
         }
-        handleAcceptChallenge(user,found.get(),dataNode);
+        handleAcceptChallenge(user,found.get(),dataNode.get(ZugFields.DATA)); //usually the DATA field is missing
     }
 
+    //public void handleAcceptChallenge(U user, ZugChallenge<U> challenge) { handleAcceptChallenge(user, challenge, null); }
     public void handleAcceptChallenge(U user, ZugChallenge<U> challenge, JsonNode dataNode) {
         U creator = challenge.getCreator();
         if (creator == user) {
@@ -447,7 +448,9 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
         } else if (singleAreaPerUser && !getAreasByUser(creator).isEmpty()) {
             err(user, "Challenger is currently busy");
         } else {
-            Optional<ZugSeek<U>> acceptorSeek = createSeek(user,dataNode);
+            Optional<ZugSeek<U>> acceptorSeek = dataNode == null
+                    ? Optional.of(challenge.getSeek().copy(user))
+                    : createSeek(user,dataNode);
             if (acceptorSeek.isEmpty() || !challenge.getSeek().isAcceptable(acceptorSeek.get())
                     || !acceptorSeek.get().isAcceptable(challenge.getSeek())) {
                 err(user, "You are not eligible for that challenge");

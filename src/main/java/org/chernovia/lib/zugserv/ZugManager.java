@@ -28,6 +28,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
             ERR_NOT_OCCUPANT = "Not joined",
             ERR_NO_TITLE = "No title",
             ERR_TITLE_NOT_FOUND = "Title not found",
+            ERR_SEEK_NOT_FOUND = "Seek not found",
             ERR_CHALLENGE_NOT_FOUND = "Challenge not found (it may have been accepted, cancelled or expired)";
 
     @FunctionalInterface
@@ -158,6 +159,7 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
         addHandler(ZugClientMsgType.viewChallenge,this::handleViewChallenge);
         addHandler(ZugClientMsgType.acceptChallenge,this::handleAcceptChallenge);
         addHandler(ZugClientMsgType.cancelChallenge,this::handleCancelChallenge);
+        addHandler(ZugClientMsgType.cancelSeek,this::handleCancelSeek);
 
         addHandler(ZugClientMsgType.servMsg,this::handleServerMessage);
         addHandler(ZugClientMsgType.privMsg,this::handlePrivateMessage);
@@ -405,6 +407,10 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
         return ZugUtils.newJSON().put(ZugFields.CHALLENGE_ID, id).put(ZugFields.REASON, reason);
     }
 
+    private ObjectNode seekClosedMsg(U user, String reason) {
+        return ZugUtils.newJSON().put(ZugFields.REASON, reason).set(ZugFields.USER, user.toJSON2());
+    }
+
     /**
      * Creates a challenge: a seek that can only be matched by someone who has its id (i.e., its link).
      * Game-specific settings go in the message's "data" object; they're validated by (and handed to) the
@@ -461,6 +467,12 @@ abstract public class ZugManager<O extends Occupant<O>, A extends ZugArea<O,A>, 
                 seekManager.matchSeeksWith(challenge.getSettings(), challenge.getSeek(), acceptorSeek.get());
             }
         }
+    }
+
+    public void handleCancelSeek(U user, JsonNode dataNode) {
+        if (seekManager.cancelSeek(user)) {
+            user.tell(ZugServMsgType.seekCancelled, seekClosedMsg(user, "cancelled"));
+        } else err(user,ERR_SEEK_NOT_FOUND);
     }
 
     public void handleCancelChallenge(U user, JsonNode dataNode) {

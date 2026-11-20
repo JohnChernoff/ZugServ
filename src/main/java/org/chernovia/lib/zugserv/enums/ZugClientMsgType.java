@@ -5,5 +5,5 @@ public enum ZugClientMsgType {
     newRoom, joinRoom, newArea, joinArea, startArea, partArea, areaMsg, roomMsg, servMsg, privMsg, updateArea, updateRoom,
     updateServ, updateUser, updateOccupant, setDeaf, ban, kick, response, nudge,
     newChallenge, viewChallenge, acceptChallenge, cancelChallenge,
-    ack //appended (not inserted) to preserve ordinals (?)
+    cancelSeek, ack //appended (not inserted) to preserve ordinals (?)
 }

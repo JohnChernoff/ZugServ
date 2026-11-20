@@ -5,5 +5,5 @@ public enum ZugServMsgType {
     joinRoom, joinArea, partArea, createArea, startArea, userList, areaList, updateAreaList, updateArea, updateRoom, updateServ,
     updateUser, updateOccupant, updateOccupants, updateOptions, kicked, reqResponse, completedResponse, cancelledResponse, clockResponse,
     challengeCreated, challengeInfo, challengeClosed,
-    ack //appended (not inserted) to preserve ordinals (?)
+    seekCancelled, ack //appended (not inserted) to preserve ordinals (?)
 }

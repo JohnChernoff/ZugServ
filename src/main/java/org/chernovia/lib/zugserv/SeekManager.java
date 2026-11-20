@@ -90,9 +90,13 @@ public class SeekManager<U extends ZugUser> {
     }
 
     /** @return true if the challenge existed and belonged to the given user */
-    public boolean cancelChallenge(String id, ZugUser user) {
+    public boolean cancelChallenge(String id, U user) {
         ZugChallenge<U> challenge = id == null ? null : challengeMap.get(id);
         return challenge != null && challenge.getCreator() == user && challengeMap.remove(id, challenge);
+    }
+
+    public boolean cancelSeek(U user) {
+        return seekMap.remove(user) != null;
     }
 
     /** Removes and returns all expired challenges, so the caller can notify their creators. */
